@@ -4,6 +4,7 @@
 	"implClass": "org.apache.ranger.services.kms.RangerServiceKMS",
 	"label": "KMS",
 	"description": "KMS",
+	"guid": "dc12ab69-b56a-418b-b02c-60807702736b",
 	"resources": 
 	[
 		{

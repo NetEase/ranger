@@ -4,6 +4,7 @@
 	"implClass":"org.apache.ranger.services.kafka.RangerServiceKafka",
 	"label":"Kafka",
 	"description":"Apache Kafka",
+	"guid": "012b5588-2029-47fa-b719-d17539782c35",
 	"resources":[
 		{
 			"itemId":1,

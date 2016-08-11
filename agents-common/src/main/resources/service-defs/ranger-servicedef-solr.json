@@ -4,6 +4,7 @@
 	"implClass":"org.apache.ranger.services.solr.RangerServiceSolr",
 	"label":"SOLR",
 	"description":"Solr",
+	"guid": "6967b4aa-b214-43e5-bf44-8288235bbf2e",
 	"resources":[
 		{
 			"itemId":100,
