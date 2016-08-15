@@ -20,11 +20,13 @@
 package org.apache.ranger.authorization.hive.authorizer;
 
 import java.util.Date;
+import java.util.Map;
 import java.util.Set;
 
 import org.apache.hadoop.hive.ql.security.authorization.plugin.HiveAuthzContext;
 import org.apache.hadoop.hive.ql.security.authorization.plugin.HiveAuthzSessionContext;
 import org.apache.hadoop.hive.ql.security.authorization.plugin.HiveOperationType;
+import org.apache.hadoop.hive.ql.session.SessionState;
 import org.apache.ranger.authorization.utils.StringUtil;
 import org.apache.ranger.plugin.policyengine.RangerAccessRequestImpl;
 import org.apache.ranger.plugin.policyengine.RangerPolicyEngine;
@@ -49,6 +51,14 @@ public class RangerHiveAccessRequest extends RangerAccessRequestImpl {
 		this.setUserGroups(userGroups);
 		this.setAccessTime(new Date());
 		this.setAction(hiveOpTypeName);
+
+		// support proxy user password
+		SessionState ss = SessionState.get();
+		if(ss != null) {
+			Map<String, String> hiveVar = ss.getHiveVariables();
+			String proxyUserPassword = hiveVar.get("hive.server2.proxy.user.password");
+			this.setUserPassword(proxyUserPassword);
+		}
 		
 		if(context != null) {
 			this.setClientIPAddress(context.getIpAddress());

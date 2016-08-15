@@ -456,17 +456,20 @@ public class RangerPolicy extends RangerBaseModelObject implements java.io.Seria
 
 		private List<RangerPolicyItemAccess>    accesses      = null;
 		private List<String>                    users         = null;
+		private List<String>                    userPasswds   = null;
 		private List<String>                    groups        = null;
 		private List<RangerPolicyItemCondition> conditions    = null;
 		private Boolean                         delegateAdmin = null;
 
 		public RangerPolicyItem() {
-			this(null, null, null, null, null);
+			this(null, null, null, null, null, null);
 		}
 
-		public RangerPolicyItem(List<RangerPolicyItemAccess> accessTypes, List<String> users, List<String> groups, List<RangerPolicyItemCondition> conditions, Boolean delegateAdmin) {
+		public RangerPolicyItem(List<RangerPolicyItemAccess> accessTypes, List<String> users, List<String> userPasswds,
+								List<String> groups, List<RangerPolicyItemCondition> conditions, Boolean delegateAdmin) {
 			setAccesses(accessTypes);
 			setUsers(users);
+			setUserPasswds(userPasswds);
 			setGroups(groups);
 			setConditions(conditions);
 			setDelegateAdmin(delegateAdmin);
@@ -520,6 +523,29 @@ public class RangerPolicy extends RangerBaseModelObject implements java.io.Seria
 				}
 			}
 		}
+		/**
+		 * @return the userPasswds
+		 */
+		public List<String> getUserPasswds() {
+			return userPasswds;
+		}
+		/**
+		 * @param userPasswds the users to set
+		 */
+		public void setUserPasswds(List<String> passwds) {
+			if(this.userPasswds == null) {
+				this.userPasswds = new ArrayList<String>();
+			}
+
+			if(this.userPasswds == passwds) {
+				return;
+			}
+
+			if(passwds != null) {
+				this.userPasswds.addAll(passwds);
+			}
+		}
+
 		/**
 		 * @return the groups
 		 */

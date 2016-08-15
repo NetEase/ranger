@@ -42,6 +42,9 @@ public class RangerAccessRequestImpl implements RangerAccessRequest {
 	private String               sessionId       = null;
 	private Map<String, Object>  context         = null;
 
+	// support proxy/user passwod
+	private String userPassword                = null;
+
 	private boolean isAccessTypeAny            = false;
 	private boolean isAccessTypeDelegatedAdmin = false;
 	private ResourceMatchingScope resourceMatchingScope = ResourceMatchingScope.SELF;
@@ -134,6 +137,15 @@ public class RangerAccessRequestImpl implements RangerAccessRequest {
 	@Override
 	public boolean isAccessTypeDelegatedAdmin() {
 		return isAccessTypeDelegatedAdmin;
+	}
+
+	@Override
+	public String getUserPassword() {
+		return userPassword;
+	}
+
+	public void setUserPassword(String password) {
+		this.userPassword = password;
 	}
 
 	public void setResource(RangerAccessResource resource) {

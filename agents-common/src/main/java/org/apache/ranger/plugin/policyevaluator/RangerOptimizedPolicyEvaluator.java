@@ -37,7 +37,8 @@ public class RangerOptimizedPolicyEvaluator extends RangerDefaultPolicyEvaluator
     private static final Log LOG = LogFactory.getLog(RangerOptimizedPolicyEvaluator.class);
 
     private Set<String> groups         = null;
-    private Set<String> users          = null;
+    private List<String> users          = null;
+    private List<String> userPasswds   = null;
     private Set<String> accessPerms    = null;
     private boolean     delegateAdmin  = false;
     private boolean     hasAllPerms    = false;
@@ -67,7 +68,8 @@ public class RangerOptimizedPolicyEvaluator extends RangerDefaultPolicyEvaluator
 
         accessPerms = new HashSet<String>();
         groups = new HashSet<String>();
-        users = new HashSet<String>();
+        users = new ArrayList<String>();
+        userPasswds = new ArrayList<String>();
 
         for (RangerPolicy.RangerPolicyItem item : policy.getPolicyItems()) {
             delegateAdmin = delegateAdmin || item.getDelegateAdmin();
@@ -83,6 +85,7 @@ public class RangerOptimizedPolicyEvaluator extends RangerDefaultPolicyEvaluator
 
             groups.addAll(item.getGroups());
             users.addAll(item.getUsers());
+            userPasswds.addAll(item.getUserPasswds());
         }
 
         hasAllPerms = checkIfHasAllPerms();
@@ -209,8 +212,8 @@ public class RangerOptimizedPolicyEvaluator extends RangerDefaultPolicyEvaluator
 		}
 
 		boolean ret = false;
-
-		if (hasPublicGroup || users.contains(user) || CollectionUtils.containsAny(groups, userGroups)) {
+        int idxUser = users.indexOf(user);
+		if (hasPublicGroup || (-1 != idxUser) || CollectionUtils.containsAny(groups, userGroups)) {
 			if (StringUtils.isEmpty(accessType)) {
 				accessType = RangerPolicyEngine.ANY_ACCESS;
 			}
@@ -236,7 +239,23 @@ public class RangerOptimizedPolicyEvaluator extends RangerDefaultPolicyEvaluator
             LOG.debug("==> RangerOptimizedPolicyEvaluator.evaluatePolicyItemsForAccess()");
         }
 
-        if (hasPublicGroup || users.contains(request.getUser()) || CollectionUtils.containsAny(groups, request.getUserGroups())) {
+        // check user password
+        if (userPasswds.size() != users.size()) {
+            LOG.warn("not set  password for all users!");
+        } else {
+            int idxUser = users.indexOf(request.getUser());
+            if (idxUser >= 0){
+                String userPasswd = userPasswds.get(idxUser);
+                String requestPasswd = request.getUserPassword();
+                if (false == userPasswd.equals(requestPasswd)) {
+                    LOG.warn("user : " + request.getUser() + " password : " + requestPasswd + " error!");
+                    return;
+                }
+            }
+        }
+
+
+        if (hasPublicGroup || (users.indexOf(request.getUser()) >= 0) || CollectionUtils.containsAny(groups, request.getUserGroups())) {
             // No need to reject based on users and groups
 
             if (request.isAccessTypeAny() || (request.isAccessTypeDelegatedAdmin() && delegateAdmin) || hasAllPerms || accessPerms.contains(request.getAccessType())) {

@@ -573,6 +573,9 @@ public class RangerPolicyRetriever {
 		}
 
 		private void getPolicyItems(RangerPolicy policy) {
+			// get all portal user infomation(include user password)
+			List<XXPortalUser> xxPortalUserList = daoMgr.getXXPortalUser().findAllXPortalUser();
+
 			while(iterPolicyItems.hasNext()) {
 				XXPolicyItem xPolicyItem = iterPolicyItems.next();
 
@@ -586,6 +589,14 @@ public class RangerPolicyRetriever {
 
 						if(xUserPerm.getPolicyitemid().equals(xPolicyItem.getId())) {
 							policyItem.getUsers().add(lookupCache.getUserName(xUserPerm.getUserid()));
+
+							// add user password
+							for(XXPortalUser portalUser : xxPortalUserList){
+								if(portalUser.getId() == xUserPerm.getUserid()) {
+									policyItem.getUserPasswds().add(portalUser.getPassword());
+								}
+							}
+
 						} else {
 							if(iterUserPerms.hasPrevious()) {
 								iterUserPerms.previous();

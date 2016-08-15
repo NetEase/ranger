@@ -1754,6 +1754,7 @@ public class TestServiceDBStore {
 		policyItemAccess.setIsAllowed(true);
 		policyItemAccess.setType("1");
 		List<String> usersList = new ArrayList<String>();
+		List<String> userPasswdsList = new ArrayList<String>();
 		List<String> groupsList = new ArrayList<String>();
 		List<RangerPolicyItemCondition> conditionsList = new ArrayList<RangerPolicyItemCondition>();
 		RangerPolicyItemCondition policyItemCondition = new RangerPolicyItemCondition();
@@ -1772,7 +1773,7 @@ public class TestServiceDBStore {
 
 		List<RangerPolicyItem> policyItemsSet = new ArrayList<RangerPolicy.RangerPolicyItem>();
 		RangerPolicyItem paramPolicyItem = new RangerPolicyItem(accessesList,
-				usersList, groupsList, conditionsList, false);
+				usersList, userPasswdsList, groupsList, conditionsList, false);
 		paramPolicyItem.setDelegateAdmin(false);
 		paramPolicyItem.setAccesses(accessesList);
 		paramPolicyItem.setConditions(conditionsList);
