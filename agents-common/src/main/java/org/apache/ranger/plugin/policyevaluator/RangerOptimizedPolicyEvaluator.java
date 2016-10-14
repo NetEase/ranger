@@ -239,21 +239,25 @@ public class RangerOptimizedPolicyEvaluator extends RangerDefaultPolicyEvaluator
             LOG.debug("==> RangerOptimizedPolicyEvaluator.evaluatePolicyItemsForAccess()");
         }
 
-        // check user password
-        if (userPasswds.size() != users.size()) {
-            LOG.warn("not set  password for all users!");
-        } else {
-            int idxUser = users.indexOf(request.getUser());
-            if (idxUser >= 0){
-                String userPasswd = userPasswds.get(idxUser);
-                String requestPasswd = request.getUserPassword();
-                if (false == userPasswd.equals(requestPasswd)) {
-                    LOG.warn("user : " + request.getUser() + " password : " + requestPasswd + " error!");
-                    return;
+        /* only hive check proxy user password
+        if (true == getServiceDef().getName().equals("hive")) {
+            if (userPasswds.size() != users.size()) {
+                LOG.warn("not set  password for all users!");
+            } else {
+                int idxUser = users.indexOf(request.getUser());
+                if (idxUser >= 0){
+                    String userPasswd = userPasswds.get(idxUser);
+                    String requestPasswd = request.getUserPassword();
+                    if (null == requestPasswd) {
+                        LOG.error("user : " + request.getUser() + " password not set!");
+                        return;
+                    } else if (false == userPasswd.equals(requestPasswd)) {
+                        LOG.error("user : " + request.getUser() + " password : " + requestPasswd + " error!");
+                        return;
+                    }
                 }
             }
-        }
-
+        }*/
 
         if (hasPublicGroup || (users.indexOf(request.getUser()) >= 0) || CollectionUtils.containsAny(groups, request.getUserGroups())) {
             // No need to reject based on users and groups

@@ -52,12 +52,16 @@ public class RangerHiveAccessRequest extends RangerAccessRequestImpl {
 		this.setAccessTime(new Date());
 		this.setAction(hiveOpTypeName);
 
-		// support proxy user password
+		// support ranger user
 		SessionState ss = SessionState.get();
 		if(ss != null) {
 			Map<String, String> hiveVar = ss.getHiveVariables();
-			String proxyUserPassword = hiveVar.get("hive.server2.proxy.user.password");
-			this.setUserPassword(proxyUserPassword);
+			String rangerUserName = hiveVar.get("ranger.user.name");
+			String rangerUserPassword = hiveVar.get("ranger.user.password");
+			if (null != rangerUserName && !rangerUserName.isEmpty()) {
+				this.setUser(rangerUserName);
+			}
+			this.setUserPassword(rangerUserPassword);
 		}
 		
 		if(context != null) {
@@ -105,6 +109,7 @@ public class RangerHiveAccessRequest extends RangerAccessRequestImpl {
 		ret.setResource(getResource());
 		ret.setAccessType(getAccessType());
 		ret.setUser(getUser());
+		ret.setUserPassword(getUserPassword());
 		ret.setUserGroups(getUserGroups());
 		ret.setAccessTime(getAccessTime());
 		ret.setAction(getAction());
