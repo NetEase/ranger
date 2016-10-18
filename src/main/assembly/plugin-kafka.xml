@@ -73,6 +73,7 @@
 							<include>org.codehaus.jackson:jackson-jaxrs</include>
 							<include>org.codehaus.jackson:jackson-mapper-asl</include>
 							<include>org.codehaus.jackson:jackson-xc</include>
+							<include>mysql:mysql-connector-java:jar:${mysql-connector-java.version}</include>
 						</includes>
 					</dependencySet>
 					<dependencySet>

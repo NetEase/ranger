@@ -1001,11 +1001,11 @@ log "[I] hostname=`hostname`"
 init_variables
 get_distro
 check_java_version
-check_db_connector
-setup_unix_user_group
+#check_db_connector
+#setup_unix_user_group
 setup_install_files
 sanity_check_files
-copy_db_connector
+#copy_db_connector
 check_python_command
 run_dba_steps
 if [ "$?" == "0" ]

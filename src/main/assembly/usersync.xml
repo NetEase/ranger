@@ -52,6 +52,7 @@
 					<include>org.apache.htrace:htrace-core</include>
 					<include>commons-httpclient:commons-httpclient</include>
 					<include>commons-codec:commons-codec</include>
+					<include>mysql:mysql-connector-java:jar:${mysql-connector-java.version}</include>
 				</includes>
 				<unpack>false</unpack>
   			</dependencySet>

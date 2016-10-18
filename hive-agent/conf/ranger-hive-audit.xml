@@ -26,7 +26,7 @@
 	<!-- DB audit provider configuration -->
 	<property>
 		<name>xasecure.audit.db.is.enabled</name>
-		<value>false</value>
+		<value>true</value>
 	</property>	
 	
 	<property>
@@ -57,7 +57,7 @@
 
 	<property>
 		<name>xasecure.audit.jpa.javax.persistence.jdbc.user</name>
-		<value>rangerlogger</value>
+		<value>rangeradmin</value>
 	</property>
 
 	<property>

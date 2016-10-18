@@ -15,6 +15,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+export JAVA_HOME=/home/hadoop/java-current
+export HADOOP_HOME=/home/hadoop/hadoop-current
+
 function getInstallProperty() {
     local propertyName=$1
     local propertyValue=""
@@ -44,11 +47,11 @@ BASE_CONF_DIR=/etc/${PROJ_NAME}
 # The script should be run by "root" user
 #
 
-if [ ! -w /etc/passwd ]
-then
-    echo "ERROR: $0 script should be run as root."
-    exit 1
-fi
+#if [ ! -w /etc/passwd ]
+#then
+#    echo "ERROR: $0 script should be run as root."
+#    exit 1
+#fi
 
 #Check for JAVA_HOME
 if [ "${JAVA_HOME}" == "" ]
@@ -126,31 +129,43 @@ PROJ_LIB_PLUGIN_DIR=${PROJ_INSTALL_DIR}/${PLUGIN_DEPENDENT_LIB_DIR}
 
 HCOMPONENT_INSTALL_DIR_NAME=$(getInstallProperty 'COMPONENT_INSTALL_DIR_NAME')
 
-
 CUSTOM_USER=$(getInstallProperty 'CUSTOM_USER')
-CUSTOM_USER=${CUSTOM_USER// }
+#CUSTOM_USER=${CUSTOM_USER// }
 
 CUSTOM_GROUP=$(getInstallProperty 'CUSTOM_GROUP')
-CUSTOM_GROUP=${CUSTOM_GROUP// }
+#CUSTOM_GROUP=${CUSTOM_GROUP// }
 
 
-
-if [ ! -z "${CUSTOM_USER}" ] && [ ! -z "${CUSTOM_GROUP}" ]
-then
-  echo "Custom user and group is available, using custom user and group."
-  CFG_OWNER_INF="${CUSTOM_USER}:${CUSTOM_GROUP}"
-elif [ ! -z "${CUSTOM_USER}" ] && [ -z "${CUSTOM_GROUP}" ]
-then
-  echo "Custom user is available, using custom user and default group."
-  CFG_OWNER_INF="${CUSTOM_USER}:${HCOMPONENT_NAME}"
-elif [ -z  "${CUSTOM_USER}" ] && [ ! -z  "${CUSTOM_GROUP}" ]
-then
-  echo "Custom group is available, using default user and custom group."
-  CFG_OWNER_INF="${HCOMPONENT_NAME}:${CUSTOM_GROUP}"
-else
-  echo "Custom user and group are not available, using default user and group."
-  CFG_OWNER_INF="${HCOMPONENT_NAME}:${HCOMPONENT_NAME}"
+# check install.properties
+policyMgrUrl=$(getInstallProperty 'POLICY_MGR_URL')
+if [ -z "${db_flavor}" ]; then
+    echo "ERROR: POLICY_MGR_URL not config in install.properties!"
+    exit 1
 fi
+
+if [ -z "${HCOMPONENT_INSTALL_DIR_NAME}" ]; then
+    echo "ERROR: COMPONENT_INSTALL_DIR_NAME not config in install.properties!"
+    exit 1
+fi
+
+#if [ ! -z "${CUSTOM_USER}" ] && [ ! -z "${CUSTOM_GROUP}" ]
+#then
+#  echo "Custom user and group is available, using custom user and group."
+#  CFG_OWNER_INF="${CUSTOM_USER}:${CUSTOM_GROUP}"
+#elif [ ! -z "${CUSTOM_USER}" ] && [ -z "${CUSTOM_GROUP}" ]
+#then
+#  echo "Custom user is available, using custom user and default group."
+#  CFG_OWNER_INF="${CUSTOM_USER}:${HCOMPONENT_NAME}"
+#elif [ -z  "${CUSTOM_USER}" ] && [ ! -z  "${CUSTOM_GROUP}" ]
+#then
+#  echo "Custom group is available, using default user and custom group."
+#  CFG_OWNER_INF="${HCOMPONENT_NAME}:${CUSTOM_GROUP}"
+#else
+#  echo "Custom user and group are not available, using default user and group."
+#  CFG_OWNER_INF="${HCOMPONENT_NAME}:${HCOMPONENT_NAME}"
+#fi
+
+CFG_OWNER_INF="${CUSTOM_USER}:${CUSTOM_GROUP}"
 
 if [ "${HCOMPONENT_INSTALL_DIR_NAME}" = "" ]
 then
@@ -189,13 +204,13 @@ fi
 HCOMPONENT_CONF_DIR=${HCOMPONENT_INSTALL_DIR}/conf
 if [ "${HCOMPONENT_NAME}" = "solr" ]; then
     HCOMPONENT_CONF_DIR=${HCOMPONENT_INSTALL_DIR}/solr-webapp/webapp/WEB-INF/classes
-    if [ ! -d $HCOMPONENT_CONF_DIR ]; then	
+    if [ ! -d $HCOMPONENT_CONF_DIR ]; then
 	install_owner=`ls -ld | cut -f 3 -d " "`
-	echo "INFO: Creating $HCOMPONENT_CONF_DIR" 
+	echo "INFO: Creating $HCOMPONENT_CONF_DIR"
 	mkdir -p $HCOMPONENT_CONF_DIR
-	echo "INFO: Changing ownership of  $HCOMPONENT_CONF_DIR to $install_owner" 
+	echo "INFO: Changing ownership of  $HCOMPONENT_CONF_DIR to $install_owner"
 	chown $install_owner:$install_owner $HCOMPONENT_CONF_DIR
-    fi    
+    fi
 elif [ "${HCOMPONENT_NAME}" = "kafka" ]; then
     HCOMPONENT_CONF_DIR=${HCOMPONENT_INSTALL_DIR}/config
 fi
@@ -230,7 +245,7 @@ if  [ "${HCOMPONENT_NAME}" = "hive" ]
 then
 	HCOMPONENT_CONF_SERVER_DIR="${HCOMPONENT_CONF_DIR}"/conf.server
 	if [ -d "${HCOMPONENT_CONF_SERVER_DIR}" ]
-	then 
+	then
 		ambari_hive_install="Y"
 	fi
 fi
@@ -270,7 +285,7 @@ create_jceks() {
 		rm -f ${tempFile}
 		exit 0
 	fi
-	
+
 	rm -f ${tempFile}
 }
 
@@ -295,7 +310,7 @@ then
 		log "Saving current ${SET_ENV_SCRIPT_NAME} to ${HCOMPONENT_ARCHIVE_CONF_DIR} ..."
 		mv ${SET_ENV_SCRIPT} ${HCOMPONENT_ARCHIVE_CONF_DIR}/${SET_ENV_SCRIPT_NAME}.${dt}
 	fi
-	
+
 	if [ "${action}" = "enable" ]
 	then
 
@@ -316,7 +331,7 @@ then
 			if [ $? -eq 0 ]
 			then
 				ts=`date '+%Y%m%d%H%M%S'`
-				grep -v 'xasecure-.*-env.sh' ${DEST_SCRIPT_FILE} > ${DEST_SCRIPT_FILE}.${ts} 
+				grep -v 'xasecure-.*-env.sh' ${DEST_SCRIPT_FILE} > ${DEST_SCRIPT_FILE}.${ts}
 				if [ $? -eq 0 ]
 				then
 					log "Removing old reference to xasecure setenv source ..."
@@ -343,12 +358,12 @@ fi
 fi
 
 #
-# Run, the enable|disable ${COMPONENT} configurations 
+# Run, the enable|disable ${COMPONENT} configurations
 #
 
 if [ -d "${PROJ_INSTALL_DIR}/install/conf.templates/${action}" ]
 then
-	INSTALL_CP="${PROJ_INSTALL_LIB_DIR}/*" 
+	INSTALL_CP="${PROJ_INSTALL_LIB_DIR}/*"
 	if [ "${action}" = "enable" ]
 	then
 		echo "<ranger>\n<enabled>`date`</enabled>\n</ranger>" > ${HCOMPONENT_CONF_DIR}/ranger-security.xml
@@ -377,6 +392,12 @@ then
 	# Ensure that POLICY_CACHE_FILE_PATH is accessible
 	#
 	REPO_NAME=$(getInstallProperty 'REPOSITORY_NAME')
+
+	if [ -z "${REPO_NAME}" ]; then
+        echo "ERROR: REPOSITORY_NAME not config in install.properties!"
+        exit 1
+    fi
+
 	export POLICY_CACHE_FILE_PATH=/etc/${PROJ_NAME}/${REPO_NAME}/policycache
 	export CREDENTIAL_PROVIDER_FILE=/etc/${PROJ_NAME}/${REPO_NAME}/cred.jceks
 	if [ ! -d ${POLICY_CACHE_FILE_PATH} ]
@@ -387,15 +408,29 @@ then
 	chmod a+rx /etc/${PROJ_NAME}/${REPO_NAME}
 	chmod a+rx ${POLICY_CACHE_FILE_PATH}
 	chown -R ${CFG_OWNER_INF} /etc/${PROJ_NAME}/${REPO_NAME}
-	
+
 
 	#
-	# We need to do the AUDIT JDBC url 
+	# We need to do the AUDIT JDBC url
 	#
 
 	db_flavor=`echo $(getInstallProperty 'XAAUDIT.DB.FLAVOUR') | tr '[:lower:]' '[:upper:]'`
     audit_db_hostname=$(getInstallProperty 'XAAUDIT.DB.HOSTNAME')
     audit_db_name=$(getInstallProperty 'XAAUDIT.DB.DATABASE_NAME')
+
+
+    if [ -z "${db_flavor}" ]; then
+        echo "ERROR: XAAUDIT.DB.FLAVOUR not config in install.properties!"
+        exit 1
+    fi
+    if [ -z "${audit_db_hostname}" ]; then
+        echo "ERROR: XAAUDIT.DB.HOSTNAME not config in install.properties!"
+        exit 1
+    fi
+    if [ -z "${audit_db_name}" ]; then
+        echo "ERROR: XAAUDIT.DB.DATABASE_NAME not config in install.properties!"
+        exit 1
+    fi
 
 	if [ "${db_flavor}" = "MYSQL" ]
 	then
@@ -446,7 +481,7 @@ then
 				then
 					log "Creating default file from [${DEFAULT_XML_CONFIG}] for [${fullpathorgfn}] .."
 					cp ${DEFAULT_XML_CONFIG} ${fullpathorgfn}
-				 	chown ${CFG_OWNER_INF} ${fullpathorgfn}	
+				 	chown ${CFG_OWNER_INF} ${fullpathorgfn}
 				else
         			echo "ERROR: Unable to find ${fullpathorgfn}"
         			exit 1
@@ -466,7 +501,7 @@ then
                     then
                     	cat ${newfn} > ${fullpathorgfn}
                     fi
-                    
+
                     # For Ambari install copy the .xml to conf.server also
 					if [ "${ambari_hive_install}" = "Y" ]
 					then
@@ -475,13 +510,13 @@ then
         				newHS2fn="${HCOMPONENT_CONF_SERVER_DIR}/.${orgfn}-new.${dt}"
 						log "Saving current conf.server file: ${fullpathorgHS2fn} to ${archiveHS2fn} ..."
 						if [ -f ${fullpathorgHS2fn} ]
-						then 
+						then
             				cp ${fullpathorgHS2fn} ${archiveHS2fn}
             			fi
 						cp ${fullpathorgfn} ${HCOMPONENT_CONF_SERVER_DIR}/${orgfn}
 						chown ${CFG_OWNER_INF} ${HCOMPONENT_CONF_SERVER_DIR}/${orgfn}
 					fi
-					
+
                	else
 				    echo "ERROR: Unable to make changes to config. file: ${fullpathorgfn}"
                     echo "exiting ...."
@@ -506,7 +541,28 @@ fi
 
 if [ "${action}" = "enable" ]
 then
-
+    if [ "${HCOMPONENT_NAME}" = "hive" ]
+    then
+        for f in ${PROJ_LIB_DIR}/*.jar ${PROJ_LIB_PLUGIN_DIR}/*.jar
+		do
+            cp ${f} ${HCOMPONENT_INSTALL_DIR_NAME}/lib
+            echo "copy ${f} to ${HCOMPONENT_INSTALL_DIR_NAME}/lib"
+		done
+	elif [ "${HCOMPONENT_NAME}" = "hdfs" ]
+    then
+        for f in ${PROJ_LIB_DIR}/*.jar ${PROJ_LIB_PLUGIN_DIR}/*.jar
+		do
+            cp ${f} ${HCOMPONENT_INSTALL_DIR_NAME}/share/hadoop/hdfs/lib/
+            echo "copy ${f} to ${HCOMPONENT_INSTALL_DIR_NAME}/share/hadoop/hdfs/lib/"
+		done
+	elif [ "${HCOMPONENT_NAME}" = "yarn" ]
+    then
+        for f in ${PROJ_LIB_DIR}/*.jar ${PROJ_LIB_PLUGIN_DIR}/*.jar
+		do
+            cp ${f} ${HCOMPONENT_INSTALL_DIR_NAME}/share/hadoop/hdfs/lib/
+            echo "copy ${f} to ${HCOMPONENT_INSTALL_DIR_NAME}/share/hadoop/hdfs/lib/"
+		done
+    else
 	#if [ -d "${PROJ_LIB_DIR}" ]
 	#then
 		dt=`date '+%Y%m%d%H%M%S'`
@@ -541,8 +597,7 @@ then
 			    ln -s ${dbJar} ${PROJ_LIB_PLUGIN_DIR}/${bn}
 			fi
 		fi
-
-	#fi
+	fi
 
 	#
 	# Encrypt the password and keep it secure in Credential Provider API
