@@ -36,6 +36,8 @@ public interface RangerAccessRequest {
 
 	String getUserPassword();
 
+	Set<String> getGroupMember();
+
 	Set<String> getUserGroups();
 
 	Date getAccessTime();

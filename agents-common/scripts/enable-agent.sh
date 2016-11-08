@@ -138,7 +138,7 @@ CUSTOM_GROUP=$(getInstallProperty 'CUSTOM_GROUP')
 
 # check install.properties
 policyMgrUrl=$(getInstallProperty 'POLICY_MGR_URL')
-if [ -z "${db_flavor}" ]; then
+if [ -z "${policyMgrUrl}" ]; then
     echo "ERROR: POLICY_MGR_URL not config in install.properties!"
     exit 1
 fi

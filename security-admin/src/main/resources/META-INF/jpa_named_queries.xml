@@ -184,6 +184,12 @@
 		</query>
 	</named-query>
 
+	<named-query name="XXGroupUser.findUserNamesByGroupId">
+		<query>SELECT obj.name FROM XXUser obj WHERE obj.id IN
+			  (SELECT gu.userId FROM XXGroupUser gu WHERE gu.parentGroupId=:groupId)
+		</query>
+	</named-query>
+
 	<named-query name="XXGroupUser.findByGroupId">
 		<query>SELECT obj FROM XXGroupUser obj WHERE obj.parentGroupId=:groupId
 		</query>

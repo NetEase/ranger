@@ -47,14 +47,14 @@ public class RangerPolicy extends RangerBaseModelObject implements java.io.Seria
 	private String                            name           	= null;
 	private Integer                           policyType     	= null;
 	private String                            description    	= null;
-	private String							  resourceSignature = null;
+	private String							            resourceSignature = null;
 	private Boolean                           isAuditEnabled 	= null;
 	private Map<String, RangerPolicyResource> resources      	= null;
 	private List<RangerPolicyItem>            policyItems    	= null;
 
 
 	/**
-	 * @param type
+	 * @param
 	 */
 	public RangerPolicy() {
 		this(null, null, null, null, null, null, null);
@@ -69,7 +69,9 @@ public class RangerPolicy extends RangerBaseModelObject implements java.io.Seria
 	 * @param policyItems
 	 * @param resourceSignature TODO
 	 */
-	public RangerPolicy(String service, String name, Integer policyType, String description, Map<String, RangerPolicyResource> resources, List<RangerPolicyItem> policyItems, String resourceSignature) {
+	public RangerPolicy(String service, String name, Integer policyType, String description,
+											Map<String, RangerPolicyResource> resources, List<RangerPolicyItem> policyItems,
+											String resourceSignature) {
 		super();
 
 		setService(service);
@@ -106,7 +108,7 @@ public class RangerPolicy extends RangerBaseModelObject implements java.io.Seria
 	}
 
 	/**
-	 * @param type the type to set
+	 * @param service the type to set
 	 */
 	public void setService(String service) {
 		this.service = service;
@@ -176,7 +178,7 @@ public class RangerPolicy extends RangerBaseModelObject implements java.io.Seria
 	}
 
 	/**
-	 * @param isEnabled the isEnabled to set
+	 * @param isAuditEnabled the isEnabled to set
 	 */
 	public void setIsAuditEnabled(Boolean isAuditEnabled) {
 		this.isAuditEnabled = isAuditEnabled == null ? Boolean.TRUE : isAuditEnabled;
@@ -190,7 +192,7 @@ public class RangerPolicy extends RangerBaseModelObject implements java.io.Seria
 	}
 
 	/**
-	 * @param configs the resources to set
+	 * @param resources the resources to set
 	 */
 	public void setResources(Map<String, RangerPolicyResource> resources) {
 		if(this.resources == null) {
@@ -457,19 +459,21 @@ public class RangerPolicy extends RangerBaseModelObject implements java.io.Seria
 		private List<RangerPolicyItemAccess>    accesses      = null;
 		private List<String>                    users         = null;
 		private List<String>                    userPasswds   = null;
+		private List<String>                    groupMember   = null;
 		private List<String>                    groups        = null;
 		private List<RangerPolicyItemCondition> conditions    = null;
 		private Boolean                         delegateAdmin = null;
 
 		public RangerPolicyItem() {
-			this(null, null, null, null, null, null);
+			this(null, null, null, null, null, null, null);
 		}
 
-		public RangerPolicyItem(List<RangerPolicyItemAccess> accessTypes, List<String> users, List<String> userPasswds,
+		public RangerPolicyItem(List<RangerPolicyItemAccess> accessTypes, List<String> users, List<String> userPasswds, List<String> groupMember,
 								List<String> groups, List<RangerPolicyItemCondition> conditions, Boolean delegateAdmin) {
 			setAccesses(accessTypes);
 			setUsers(users);
 			setUserPasswds(userPasswds);
+			setGroupMember(groupMember);
 			setGroups(groups);
 			setConditions(conditions);
 			setDelegateAdmin(delegateAdmin);
@@ -523,6 +527,30 @@ public class RangerPolicy extends RangerBaseModelObject implements java.io.Seria
 				}
 			}
 		}
+
+		/**
+		 * @return the groupMember
+		 */
+		public List<String> getGroupMember() {
+			return groupMember;
+		}
+		/**
+		 * @param member the users to set
+		 */
+		public void setGroupMember(List<String> member) {
+			if(this.groupMember == null) {
+				this.groupMember = new ArrayList<String>();
+			}
+
+			if(this.groupMember == member) {
+				return;
+			}
+
+			if(member != null) {
+				this.groupMember.addAll(member);
+			}
+		}
+
 		/**
 		 * @return the userPasswds
 		 */
@@ -530,7 +558,7 @@ public class RangerPolicy extends RangerBaseModelObject implements java.io.Seria
 			return userPasswds;
 		}
 		/**
-		 * @param userPasswds the users to set
+		 * @param passwds the users to set
 		 */
 		public void setUserPasswds(List<String> passwds) {
 			if(this.userPasswds == null) {
@@ -717,6 +745,16 @@ public class RangerPolicy extends RangerBaseModelObject implements java.io.Seria
 					return false;
 			} else if (!users.equals(other.users))
 				return false;
+			if (userPasswds == null) {
+				if (other.userPasswds != null)
+					return false;
+			} else if (!userPasswds.equals(other.userPasswds))
+				return false;
+			if (groupMember == null) {
+				if (other.groupMember != null)
+					return false;
+			} else if (!groupMember.equals(other.groupMember))
+				return false;
 			return true;
 		}
 		
@@ -858,7 +896,7 @@ public class RangerPolicy extends RangerBaseModelObject implements java.io.Seria
 		}
 
 		/**
-		 * @param value the value to set
+		 * @param values the value to set
 		 */
 		public void setValues(List<String> values) {
 			if (CollectionUtils.isEmpty(values)) {

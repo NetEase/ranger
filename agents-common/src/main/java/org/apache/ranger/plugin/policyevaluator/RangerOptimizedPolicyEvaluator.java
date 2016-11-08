@@ -37,8 +37,9 @@ public class RangerOptimizedPolicyEvaluator extends RangerDefaultPolicyEvaluator
     private static final Log LOG = LogFactory.getLog(RangerOptimizedPolicyEvaluator.class);
 
     private Set<String> groups         = null;
-    private List<String> users          = null;
+    private List<String> users         = null;
     private List<String> userPasswds   = null;
+    private Set<String> groupMember  = null;
     private Set<String> accessPerms    = null;
     private boolean     delegateAdmin  = false;
     private boolean     hasAllPerms    = false;
@@ -70,6 +71,7 @@ public class RangerOptimizedPolicyEvaluator extends RangerDefaultPolicyEvaluator
         groups = new HashSet<String>();
         users = new ArrayList<String>();
         userPasswds = new ArrayList<String>();
+        groupMember = new HashSet<String>();
 
         for (RangerPolicy.RangerPolicyItem item : policy.getPolicyItems()) {
             delegateAdmin = delegateAdmin || item.getDelegateAdmin();
@@ -85,6 +87,7 @@ public class RangerOptimizedPolicyEvaluator extends RangerDefaultPolicyEvaluator
 
             groups.addAll(item.getGroups());
             users.addAll(item.getUsers());
+            groupMember.addAll(item.getGroupMember());
             userPasswds.addAll(item.getUserPasswds());
         }
 
@@ -212,23 +215,23 @@ public class RangerOptimizedPolicyEvaluator extends RangerDefaultPolicyEvaluator
 		}
 
 		boolean ret = false;
-        int idxUser = users.indexOf(user);
-		if (hasPublicGroup || (-1 != idxUser) || CollectionUtils.containsAny(groups, userGroups)) {
-			if (StringUtils.isEmpty(accessType)) {
-				accessType = RangerPolicyEngine.ANY_ACCESS;
-			}
+    int idxUser = users.indexOf(user);
+    if (hasPublicGroup || (-1 != idxUser) || CollectionUtils.containsAny(groups, userGroups)) {
+      if (StringUtils.isEmpty(accessType)) {
+        accessType = RangerPolicyEngine.ANY_ACCESS;
+      }
 
-			boolean isAnyAccess   = StringUtils.equals(accessType, RangerPolicyEngine.ANY_ACCESS);
-			boolean isAdminAccess = StringUtils.equals(accessType, RangerPolicyEngine.ADMIN_ACCESS);
+      boolean isAnyAccess   = StringUtils.equals(accessType, RangerPolicyEngine.ANY_ACCESS);
+      boolean isAdminAccess = StringUtils.equals(accessType, RangerPolicyEngine.ADMIN_ACCESS);
 
-            if (isAnyAccess || (isAdminAccess && delegateAdmin) || hasAllPerms || accessPerms.contains(accessType)) {
-                ret = super.isAccessAllowed(user, userGroups, accessType);
-            }
+        if (isAnyAccess || (isAdminAccess && delegateAdmin) || hasAllPerms || accessPerms.contains(accessType)) {
+            ret = super.isAccessAllowed(user, userGroups, accessType);
         }
+    }
 
-        if(LOG.isDebugEnabled()) {
-            LOG.debug("<== RangerOptimizedPolicyEvaluator.isAccessAllowed(" + user + ", " + userGroups + ", " + accessType + "): " + ret);
-        }
+    if(LOG.isDebugEnabled()) {
+        LOG.debug("<== RangerOptimizedPolicyEvaluator.isAccessAllowed(" + user + ", " + userGroups + ", " + accessType + "): " + ret);
+    }
 
 		return ret;
 	}
@@ -259,7 +262,8 @@ public class RangerOptimizedPolicyEvaluator extends RangerDefaultPolicyEvaluator
             }
         }*/
 
-        if (hasPublicGroup || (users.indexOf(request.getUser()) >= 0) || CollectionUtils.containsAny(groups, request.getUserGroups())) {
+        if (hasPublicGroup || (users.indexOf(request.getUser()) >= 0) || groupMember.contains(request.getUser())
+            || CollectionUtils.containsAny(groups, request.getUserGroups())) {
             // No need to reject based on users and groups
 
             if (request.isAccessTypeAny() || (request.isAccessTypeDelegatedAdmin() && delegateAdmin) || hasAllPerms || accessPerms.contains(request.getAccessType())) {

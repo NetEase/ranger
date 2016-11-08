@@ -93,7 +93,7 @@ public class XXGroupUserDao extends BaseDao<XXGroupUser> {
 				logger.debug(e.getMessage());
 			}
 		} else {
-			logger.debug("UserId not provided.");
+			logger.debug("userName not provided.");
 		}
 
 		if(groupList != null) {
@@ -114,4 +114,23 @@ public class XXGroupUserDao extends BaseDao<XXGroupUser> {
 		}
 	}
 
+	public Set<String> findUserNamesByGroupId(Long groupId) {
+		List<String> groupList = null;
+
+		if (groupId != null) {
+			try {
+				groupList = getEntityManager().createNamedQuery("XXGroupUser.findUserNamesByGroupId", String.class).setParameter("groupId", groupId).getResultList();
+			} catch (NoResultException e) {
+				logger.debug(e.getMessage());
+			}
+		} else {
+			logger.debug("groupId not provided.");
+		}
+
+		if(groupList != null) {
+			return new HashSet<String>(groupList);
+		}
+
+		return new HashSet<String>();
+	}
 }

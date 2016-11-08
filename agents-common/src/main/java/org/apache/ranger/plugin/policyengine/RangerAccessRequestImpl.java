@@ -44,6 +44,7 @@ public class RangerAccessRequestImpl implements RangerAccessRequest {
 
 	// support proxy/user passwod
 	private String userPassword                = null;
+	private Set<String> groupMember            = new HashSet<String>();
 
 	private boolean isAccessTypeAny            = false;
 	private boolean isAccessTypeDelegatedAdmin = false;
@@ -146,6 +147,15 @@ public class RangerAccessRequestImpl implements RangerAccessRequest {
 
 	public void setUserPassword(String password) {
 		this.userPassword = password;
+	}
+
+	@Override
+	public Set<String> getGroupMember() {
+		return groupMember;
+	}
+
+	public void setGroupMember(Set<String> groupMember) {
+		this.groupMember = (groupMember == null) ? new HashSet<String>() : groupMember;
 	}
 
 	public void setResource(RangerAccessResource resource) {

@@ -178,6 +178,10 @@ public class RangerDefaultPolicyItemEvaluator extends RangerAbstractPolicyItemEv
 				ret = policyItem.getGroups().contains(RangerPolicyEngine.GROUP_PUBLIC) ||
 						!Collections.disjoint(policyItem.getGroups(), userGroups);
 			}
+
+			if(!ret && user != null && policyItem.getGroupMember() != null) {
+				ret = policyItem.getGroupMember().contains(user);
+			}
 		}
 
 		if(LOG.isDebugEnabled()) {

@@ -19,11 +19,7 @@
 
 package org.apache.ranger.biz;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.Map;
+import java.util.*;
 
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.logging.Log;
@@ -573,7 +569,6 @@ public class RangerPolicyRetriever {
 		}
 
 		private void getPolicyItems(RangerPolicy policy) {
-			// get all portal user infomation(include user password)
 			List<XXPortalUser> xxPortalUserList = daoMgr.getXXPortalUser().findAllXPortalUser();
 
 			while(iterPolicyItems.hasNext()) {
@@ -596,7 +591,6 @@ public class RangerPolicyRetriever {
 									policyItem.getUserPasswds().add(portalUser.getPassword());
 								}
 							}
-
 						} else {
 							if(iterUserPerms.hasPrevious()) {
 								iterUserPerms.previous();
@@ -610,6 +604,10 @@ public class RangerPolicyRetriever {
 
 						if(xGroupPerm.getPolicyitemid().equals(xPolicyItem.getId())) {
 							policyItem.getGroups().add(lookupCache.getGroupName(xGroupPerm.getGroupid()));
+
+							// add contains user name
+							Set<String> userGroups = daoMgr.getXXGroupUser().findUserNamesByGroupId(xGroupPerm.getGroupid());
+							policyItem.getGroupMember().addAll(userGroups);
 						} else {
 							if(iterGroupPerms.hasPrevious()) {
 								iterGroupPerms.previous();

@@ -110,6 +110,7 @@ public class RangerHiveAccessRequest extends RangerAccessRequestImpl {
 		ret.setAccessType(getAccessType());
 		ret.setUser(getUser());
 		ret.setUserPassword(getUserPassword());
+		ret.setGroupMember(getGroupMember());
 		ret.setUserGroups(getUserGroups());
 		ret.setAccessTime(getAccessTime());
 		ret.setAction(getAction());
