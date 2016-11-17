@@ -165,6 +165,12 @@
 			   AND obj.userId=:userId		   
 		</query>
 	</named-query>
+	
+	<named-query name="XXGroupUser.deleteByUserId">
+		<query>DELETE FROM  XXGroupUser  obj
+			   WHERE obj.userId=:userId		   
+		</query>
+	</named-query>
 
 	<named-query name="XXGroupUser.findByUserId">
 		<query>SELECT obj FROM XXGroupUser obj

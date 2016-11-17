@@ -20,6 +20,7 @@
  package org.apache.ranger.rest;
 
 import java.util.HashMap;
+import java.util.List;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.ws.rs.DELETE;
@@ -398,6 +399,15 @@ public class XUserREST {
 		boolean force = true;
 		xUserMgr.deleteXGroupUser(id, force);
 	}
+	
+    //修改多个组里的多个用户 
+    @POST
+    @Path("/groupusers/modify")
+    @Produces({ "application/xml", "application/json" })
+    @PreAuthorize("hasRole('ROLE_SYS_ADMIN')")
+    public List<VXGroupUser> modifyXGroupUser(List<VXGroupUser> vXGroupUsers) {
+        return xUserMgr.createXGroupUsers(vXGroupUsers);
+    }
 
 	/**
 	 * Implements the traditional search functionalities for XGroupUsers

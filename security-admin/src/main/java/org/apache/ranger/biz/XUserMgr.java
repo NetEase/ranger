@@ -65,6 +65,7 @@ import org.apache.ranger.db.XXPolicyDao;
 import org.apache.ranger.db.XXPortalUserDao;
 import org.apache.ranger.db.XXPortalUserRoleDao;
 import org.apache.ranger.db.XXResourceDao;
+import org.apache.ranger.db.XXServiceDao;
 import org.apache.ranger.db.XXUserDao;
 import org.apache.ranger.db.XXUserPermissionDao;
 import org.apache.ranger.entity.XXAuditMap;
@@ -150,6 +151,9 @@ public class XUserMgr extends XUserMgrBase {
 
 	@Autowired
 	ServiceDBStore svcStore;
+	
+	@Autowired
+	RangerDaoManager daoMgr;
 
 	static final Logger logger = Logger.getLogger(XUserMgr.class);
 
@@ -488,6 +492,9 @@ public class XUserMgr extends XUserMgrBase {
 		for (Long groupUserId : groupUsersToRemove) {
 			xGroupUserService.deleteResource(groupUserId);
 		}
+		
+		XXServiceDao serviceDao = daoMgr.getXXService();
+		serviceDao.updatePolicyVersion();
 
 		return vXUser;
 	}
@@ -551,7 +558,30 @@ public class XUserMgr extends XUserMgrBase {
 		checkAdminAccess();
 		vXGroupUser = xGroupUserService
 				.createXGroupUserWithOutLogin(vXGroupUser);
+		
+		XXServiceDao serviceDao = daoMgr.getXXService();
+		serviceDao.updatePolicyVersion();
+		
 		return vXGroupUser;
+	}
+	
+	//修改多个组里的多个用户
+	public List<VXGroupUser> createXGroupUsers(List<VXGroupUser> vXGroupUsers) {
+		checkAdminAccess();
+		
+		//将现有的userid从group_user中删除
+		for (VXGroupUser vXGroupUser : vXGroupUsers) {
+			xGroupUserService.deleteByUserId(vXGroupUser.getUserId());
+		}
+			
+		for (VXGroupUser vXGroupUser : vXGroupUsers) {
+			vXGroupUser = xGroupUserService.createResource(vXGroupUser);
+		}
+		
+		XXServiceDao serviceDao = daoMgr.getXXService();
+		serviceDao.updatePolicyVersion();
+		
+		return vXGroupUsers;
 	}
 
 	public VXUser getXUser(Long id) {
@@ -716,12 +746,19 @@ public class XUserMgr extends XUserMgrBase {
 	}
 	public VXGroupUser updateXGroupUser(VXGroupUser vXGroupUser) {
 		checkAdminAccess();
+		
+		XXServiceDao serviceDao = daoMgr.getXXService();
+		serviceDao.updatePolicyVersion();
+		
 		return super.updateXGroupUser(vXGroupUser);
 	}
 
 	public void deleteXGroupUser(Long id, boolean force) {
 		checkAdminAccess();
 		super.deleteXGroupUser(id, force);
+		
+		XXServiceDao serviceDao = daoMgr.getXXService();
+		serviceDao.updatePolicyVersion();
 	}
 
 	public VXGroupGroup createXGroupGroup(VXGroupGroup vXGroupGroup){
