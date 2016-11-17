@@ -33,12 +33,14 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.RequestBody;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
 import java.util.List;
+import java.util.Map;
 
 @Path("public/v2")
 @Component
@@ -336,6 +338,33 @@ public class PublicAPIsv2 {
 		return serviceREST.updatePolicy(policy);
 	}
 
+	@POST
+	@Path("/api/policy/modify")
+	@Produces({ "application/json", "application/xml" })
+	public void modifyPolicys(@RequestBody Map<String, List<RangerPolicy>> policies) {
+		
+		List<RangerPolicy> createPolicies = policies.get("createPolicies");
+		List<RangerPolicy> updatePolicies = policies.get("updatePolicies");
+		List<RangerPolicy> deletePolicies = policies.get("deletePolicies");
+		
+		if (createPolicies != null) {
+			for (RangerPolicy policy : createPolicies) {
+				serviceREST.createPolicy(policy);
+			}
+		}
+		
+		if (updatePolicies != null) {
+			for (RangerPolicy policy : updatePolicies) {
+				serviceREST.updatePolicy(policy);
+			}
+		}
+		
+		if (deletePolicies != null) {
+			for (RangerPolicy policy : deletePolicies) {
+				serviceREST.deletePolicy(policy.getId());
+			}
+		}
+	}
 
 	@PUT
 	@Path("/api/service/{servicename}/policy/{policyname}")
