@@ -574,7 +574,10 @@ public class XUserMgr extends XUserMgrBase {
 			xGroupUserService.deleteByUserId(vXGroupUser.getUserId());
 		}
 			
+		//grooupname是必传参数，groupid可不传
 		for (VXGroupUser vXGroupUser : vXGroupUsers) {
+			XXGroup xGroup = daoManager.getXXGroup().findByGroupName(vXGroupUser.getName());
+			vXGroupUser.setParentGroupId(xGroup.getId());
 			vXGroupUser = xGroupUserService.createResource(vXGroupUser);
 		}
 		

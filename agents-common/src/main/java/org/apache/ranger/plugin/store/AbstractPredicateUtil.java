@@ -438,7 +438,8 @@ public class AbstractPredicateUtil {
 					RangerPolicy policy = (RangerPolicy)object;
 
 					for(RangerPolicyItem policyItem : policy.getPolicyItems()) {
-						if(policyItem.getUsers().contains(userName)) {
+						if(policyItem.getUsers().contains(userName) || 
+						   policyItem.getGroupMember().contains(userName)) { /*user在该组中也筛选出来*/
 							ret = true;
 
 							break;
