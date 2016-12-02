@@ -45,6 +45,13 @@ public class XXGroupUserDao extends BaseDao<XXGroupUser> {
 				.setParameter("parentGroupId", groupId).executeUpdate();
 
 	}
+	
+	public void deleteByUserId(Long userId) {
+		getEntityManager()
+				.createNamedQuery("XXGroupUser.deleteByUserId")
+				.setParameter("userId", userId)
+				.executeUpdate();
+	}
 
 	public List<XXGroupUser> findByUserId(Long userId) {
 		if (userId != null) {

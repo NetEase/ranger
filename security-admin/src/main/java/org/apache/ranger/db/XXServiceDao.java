@@ -22,6 +22,7 @@ import java.util.List;
 
 import javax.persistence.NoResultException;
 
+import org.apache.log4j.Logger;
 import org.apache.ranger.biz.RangerBizUtil;
 import org.apache.ranger.common.AppConstants;
 import org.apache.ranger.common.db.BaseDao;
@@ -31,6 +32,9 @@ import org.apache.ranger.entity.XXService;
  */
 
 public class XXServiceDao extends BaseDao<XXService> {
+	
+	static final Logger logger = Logger.getLogger(XXServiceDao.class);
+	
 	/**
 	 * Default Constructor
 	 */
@@ -79,5 +83,16 @@ public class XXServiceDao extends BaseDao<XXService> {
 		}
 
 		updateSequence("X_SERVICE_SEQ", maxId + 1);
+	}
+	
+	// add by hzlimin2
+	public void updatePolicyVersion() {
+		
+		String query = "update x_service set policy_version = "
+				+ "(case when policy_version is NULL then 1 when policy_version is not NULL then policy_version + 1 end)";
+		int count=getEntityManager().createNativeQuery(query).executeUpdate();
+		if(count>0){
+			logger.warn(count + " records updated in table x_service with column policy_version");
+		}
 	}
 }
