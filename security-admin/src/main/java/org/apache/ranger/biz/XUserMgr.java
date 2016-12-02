@@ -588,16 +588,18 @@ public class XUserMgr extends XUserMgrBase {
 	}
 	
 	//将用户从所属的所有组中删除
-	public void deleteXGroupUsers(List<Long> users) {
+	public List<VXGroupUser> deleteXGroupUsers(List<VXGroupUser> vXGroupUsers) {
 		checkAdminAccess();
 		
 		//将现有的userid从group_user中删除
-		for (Long userid : users) {
-			xGroupUserService.deleteByUserId(userid);
+		for (VXGroupUser vXGroupUser : vXGroupUsers) {
+			xGroupUserService.deleteByUserId(vXGroupUser.getUserId());
 		}
 
 		XXServiceDao serviceDao = daoMgr.getXXService();
 		serviceDao.updatePolicyVersion();
+		
+		return vXGroupUsers;
 	}
 
 	public VXUser getXUser(Long id) {
