@@ -408,6 +408,15 @@ public class XUserREST {
     public List<VXGroupUser> modifyXGroupUser(List<VXGroupUser> vXGroupUsers) {
         return xUserMgr.createXGroupUsers(vXGroupUsers);
     }
+    
+    //将用户从所属的所有组中删除 
+    @POST
+    @Path("/groupusers/delete")
+    @Produces({ "application/xml", "application/json" })
+    @PreAuthorize("hasRole('ROLE_SYS_ADMIN')")
+    public void deleteXGroupUser(List<Long> users) {
+        xUserMgr.deleteXGroupUsers(users);
+    }
 
 	/**
 	 * Implements the traditional search functionalities for XGroupUsers

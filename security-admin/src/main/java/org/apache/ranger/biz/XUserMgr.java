@@ -574,7 +574,7 @@ public class XUserMgr extends XUserMgrBase {
 			xGroupUserService.deleteByUserId(vXGroupUser.getUserId());
 		}
 			
-		//grooupname是必传参数，groupid可不传
+		//groupname是必传参数，groupid可不传
 		for (VXGroupUser vXGroupUser : vXGroupUsers) {
 			XXGroup xGroup = daoManager.getXXGroup().findByGroupName(vXGroupUser.getName());
 			vXGroupUser.setParentGroupId(xGroup.getId());
@@ -585,6 +585,19 @@ public class XUserMgr extends XUserMgrBase {
 		serviceDao.updatePolicyVersion();
 		
 		return vXGroupUsers;
+	}
+	
+	//将用户从所属的所有组中删除
+	public void deleteXGroupUsers(List<Long> users) {
+		checkAdminAccess();
+		
+		//将现有的userid从group_user中删除
+		for (Long userid : users) {
+			xGroupUserService.deleteByUserId(userid);
+		}
+
+		XXServiceDao serviceDao = daoMgr.getXXService();
+		serviceDao.updatePolicyVersion();
 	}
 
 	public VXUser getXUser(Long id) {
