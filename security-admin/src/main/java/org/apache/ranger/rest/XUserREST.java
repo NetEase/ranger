@@ -414,8 +414,8 @@ public class XUserREST {
     @Path("/groupusers/delete")
     @Produces({ "application/xml", "application/json" })
     @PreAuthorize("hasRole('ROLE_SYS_ADMIN')")
-    public void deleteXGroupUser(List<Long> users) {
-        xUserMgr.deleteXGroupUsers(users);
+    public List<VXGroupUser> deleteXGroupUser(List<VXGroupUser> vXGroupUsers) {
+        return xUserMgr.deleteXGroupUsers(vXGroupUsers);
     }
 
 	/**
