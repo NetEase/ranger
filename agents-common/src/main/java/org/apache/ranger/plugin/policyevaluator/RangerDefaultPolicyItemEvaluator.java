@@ -180,7 +180,7 @@ public class RangerDefaultPolicyItemEvaluator extends RangerAbstractPolicyItemEv
 			}
 
 			if(!ret && user != null && policyItem.getGroupMember() != null) {
-				ret = policyItem.getGroupMember().contains(user);
+				ret = policyItem.groupMemberContains(user);
 			}
 		}
 

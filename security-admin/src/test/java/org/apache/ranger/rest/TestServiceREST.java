@@ -16,17 +16,21 @@
  */
 package org.apache.ranger.rest;
 
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.WebApplicationException;
+
+import com.google.common.collect.HashBasedTable;
+import com.google.common.collect.HashMultimap;
+import com.google.common.collect.Table;
+import com.sun.jersey.api.client.ClientResponse;
+import com.sun.jersey.api.client.WebResource;
+import org.apache.hadoop.security.AccessControlException;
+import org.apache.ranger.authorization.hadoop.config.RangerConfiguration;
+import org.apache.ranger.plugin.util.*;
+import org.apache.shiro.config.Ini;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.ranger.admin.client.datatype.RESTResponse;
@@ -64,9 +68,6 @@ import org.apache.ranger.plugin.model.validation.RangerPolicyValidator;
 import org.apache.ranger.plugin.model.validation.RangerServiceDefValidator;
 import org.apache.ranger.plugin.model.validation.RangerServiceValidator;
 import org.apache.ranger.plugin.service.ResourceLookupContext;
-import org.apache.ranger.plugin.util.GrantRevokeRequest;
-import org.apache.ranger.plugin.util.SearchFilter;
-import org.apache.ranger.plugin.util.ServicePolicies;
 import org.apache.ranger.security.context.RangerContextHolder;
 import org.apache.ranger.security.context.RangerSecurityContext;
 import org.apache.ranger.service.RangerAuditFields;
@@ -1055,5 +1056,185 @@ public class TestServiceREST {
 		VXResponse dbVXResponse = serviceREST.validateConfig(rangerService);
 		Assert.assertNotNull(dbVXResponse);
 		Mockito.verify(serviceMgr).validateConfig(rangerService, svcStore);
+	}
+
+	@Test
+	/** Sentry provider ini format
+	 * [groups]
+	 * user_groups = role1
+	 *
+	 * [roles]
+	 * role1 = server=server1->db=liuxun1->table=*->Column=*->action=create
+	 *
+	 * [users]
+	 * user_name = user_groups
+	 **/
+	public void test36genSentryProviderIni() throws Exception {
+		String host = "http://hadoop357.lt.163.org:6080";
+		Long lastKnownVersion = 1L;
+		String pluginId = "";
+		String serviceName = "hivedev";
+
+		ServicePolicies ret = null;
+		RangerRESTClient restClient = new RangerRESTClient();
+		restClient.setBasicAuthInfo("admin", "admin");
+		restClient.setUrl(host);
+
+		WebResource webResource = restClient.getResource(RangerRESTUtils.REST_URL_POLICY_GET_FOR_SERVICE_IF_UPDATED + serviceName)
+				.queryParam(RangerRESTUtils.REST_PARAM_LAST_KNOWN_POLICY_VERSION, Long.toString(lastKnownVersion))
+				.queryParam(RangerRESTUtils.REST_PARAM_PLUGIN_ID, pluginId);
+		ClientResponse response = webResource.accept(RangerRESTUtils.REST_MIME_TYPE_JSON).get(ClientResponse.class);
+
+		if(response != null && response.getStatus() == 200) {
+			ret = response.getEntity(ServicePolicies.class);
+		} else if(response != null && response.getStatus() == 304) {
+			// no change
+		} else {
+			RESTResponse resp = RESTResponse.fromClientResponse(response);
+		}
+
+		Ini ini = new Ini();
+		Ini.Section groupsSection = ini.addSection("groups");
+		Ini.Section rolesSection = ini.addSection("roles");
+		Ini.Section usersSection = ini.addSection("users");
+
+		// Table<groupname, rolename, Set<Provider>>
+		HashMultimap<String, String> groupRoles = HashMultimap.create();
+		HashMultimap<String, String> roleProvider = HashMultimap.create();
+		HashMultimap<String, String> userGroups = HashMultimap.create();
+
+		//
+		String SentryRole, SentryServer, SentryDatabase, SentryTable, SentryColumn, SentryAction, SentryProvider;
+		List<RangerPolicy> listPolicy = ret.getPolicies();
+		for (RangerPolicy policy : listPolicy) {
+			if (policy.getIsEnabled()) {
+				Map<String, RangerPolicyResource> policyResourceMap = policy.getResources();
+				RangerPolicyResource dbResource = policyResourceMap.get("database");
+				RangerPolicyResource tableResource = policyResourceMap.get("table");
+				RangerPolicyResource columnResource = policyResourceMap.get("column");
+				RangerPolicyResource udfResource = policyResourceMap.get("udf");
+
+				List<RangerPolicyItem> policyItemList = policy.getPolicyItems();
+
+				if ((null != dbResource && dbResource.getIsExcludes())
+						|| (null != tableResource && tableResource.getIsExcludes())
+						|| (null != columnResource && columnResource.getIsExcludes())
+						|| (null != udfResource && udfResource.getIsExcludes())) {
+					System.out.print("ERROR : Sentry provider not support Excludes!");
+				}
+
+				if (null != udfResource) {
+					// UDF
+					System.out.print("Not implemented.");
+				} else {
+					int policyItemIndex = 0;
+					for (String database : dbResource.getValues())
+						for (String table : tableResource.getValues())
+							for (String column : columnResource.getValues()) {
+								for (RangerPolicyItem policyItem : policyItemList) {
+									ArrayList<String> providerList = generateProvider(serviceName, database, table, column, policyItem.getAccesses());
+									String roleName = "policy" + policy.getId() + "-" + policyItemIndex++;
+									List<String> groupList = policyItem.getGroups();
+									Map<String, List<String>> memberList = policyItem.getGroupMember();
+
+									for (int groupIndex = 0; groupIndex < groupList.size(); groupIndex ++) {
+										groupRoles.put(groupList.get(groupIndex), roleName);
+										roleProvider.putAll(roleName, providerList);
+									}
+
+									Iterator iter = memberList.entrySet().iterator();
+									while(iter.hasNext()) {
+										Map.Entry<String, List<String>> entry = (Map.Entry<String, List<String>>)iter.next();
+										for(String user : entry.getValue()) {
+											userGroups.put(user, entry.getKey());
+										}
+									}
+								}
+							}
+				}
+			}
+		}
+
+		// Table<groupname, rolename, Set<Provider>>
+		Iterator iter = groupRoles.entries().iterator();
+		while(iter.hasNext()) {
+			Map.Entry<String, String> entry = (Map.Entry<String, String>)iter.next();
+			if (groupsSection.containsKey(entry.getKey())) {
+				groupsSection.put(entry.getKey(), groupsSection.get(entry.getKey()) + ", " + entry.getValue());
+			} else {
+				groupsSection.put(entry.getKey(), entry.getValue());
+			}
+		}
+		iter = roleProvider.entries().iterator();
+		while(iter.hasNext()) {
+			Map.Entry<String, String> entry = (Map.Entry<String, String>)iter.next();
+			if (rolesSection.containsKey(entry.getKey())) {
+				rolesSection.put(entry.getKey(), rolesSection.get(entry.getKey()) + ", " + entry.getValue());
+			} else {
+				rolesSection.put(entry.getKey(), entry.getValue());
+			}
+		}
+		iter = userGroups.entries().iterator();
+		while(iter.hasNext()) {
+			Map.Entry<String, String> entry = (Map.Entry<String, String>)iter.next();
+			if (usersSection.containsKey(entry.getKey())) {
+				usersSection.put(entry.getKey(), usersSection.get(entry.getKey()) + ", " + entry.getValue());
+			} else {
+				usersSection.put(entry.getKey(), entry.getValue());
+			}
+		}
+
+		StringBuffer sbIni = new StringBuffer();
+		iter = groupsSection.entrySet().iterator();
+		sbIni.append("[groups]\n");
+		while(iter.hasNext()) {
+			Map.Entry<String, String> entry = (Map.Entry<String, String>)iter.next();
+			sbIni.append(entry.getKey() + " = " + entry.getValue() + "\n");
+		}
+		iter = rolesSection.entrySet().iterator();
+		sbIni.append("\n[roles]\n");
+		while(iter.hasNext()) {
+			Map.Entry<String, String> entry = (Map.Entry<String, String>)iter.next();
+			sbIni.append(entry.getKey() + " = " + entry.getValue() + "\n");
+		}
+		iter = usersSection.entrySet().iterator();
+		sbIni.append("\n[users]\n");
+		while(iter.hasNext()) {
+			Map.Entry<String, String> entry = (Map.Entry<String, String>)iter.next();
+			sbIni.append(entry.getKey() + " = " + entry.getValue() + "\n");
+		}
+
+		System.out.print(sbIni.toString());
+	}
+
+	ArrayList<String> generateProvider(String serviceName, String db, String table, String column,
+																		 List<RangerPolicy.RangerPolicyItemAccess> policyItemAccessList) {
+		ArrayList<String> providerList = new ArrayList<String>();
+		try {
+			for (RangerPolicy.RangerPolicyItemAccess policyItemAccess : policyItemAccessList) {
+				if (true == policyItemAccess.getIsAllowed()) {
+					String action = policyItemAccess.getType().equalsIgnoreCase("all")?"*":policyItemAccess.getType();
+					// server=server1->db=*->table=*->Column=*->action=create
+					StringBuffer sbRole = new StringBuffer();
+					sbRole.append("server=" + serviceName);
+					sbRole.append("->db=" + db);
+					sbRole.append("->table=" + table);
+					sbRole.append("->column=" + column);
+					sbRole.append("->action=" + action);
+					if (action.equalsIgnoreCase("*")) {
+						providerList.clear();
+						providerList.add(sbRole.toString());
+						break;
+					} else {
+						providerList.add(sbRole.toString());
+					}
+				}
+			}
+
+			providerList.add("server=" + serviceName + "->uri=*");
+		} catch(Exception excp) {
+			System.out.print("toSentryProviderIni(" + serviceName + ") failed" + excp);
+		}
+		return providerList;
 	}
 }

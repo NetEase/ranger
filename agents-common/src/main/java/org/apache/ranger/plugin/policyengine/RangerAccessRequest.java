@@ -19,9 +19,7 @@
 
 package org.apache.ranger.plugin.policyengine;
 
-import java.util.Date;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public interface RangerAccessRequest {
 	RangerAccessResource getResource();
@@ -36,7 +34,7 @@ public interface RangerAccessRequest {
 
 	String getUserPassword();
 
-	Set<String> getGroupMember();
+	HashMap<String, HashSet<String>> getGroupMember();
 
 	Set<String> getUserGroups();
 

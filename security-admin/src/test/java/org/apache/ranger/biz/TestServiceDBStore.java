@@ -1755,7 +1755,7 @@ public class TestServiceDBStore {
 		policyItemAccess.setType("1");
 		List<String> usersList = new ArrayList<String>();
 		List<String> userPasswdsList = new ArrayList<String>();
-		List<String> groupMember = new ArrayList<String>();
+		Map<String, ArrayList<String>> groupMember = new HashMap<String, ArrayList<String>>();
 		List<String> groupsList = new ArrayList<String>();
 		List<RangerPolicyItemCondition> conditionsList = new ArrayList<RangerPolicyItemCondition>();
 		RangerPolicyItemCondition policyItemCondition = new RangerPolicyItemCondition();

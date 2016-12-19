@@ -121,7 +121,7 @@ public class XXGroupUserDao extends BaseDao<XXGroupUser> {
 		}
 	}
 
-	public Set<String> findUserNamesByGroupId(Long groupId) {
+	public List<String> findUserNamesByGroupId(Long groupId) {
 		List<String> groupList = null;
 
 		if (groupId != null) {
@@ -134,10 +134,6 @@ public class XXGroupUserDao extends BaseDao<XXGroupUser> {
 			logger.debug("groupId not provided.");
 		}
 
-		if(groupList != null) {
-			return new HashSet<String>(groupList);
-		}
-
-		return new HashSet<String>();
+		return groupList;
 	}
 }

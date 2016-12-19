@@ -459,7 +459,7 @@ public class RangerPolicy extends RangerBaseModelObject implements java.io.Seria
 		private List<RangerPolicyItemAccess>    accesses      = null;
 		private List<String>                    users         = null;
 		private List<String>                    userPasswds   = null;
-		private List<String>                    groupMember   = null;
+		private Map<String, List<String>>  			groupMember   = null;
 		private List<String>                    groups        = null;
 		private List<RangerPolicyItemCondition> conditions    = null;
 		private Boolean                         delegateAdmin = null;
@@ -468,7 +468,7 @@ public class RangerPolicy extends RangerBaseModelObject implements java.io.Seria
 			this(null, null, null, null, null, null, null);
 		}
 
-		public RangerPolicyItem(List<RangerPolicyItemAccess> accessTypes, List<String> users, List<String> userPasswds, List<String> groupMember,
+		public RangerPolicyItem(List<RangerPolicyItemAccess> accessTypes, List<String> users, List<String> userPasswds, Map<String, ArrayList<String>> groupMember,
 								List<String> groups, List<RangerPolicyItemCondition> conditions, Boolean delegateAdmin) {
 			setAccesses(accessTypes);
 			setUsers(users);
@@ -531,24 +531,41 @@ public class RangerPolicy extends RangerBaseModelObject implements java.io.Seria
 		/**
 		 * @return the groupMember
 		 */
-		public List<String> getGroupMember() {
+		public Map<String, List<String>> getGroupMember() {
 			return groupMember;
+		}
+
+		public List<String> getAllGroupMember() {
+			List<String> allMember = new ArrayList<String>();
+			for (Map.Entry<String, List<String>> entry : groupMember.entrySet()) {
+				allMember.addAll(entry.getValue());
+			}
+			return allMember;
 		}
 		/**
 		 * @param member the users to set
 		 */
-		public void setGroupMember(List<String> member) {
+		public void setGroupMember(Map<String, ArrayList<String>> member) {
 			if(this.groupMember == null) {
-				this.groupMember = new ArrayList<String>();
-			}
-
-			if(this.groupMember == member) {
-				return;
+				this.groupMember = new HashMap<String, List<String>>();
 			}
 
 			if(member != null) {
-				this.groupMember.addAll(member);
+				groupMember.clear();
+
+				for (Map.Entry<String, ArrayList<String>> entry : member.entrySet()) {
+					this.groupMember.put(entry.getKey(), entry.getValue());
+				}
 			}
+		}
+
+		public boolean groupMemberContains(String userName) {
+			for (Map.Entry<String, List<String>> entry : groupMember.entrySet()) {
+				if (entry.getValue().contains(userName)) {
+					return true;
+				}
+			}
+			return false;
 		}
 
 		/**

@@ -80,15 +80,13 @@ import org.apache.ranger.plugin.policyengine.RangerPolicyEngineOptions;
 import org.apache.ranger.plugin.policyevaluator.RangerPolicyEvaluator;
 import org.apache.ranger.plugin.service.ResourceLookupContext;
 import org.apache.ranger.plugin.store.EmbeddedServiceDefsUtil;
-import org.apache.ranger.plugin.util.GrantRevokeRequest;
-import org.apache.ranger.plugin.util.RangerPerfTracer;
-import org.apache.ranger.plugin.util.SearchFilter;
-import org.apache.ranger.plugin.util.ServicePolicies;
+import org.apache.ranger.plugin.util.*;
 import org.apache.ranger.security.context.RangerAPIList;
 import org.apache.ranger.security.context.RangerPreAuthSecurityHandler;
 import org.apache.ranger.service.RangerPolicyService;
 import org.apache.ranger.service.RangerServiceDefService;
 import org.apache.ranger.service.RangerServiceService;
+import org.apache.ranger.util.RangerRestUtil;
 import org.apache.ranger.view.RangerPolicyList;
 import org.apache.ranger.view.RangerServiceDefList;
 import org.apache.ranger.view.RangerServiceList;
@@ -1543,13 +1541,29 @@ public class ServiceREST {
 				boolean logError = httpCode != HttpServletResponse.SC_NOT_MODIFIED;
 				throw restErrorUtil.createRESTException(httpCode, logMsg, logError);
 			}
-		 }
+		}
  
 		if(LOG.isDebugEnabled()) {
 			LOG.debug("<== ServiceREST.getServicePoliciesIfUpdated(" + serviceName + ", " + lastKnownVersion + "): count=" + ((ret == null || ret.getPolicies() == null) ? 0 : ret.getPolicies().size()));
 		}
    
 		return ret;
+	}
+
+	@GET
+	@Path("/policies/download/ini/{serviceName}")
+	@Produces({ "text/html" })
+	public String getServicePoliciesIniIfUpdated(@PathParam("serviceName") String serviceName, @QueryParam("lastKnownVersion") Long lastKnownVersion, @QueryParam("pluginId") String pluginId, @Context HttpServletRequest request) throws Exception {
+		String strIni = "";
+		try {
+			ServicePolicies servicePolicies = getServicePoliciesIfUpdated(serviceName, lastKnownVersion, pluginId, request);
+			RangerRestUtil rangerRestUtil = new RangerRestUtil();
+
+			strIni = rangerRestUtil.toSentryProviderIni(serviceName, servicePolicies);
+		} catch(Exception excp) {
+			LOG.error("getServicePoliciesIni(" + serviceName + ", " + lastKnownVersion + ") failed", excp);
+		}
+		return strIni;
 	}
 
 	private void createPolicyDownloadAudit(String serviceName, Long lastKnownVersion, String pluginId, ServicePolicies policies, int httpRespCode, HttpServletRequest request) {

@@ -37,6 +37,7 @@ public class RangerRESTUtils {
 	private static final Log LOG = LogFactory.getLog(RangerRESTUtils.class);
 
 	public static final String REST_URL_POLICY_GET_FOR_SERVICE_IF_UPDATED = "/service/plugins/policies/download/";
+	public static final String REST_URL_POLICY_GET_SERVICE_INI_IF_UPDATED = "/service/plugins/policies/download/ini/";
 	public static final String REST_URL_SERVICE_GRANT_ACCESS              = "/service/plugins/services/grant/";
 	public static final String REST_URL_SERVICE_REVOKE_ACCESS             = "/service/plugins/services/revoke/";
 

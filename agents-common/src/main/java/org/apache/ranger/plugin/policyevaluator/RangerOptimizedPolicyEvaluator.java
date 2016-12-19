@@ -39,7 +39,7 @@ public class RangerOptimizedPolicyEvaluator extends RangerDefaultPolicyEvaluator
     private Set<String> groups         = null;
     private List<String> users         = null;
     private List<String> userPasswds   = null;
-    private Set<String> groupMember  = null;
+    private Set<String> groupAllMember  = null;
     private Set<String> accessPerms    = null;
     private boolean     delegateAdmin  = false;
     private boolean     hasAllPerms    = false;
@@ -71,7 +71,7 @@ public class RangerOptimizedPolicyEvaluator extends RangerDefaultPolicyEvaluator
         groups = new HashSet<String>();
         users = new ArrayList<String>();
         userPasswds = new ArrayList<String>();
-        groupMember = new HashSet<String>();
+        groupAllMember = new HashSet<String>();
 
         for (RangerPolicy.RangerPolicyItem item : policy.getPolicyItems()) {
             delegateAdmin = delegateAdmin || item.getDelegateAdmin();
@@ -87,7 +87,7 @@ public class RangerOptimizedPolicyEvaluator extends RangerDefaultPolicyEvaluator
 
             groups.addAll(item.getGroups());
             users.addAll(item.getUsers());
-            groupMember.addAll(item.getGroupMember());
+            groupAllMember.addAll(item.getAllGroupMember());
             userPasswds.addAll(item.getUserPasswds());
         }
 
@@ -262,7 +262,7 @@ public class RangerOptimizedPolicyEvaluator extends RangerDefaultPolicyEvaluator
             }
         }*/
 
-        if (hasPublicGroup || (users.indexOf(request.getUser()) >= 0) || groupMember.contains(request.getUser())
+        if (hasPublicGroup || (users.indexOf(request.getUser()) >= 0) || groupAllMember.contains(request.getUser())
             || CollectionUtils.containsAny(groups, request.getUserGroups())) {
             // No need to reject based on users and groups
 

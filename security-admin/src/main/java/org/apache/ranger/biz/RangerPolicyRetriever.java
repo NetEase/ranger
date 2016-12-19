@@ -606,8 +606,8 @@ public class RangerPolicyRetriever {
 							policyItem.getGroups().add(lookupCache.getGroupName(xGroupPerm.getGroupid()));
 
 							// add contains user name
-							Set<String> userGroups = daoMgr.getXXGroupUser().findUserNamesByGroupId(xGroupPerm.getGroupid());
-							policyItem.getGroupMember().addAll(userGroups);
+							List<String> userGroups = daoMgr.getXXGroupUser().findUserNamesByGroupId(xGroupPerm.getGroupid());
+							policyItem.getGroupMember().put(lookupCache.getGroupName(xGroupPerm.getGroupid()), userGroups);
 						} else {
 							if(iterGroupPerms.hasPrevious()) {
 								iterGroupPerms.previous();

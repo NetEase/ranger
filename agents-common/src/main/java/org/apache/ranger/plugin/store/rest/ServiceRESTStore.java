@@ -67,6 +67,7 @@ public class ServiceRESTStore implements ServiceStore {
 	public final String REST_URL_POLICY_GET_FOR_SERVICE         = "/service/plugins/policies/service/";
 	public final String REST_URL_POLICY_GET_FOR_SERVICE_BY_NAME = "/service/plugins/policies/service/name/";
 	public final String REST_URL_POLICY_GET_FOR_SERVICE_IF_UPDATED = "/service/plugins/policies/download/";
+	public final String REST_URL_POLICY_GET_SERVICE_INI_IF_UPDATED = "/service/plugins/policies/download/ini/";
 
 	public static final String REST_MIME_TYPE_JSON = "application/json" ;
 	

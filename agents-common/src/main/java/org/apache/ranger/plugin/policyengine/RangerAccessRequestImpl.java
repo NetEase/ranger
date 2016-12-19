@@ -19,11 +19,7 @@
 
 package org.apache.ranger.plugin.policyengine;
 
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.ranger.authorization.utils.StringUtil;
@@ -43,8 +39,8 @@ public class RangerAccessRequestImpl implements RangerAccessRequest {
 	private Map<String, Object>  context         = null;
 
 	// support proxy/user passwod
-	private String userPassword                = null;
-	private Set<String> groupMember            = new HashSet<String>();
+	private String userPassword                  = null;
+	private HashMap<String, HashSet<String>> groupMember = new HashMap<String, HashSet<String>>();
 
 	private boolean isAccessTypeAny            = false;
 	private boolean isAccessTypeDelegatedAdmin = false;
@@ -150,12 +146,18 @@ public class RangerAccessRequestImpl implements RangerAccessRequest {
 	}
 
 	@Override
-	public Set<String> getGroupMember() {
+	public HashMap<String, HashSet<String>> getGroupMember() {
 		return groupMember;
 	}
 
-	public void setGroupMember(Set<String> groupMember) {
-		this.groupMember = (groupMember == null) ? new HashSet<String>() : groupMember;
+	public void setGroupMember(HashMap<String, HashSet<String>> member) {
+		if(member != null) {
+			this.groupMember.clear();
+
+			for (Map.Entry<String, HashSet<String>> entry : member.entrySet()) {
+				this.groupMember.put(entry.getKey(), entry.getValue());
+			}
+		}
 	}
 
 	public void setResource(RangerAccessResource resource) {

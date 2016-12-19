@@ -166,7 +166,7 @@
 		<knox.gateway.version>0.6.0</knox.gateway.version>
 		<local.lib.dir>${project.basedir}/../lib/local</local.lib.dir>
 		<log4j.version>1.2.17</log4j.version>
-		<mysql-connector-java.version>5.1.31</mysql-connector-java.version>
+		<mysql-connector-java.version>5.1.39</mysql-connector-java.version>
 		<noggit.version>0.6</noggit.version>
 		<owasp-java-html-sanitizer.version>r239</owasp-java-html-sanitizer.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -208,6 +208,7 @@
 		<jsr305.version>1.3.9</jsr305.version>
 		<jsch.version>0.1.42</jsch.version>
 		<jline.version>0.9.94</jline.version>
+        <shiro.version>1.2.3</shiro.version>
 		<jettison.version>1.1</jettison.version>
 		<jaxb-impl.version>2.2.3-1</jaxb-impl.version>
 		<jaxb-api.version>2.2.2</jaxb-api.version>
@@ -238,6 +239,14 @@
         </repository>
   </distributionManagement>
   <repositories>
+      <repository>
+          <id>nexus-aliyun</id>
+          <name>Nexus aliyun</name>
+          <url>http://maven.aliyun.com/nexus/content/groups/public</url>
+          <snapshots>
+              <enabled>true</enabled>
+          </snapshots>
+      </repository>
           <repository>
             <id>apache.snapshots.https</id>
             <name>Apache Development Snapshot Repository</name>

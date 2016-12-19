@@ -439,7 +439,7 @@ public class AbstractPredicateUtil {
 
 					for(RangerPolicyItem policyItem : policy.getPolicyItems()) {
 						if(policyItem.getUsers().contains(userName) || 
-						   policyItem.getGroupMember().contains(userName)) { /*user在该组中也筛选出来*/
+						   policyItem.groupMemberContains(userName)) {
 							ret = true;
 
 							break;
