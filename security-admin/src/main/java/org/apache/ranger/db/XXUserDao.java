@@ -50,6 +50,23 @@ public class XXUserDao extends BaseDao<XXUser> {
 		}
 		return null;
 	}
+	
+	// add by hzlimin2
+	public XXUser findByUserId(Long id) {
+		if (id == null) {
+			logger.debug("id is empty");
+			return null;
+		}
+		try {
+			return getEntityManager()
+					.createNamedQuery("XXUser.findByUserId", XXUser.class)
+					.setParameter("id", id)
+					.getSingleResult();
+		} catch (NoResultException e) {
+			// ignore
+		}
+		return null;
+	}
 
 	@SuppressWarnings("unchecked")
 	public List<String> findByPolicyItemId(Long polItemId) {

@@ -272,6 +272,15 @@ public class XUserREST {
 		return xUserMgr.createXUserWithOutLogin(vXUser);
 	}
 	
+	// add by hzlimin2
+	@POST
+	@Path("/users/update")
+	@Produces({ "application/xml", "application/json" })
+	@PreAuthorize("hasRole('ROLE_SYS_ADMIN')")
+	public VXUser updateXUserName(VXUser vXUser) {
+		return xUserMgr.updateXUserWithOutLogin(vXUser);
+	}
+	
 	@POST
 	@Path("/users/userinfo")
 	@Produces({ "application/xml", "application/json" })
