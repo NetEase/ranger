@@ -69,12 +69,13 @@
 		<name>xasecure.audit.jpa.javax.persistence.jdbc.driver</name>
 		<value>com.mysql.jdbc.Driver</value>
 	</property>
-	
+
+	<!--
 	<property>
 		<name>xasecure.audit.credential.provider.file</name>
 		<value>jceks://file/etc/ranger/hadoopdev/auditcred.jceks</value>
 	</property>
-
+	-->
 
 	<!-- HDFS audit provider configuration -->
 	<property>
