@@ -535,6 +535,12 @@ public class XUserMgr extends XUserMgrBase {
 		checkAdminAccess();
 		return xUserService.createXUserWithOutLogin(vXUser);
 	}
+	
+	// add by hzlimin2
+	public VXUser updateXUserWithOutLogin(VXUser vXUser) {
+		checkAdminAccess();
+		return xUserService.updateXUserWithOutLogin(vXUser);
+	}
 
 	public VXGroup createXGroup(VXGroup vXGroup) {
 		checkAdminAccess();
