@@ -152,6 +152,12 @@
 			   WHERE obj.name=:name
 		</query>
 	</named-query>
+	
+	<named-query name="XXUser.findByUserId">
+		<query>SELECT Obj FROM XXUser obj
+			   WHERE obj.id=:id
+		</query>
+	</named-query>
 
 	<named-query name="XXGroup.findByGroupName">
 		<query>SELECT Obj FROM XXGroup obj

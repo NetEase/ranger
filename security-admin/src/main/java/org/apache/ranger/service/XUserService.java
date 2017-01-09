@@ -182,6 +182,26 @@ public class XUserService extends XUserServiceBase<XXUser, VXUser> {
 		vxUser = postCreate(xxUser);
 		return vxUser;
 	}
+	
+	// add by hzlimin2
+	public VXUser updateXUserWithOutLogin(VXUser vxUser) {
+		XXUser xxUser = daoManager.getXXUser().findByUserId(vxUser.getId());
+		if (xxUser == null) {
+			return null;
+		}
+
+		XXPortalUser xXPortalUser = daoManager.getXXPortalUser().getById(createdByUserId);
+		if (xXPortalUser != null) {
+			xxUser.setAddedByUserId(createdByUserId);
+			xxUser.setUpdatedByUserId(createdByUserId);
+		}
+
+		xxUser.setName(vxUser.getName());
+		xxUser = getDao().update(xxUser);
+		
+		vxUser = postCreate(xxUser);
+		return vxUser;
+	}
 
 	public VXUser readResourceWithOutLogin(Long id) {
 		XXUser resource = getDao().getById(id);
