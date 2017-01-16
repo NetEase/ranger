@@ -41,7 +41,10 @@ public class RangerAdminRESTClient implements RangerAdminClient {
 	private String           pluginId    = null;
 	private RangerRESTClient restClient  = null;
 	private RangerRESTUtils  restUtils   = new RangerRESTUtils();
-
+	private String 					 sslConfigFileName = null;
+	private int 					 	 restClientConnTimeOutMs = 120 * 1000;
+	private int 					   restClientReadTimeOutMs = 30 * 1000;
+	private String 					 serviceUrls[];
 
 	public RangerAdminRESTClient() {
 	}
@@ -51,12 +54,11 @@ public class RangerAdminRESTClient implements RangerAdminClient {
 		this.serviceName = serviceName;
 		this.pluginId    = restUtils.getPluginId(serviceName, appId);
 
-		String url               		= RangerConfiguration.getInstance().get(propertyPrefix + ".policy.rest.url");
-		String sslConfigFileName 		= RangerConfiguration.getInstance().get(propertyPrefix + ".policy.rest.ssl.config.file");
-		int	 restClientConnTimeOutMs	= RangerConfiguration.getInstance().getInt(propertyPrefix + ".policy.rest.client.connection.timeoutMs", 120 * 1000);
-		int	 restClientReadTimeOutMs	= RangerConfiguration.getInstance().getInt(propertyPrefix + ".policy.rest.client.read.timeoutMs", 30 * 1000);
-
-		init(url, sslConfigFileName, restClientConnTimeOutMs , restClientReadTimeOutMs);
+		String url               			= RangerConfiguration.getInstance().get(propertyPrefix + ".policy.rest.url");
+		this.serviceUrls = url.split(",");
+		this.sslConfigFileName 				= RangerConfiguration.getInstance().get(propertyPrefix + ".policy.rest.ssl.config.file");
+		this.restClientConnTimeOutMs	= RangerConfiguration.getInstance().getInt(propertyPrefix + ".policy.rest.client.connection.timeoutMs", 120 * 1000);
+		this.restClientReadTimeOutMs	= RangerConfiguration.getInstance().getInt(propertyPrefix + ".policy.rest.client.read.timeoutMs", 30 * 1000);
 	}
 
 	@Override
@@ -67,20 +69,30 @@ public class RangerAdminRESTClient implements RangerAdminClient {
 
 		ServicePolicies ret = null;
 
-		WebResource webResource = createWebResource(RangerRESTUtils.REST_URL_POLICY_GET_FOR_SERVICE_IF_UPDATED + serviceName)
-										.queryParam(RangerRESTUtils.REST_PARAM_LAST_KNOWN_POLICY_VERSION, Long.toString(lastKnownVersion))
-										.queryParam(RangerRESTUtils.REST_PARAM_PLUGIN_ID, pluginId);
-		ClientResponse response = webResource.accept(RangerRESTUtils.REST_MIME_TYPE_JSON).get(ClientResponse.class);
+		for (int i = 0; i < serviceUrls.length; i ++) {
+			try {
+				restClient = init(serviceUrls[i], sslConfigFileName, restClientConnTimeOutMs , restClientReadTimeOutMs);
+				WebResource webResource = restClient.getResource(RangerRESTUtils.REST_URL_POLICY_GET_FOR_SERVICE_IF_UPDATED + serviceName)
+						.queryParam(RangerRESTUtils.REST_PARAM_LAST_KNOWN_POLICY_VERSION, Long.toString(lastKnownVersion))
+						.queryParam(RangerRESTUtils.REST_PARAM_PLUGIN_ID, pluginId);
+				ClientResponse response = webResource.accept(RangerRESTUtils.REST_MIME_TYPE_JSON).get(ClientResponse.class);
 
-		if(response != null && response.getStatus() == 200) {
-			ret = response.getEntity(ServicePolicies.class);
-		} else if(response != null && response.getStatus() == 304) {
-			// no change
-		} else {
-			RESTResponse resp = RESTResponse.fromClientResponse(response);
-			LOG.error("Error getting policies. request=" + webResource.toString() 
-					+ ", response=" + resp.toString() + ", serviceName=" + serviceName);
-			throw new Exception(resp.getMessage());
+				if(response != null && response.getStatus() == 200) {
+					ret = response.getEntity(ServicePolicies.class);
+					break;
+				} else if(response != null && response.getStatus() == 304) {
+					// no change
+					break;
+				} else {
+					RESTResponse resp = RESTResponse.fromClientResponse(response);
+					LOG.error("Error getting policies. request=" + webResource.toString()
+							+ ", response=" + resp.toString() + ", serviceName=" + serviceName);
+					throw new Exception(resp.getMessage());
+				}
+			} catch (Exception e) {
+				LOG.error("Error getting policies. request=" + serviceUrls[i] + ", serviceName=" + serviceName);
+				e.printStackTrace();
+			}
 		}
 
 		if(LOG.isDebugEnabled()) {
@@ -96,9 +108,10 @@ public class RangerAdminRESTClient implements RangerAdminClient {
 			LOG.debug("==> RangerAdminRESTClient.grantAccess(" + request + ")");
 		}
 
-		WebResource webResource = createWebResource(RangerRESTUtils.REST_URL_SERVICE_GRANT_ACCESS + serviceName)
+		WebResource webResource = restClient.getResource(RangerRESTUtils.REST_URL_SERVICE_GRANT_ACCESS + serviceName)
 										.queryParam(RangerRESTUtils.REST_PARAM_PLUGIN_ID, pluginId);
-		ClientResponse response = webResource.accept(RangerRESTUtils.REST_EXPECTED_MIME_TYPE).type(RangerRESTUtils.REST_EXPECTED_MIME_TYPE).post(ClientResponse.class, restClient.toJson(request));
+		ClientResponse response = webResource.accept(RangerRESTUtils.REST_EXPECTED_MIME_TYPE)
+				.type(RangerRESTUtils.REST_EXPECTED_MIME_TYPE).post(ClientResponse.class, restClient.toJson(request));
 
 		if(response != null && response.getStatus() != 200) {
 			LOG.error("grantAccess() failed: HTTP status=" + response.getStatus());
@@ -123,9 +136,10 @@ public class RangerAdminRESTClient implements RangerAdminClient {
 			LOG.debug("==> RangerAdminRESTClient.revokeAccess(" + request + ")");
 		}
 
-		WebResource webResource = createWebResource(RangerRESTUtils.REST_URL_SERVICE_REVOKE_ACCESS + serviceName)
+		WebResource webResource = restClient.getResource(RangerRESTUtils.REST_URL_SERVICE_REVOKE_ACCESS + serviceName)
 										.queryParam(RangerRESTUtils.REST_PARAM_PLUGIN_ID, pluginId);
-		ClientResponse response = webResource.accept(RangerRESTUtils.REST_EXPECTED_MIME_TYPE).type(RangerRESTUtils.REST_EXPECTED_MIME_TYPE).post(ClientResponse.class, restClient.toJson(request));
+		ClientResponse response = webResource.accept(RangerRESTUtils.REST_EXPECTED_MIME_TYPE)
+				.type(RangerRESTUtils.REST_EXPECTED_MIME_TYPE).post(ClientResponse.class, restClient.toJson(request));
 
 		if(response != null && response.getStatus() != 200) {
 			LOG.error("revokeAccess() failed: HTTP status=" + response.getStatus());
@@ -144,23 +158,20 @@ public class RangerAdminRESTClient implements RangerAdminClient {
 		}
 	}
 
-	private void init(String url, String sslConfigFileName, int restClientConnTimeOutMs , int restClientReadTimeOutMs ) {
+	private RangerRESTClient init(String url, String sslConfigFileName, int restClientConnTimeOutMs ,
+																int restClientReadTimeOutMs ) {
 		if(LOG.isDebugEnabled()) {
 			LOG.debug("==> RangerAdminRESTClient.init(" + url + ", " + sslConfigFileName + ")");
 		}
 
-		restClient = new RangerRESTClient(url, sslConfigFileName);
+		RangerRESTClient restClient = new RangerRESTClient(url, sslConfigFileName);
 		restClient.setRestClientConnTimeOutMs(restClientConnTimeOutMs);
 		restClient.setRestClientReadTimeOutMs(restClientReadTimeOutMs);
 
 		if(LOG.isDebugEnabled()) {
 			LOG.debug("<== RangerAdminRESTClient.init(" + url + ", " + sslConfigFileName + ")");
 		}
-	}
 
-	private WebResource createWebResource(String url) {
-		WebResource ret = restClient.getResource(url);
-		
-		return ret;
+		return restClient;
 	}
 }

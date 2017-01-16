@@ -1,0 +1,5 @@
+Release Notes - Ranger - Version 0.5.4
+
+** JIRA
+    * [HADOOP-428] - "Ranger plug-in supports multiple RangerAdmin addresses"
+
