@@ -108,21 +108,31 @@ public class RangerAdminRESTClient implements RangerAdminClient {
 			LOG.debug("==> RangerAdminRESTClient.grantAccess(" + request + ")");
 		}
 
-		WebResource webResource = restClient.getResource(RangerRESTUtils.REST_URL_SERVICE_GRANT_ACCESS + serviceName)
-										.queryParam(RangerRESTUtils.REST_PARAM_PLUGIN_ID, pluginId);
-		ClientResponse response = webResource.accept(RangerRESTUtils.REST_EXPECTED_MIME_TYPE)
-				.type(RangerRESTUtils.REST_EXPECTED_MIME_TYPE).post(ClientResponse.class, restClient.toJson(request));
+		for (int i = 0; i < serviceUrls.length; i ++) {
+			try {
+				restClient = init(serviceUrls[i], sslConfigFileName, restClientConnTimeOutMs , restClientReadTimeOutMs);
+				WebResource webResource = restClient.getResource(RangerRESTUtils.REST_URL_SERVICE_GRANT_ACCESS + serviceName)
+						.queryParam(RangerRESTUtils.REST_PARAM_PLUGIN_ID, pluginId);
+				ClientResponse response = webResource.accept(RangerRESTUtils.REST_EXPECTED_MIME_TYPE)
+						.type(RangerRESTUtils.REST_EXPECTED_MIME_TYPE).post(ClientResponse.class, restClient.toJson(request));
 
-		if(response != null && response.getStatus() != 200) {
-			LOG.error("grantAccess() failed: HTTP status=" + response.getStatus());
+				if(response != null && response.getStatus() != 200) {
+					LOG.error("grantAccess() failed: HTTP status=" + response.getStatus());
 
-			if(response.getStatus() == 401) {
-				throw new AccessControlException();
+					if(response.getStatus() == 401) {
+						throw new AccessControlException();
+					}
+
+					throw new Exception("HTTP " + response.getStatus());
+				} else if(response == null) {
+					throw new Exception("unknown error during grantAccess. serviceName="  + serviceName);
+				} else {
+					break;
+				}
+			} catch (Exception e) {
+				LOG.error("Error getting policies. request=" + serviceUrls[i] + ", serviceName=" + serviceName);
+				e.printStackTrace();
 			}
-
-			throw new Exception("HTTP " + response.getStatus());
-		} else if(response == null) {
-			throw new Exception("unknown error during grantAccess. serviceName="  + serviceName);
 		}
 
 		if(LOG.isDebugEnabled()) {
@@ -132,33 +142,43 @@ public class RangerAdminRESTClient implements RangerAdminClient {
 
 	@Override
 	public void revokeAccess(GrantRevokeRequest request) throws Exception {
-		if(LOG.isDebugEnabled()) {
+		if (LOG.isDebugEnabled()) {
 			LOG.debug("==> RangerAdminRESTClient.revokeAccess(" + request + ")");
 		}
 
-		WebResource webResource = restClient.getResource(RangerRESTUtils.REST_URL_SERVICE_REVOKE_ACCESS + serviceName)
-										.queryParam(RangerRESTUtils.REST_PARAM_PLUGIN_ID, pluginId);
-		ClientResponse response = webResource.accept(RangerRESTUtils.REST_EXPECTED_MIME_TYPE)
-				.type(RangerRESTUtils.REST_EXPECTED_MIME_TYPE).post(ClientResponse.class, restClient.toJson(request));
+		for (int i = 0; i < serviceUrls.length; i++) {
+			try {
+				restClient = init(serviceUrls[i], sslConfigFileName, restClientConnTimeOutMs, restClientReadTimeOutMs);
+				WebResource webResource = restClient.getResource(RangerRESTUtils.REST_URL_SERVICE_REVOKE_ACCESS + serviceName)
+						.queryParam(RangerRESTUtils.REST_PARAM_PLUGIN_ID, pluginId);
+				ClientResponse response = webResource.accept(RangerRESTUtils.REST_EXPECTED_MIME_TYPE)
+						.type(RangerRESTUtils.REST_EXPECTED_MIME_TYPE).post(ClientResponse.class, restClient.toJson(request));
 
-		if(response != null && response.getStatus() != 200) {
-			LOG.error("revokeAccess() failed: HTTP status=" + response.getStatus());
+				if (response != null && response.getStatus() != 200) {
+					LOG.error("revokeAccess() failed: HTTP status=" + response.getStatus());
 
-			if(response.getStatus() == 401) {
-				throw new AccessControlException();
+					if (response.getStatus() == 401) {
+						throw new AccessControlException();
+					}
+
+					throw new Exception("HTTP " + response.getStatus());
+				} else if (response == null) {
+					throw new Exception("unknown error. revokeAccess(). serviceName=" + serviceName);
+				} else {
+					break;
+				}
+			} catch (Exception e) {
+				LOG.error("Error getting policies. request=" + serviceUrls[i] + ", serviceName=" + serviceName);
+				e.printStackTrace();
 			}
-
-			throw new Exception("HTTP " + response.getStatus());
-		} else if(response == null) {
-			throw new Exception("unknown error. revokeAccess(). serviceName=" + serviceName);
 		}
 
-		if(LOG.isDebugEnabled()) {
+		if (LOG.isDebugEnabled()) {
 			LOG.debug("<== RangerAdminRESTClient.revokeAccess(" + request + ")");
 		}
 	}
 
-	private RangerRESTClient init(String url, String sslConfigFileName, int restClientConnTimeOutMs ,
+	private RangerRESTClient init(String url, String sslConfigFileName, int restClientConnTimeOutMs,
 																int restClientReadTimeOutMs ) {
 		if(LOG.isDebugEnabled()) {
 			LOG.debug("==> RangerAdminRESTClient.init(" + url + ", " + sslConfigFileName + ")");

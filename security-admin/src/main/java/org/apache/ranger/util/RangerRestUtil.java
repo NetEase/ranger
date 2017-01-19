@@ -275,6 +275,10 @@ public class RangerRestUtil {
 					boolean hasCol = false, hasTbl = false;
 
 					if (false == action.equalsIgnoreCase("*")) {
+						if (action.equalsIgnoreCase("update")) {
+							// adjustment 'update' to 'insert'
+							action = "insert";
+						}
 						sbRole.insert(0, "->action=" + action);
 					}
 					if (false == column.equalsIgnoreCase("*")) {
