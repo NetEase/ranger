@@ -75,4 +75,11 @@ public class RangerHadoopConstants {
 	public static final String AUDITLOG_IS_ENABLED_PROP 			    = "xasecure.audit.is.enabled" ;
 	
 	public static final String KEYMGR_URL_PROP = "hdfs.keymanager.url" ;
+
+	//
+	// Ranger hive operation sync hdfs acl
+	//
+	public static final String SYNC_CREATE_WITH_POLICY_STORE			= "sentry.hive.sync.create";
+	public static final String SYNC_DROP_WITH_POLICY_STORE				= "ranger.hive.sync.drop";
+	public static final String SYNC_ALTER_WITH_POLICY_STORE				= "ranger.hive.sync.alter";
 }

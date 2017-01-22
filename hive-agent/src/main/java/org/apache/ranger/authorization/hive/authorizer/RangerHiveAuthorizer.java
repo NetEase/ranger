@@ -189,7 +189,7 @@ public class RangerHiveAuthorizer extends RangerHiveAuthorizerBase {
 	/**
 	 * Check if user has privileges to do this action on these objects
 	 * @param hiveOpType
-	 * @param inputsHObjs
+	 * @param inputHObjs
 	 * @param outputHObjs
 	 * @param context
 	 * @throws HiveAuthzPluginException
@@ -967,9 +967,6 @@ public class RangerHiveAuthorizer extends RangerHiveAuthorizerBase {
 		return sb;
 	}
 }
-
-enum HiveObjectType { NONE, DATABASE, TABLE, VIEW, PARTITION, INDEX, COLUMN, FUNCTION, URI };
-enum HiveAccessType { NONE, CREATE, ALTER, DROP, INDEX, LOCK, SELECT, UPDATE, USE, ALL, ADMIN };
 
 class RangerHivePlugin extends RangerBasePlugin {
 	public static boolean UpdateXaPoliciesOnGrantRevoke = RangerHadoopConstants.HIVE_UPDATE_RANGER_POLICIES_ON_GRANT_REVOKE_DEFAULT_VALUE;
