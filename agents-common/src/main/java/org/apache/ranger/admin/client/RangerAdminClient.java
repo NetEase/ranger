@@ -21,6 +21,7 @@
 
 
 import org.apache.ranger.plugin.util.GrantRevokeRequest;
+import org.apache.ranger.plugin.util.HiveOperationType;
 import org.apache.ranger.plugin.util.ServicePolicies;
 
 
@@ -32,4 +33,6 @@ public interface RangerAdminClient {
 	void grantAccess(GrantRevokeRequest request) throws Exception;
 
 	void revokeAccess(GrantRevokeRequest request) throws Exception;
+
+	void consistentRules(GrantRevokeRequest request, HiveOperationType hiveOperationType) throws Exception;
 }

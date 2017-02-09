@@ -19,6 +19,8 @@
 
 package org.apache.ranger.rest;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -50,17 +52,9 @@ import org.apache.ranger.biz.RangerBizUtil;
 import org.apache.ranger.biz.ServiceDBStore;
 import org.apache.ranger.biz.ServiceMgr;
 import org.apache.ranger.biz.XUserMgr;
-import org.apache.ranger.common.GUIDUtil;
-import org.apache.ranger.common.MessageEnums;
-import org.apache.ranger.common.RESTErrorUtil;
-import org.apache.ranger.common.RangerConfigUtil;
-import org.apache.ranger.common.RangerSearchUtil;
-import org.apache.ranger.common.RangerValidatorFactory;
-import org.apache.ranger.common.ServiceUtil;
+import org.apache.ranger.common.*;
 import org.apache.ranger.db.RangerDaoManager;
-import org.apache.ranger.entity.XXPolicyExportAudit;
-import org.apache.ranger.entity.XXService;
-import org.apache.ranger.entity.XXServiceDef;
+import org.apache.ranger.entity.*;
 import org.apache.ranger.plugin.model.RangerPolicy;
 import org.apache.ranger.plugin.model.RangerPolicy.RangerPolicyItem;
 import org.apache.ranger.plugin.model.RangerPolicy.RangerPolicyItemAccess;
@@ -82,7 +76,9 @@ import org.apache.ranger.plugin.service.ResourceLookupContext;
 import org.apache.ranger.plugin.store.EmbeddedServiceDefsUtil;
 import org.apache.ranger.plugin.util.*;
 import org.apache.ranger.security.context.RangerAPIList;
+import org.apache.ranger.security.context.RangerContextHolder;
 import org.apache.ranger.security.context.RangerPreAuthSecurityHandler;
+import org.apache.ranger.security.context.RangerSecurityContext;
 import org.apache.ranger.service.RangerPolicyService;
 import org.apache.ranger.service.RangerServiceDefService;
 import org.apache.ranger.service.RangerServiceService;
@@ -1061,6 +1057,107 @@ public class ServiceREST {
 
 		if(LOG.isDebugEnabled()) {
 			LOG.debug("<== ServiceREST.revokeAccess(" + serviceName + ", " + revokeRequest + "): " + ret);
+		}
+
+		return ret;
+	}
+
+	private void mockSession(HttpServletRequest request, String userName) {
+		String ipAddress = request.getHeader("X-FORWARDED-FOR");
+		if (ipAddress == null) {
+			ipAddress = request.getRemoteAddr();
+		}
+
+		Long userId = userMgr.getXUserByUserName(userName).getId();
+
+		XXAuthSession gjAuthSession = new XXAuthSession();
+		gjAuthSession.setLoginId("");
+		gjAuthSession.setUserId(userId);
+		gjAuthSession.setAuthTime(DateUtil.getUTCDate());
+		gjAuthSession.setAuthStatus(XXAuthSession.AUTH_STATUS_SUCCESS);
+		gjAuthSession.setAuthType(XXAuthSession.AUTH_TYPE_UNKNOWN);
+		gjAuthSession.setDeviceType(RangerCommonEnums.DEVICE_UNKNOWN);
+		gjAuthSession.setExtSessionId(null);
+		gjAuthSession.setRequestIP(ipAddress);
+		gjAuthSession.setRequestUserAgent(null);
+
+		//gjAuthSession = storeAuthSession(gjAuthSession);
+
+		XXPortalUser portalUser = daoManager.getXXPortalUser().findByXUserId(userId);
+
+		UserSessionBase userSession = new UserSessionBase();
+		userSession.setXXPortalUser(portalUser);
+		userSession.setXXAuthSession(gjAuthSession);
+		userSession.setUserAdmin(true);
+
+		// create context with user-session and set in thread-local
+		RangerSecurityContext context = new RangerSecurityContext();
+		context.setUserSession(userSession);
+		RangerContextHolder.setSecurityContext(context);
+	}
+
+	@POST
+	@Path("/services/consistency/{serviceName}")
+	@Produces({ "application/json", "application/xml" })
+	public RESTResponse consistentRules(@PathParam("serviceName") String serviceName,
+																			@QueryParam("pluginId") String pluginId,
+																		  GrantRevokeRequest revokeRequest,
+																		  @Context HttpServletRequest request) throws Exception {
+		if(LOG.isDebugEnabled()) {
+			LOG.debug("==> ServiceREST.consistentRules(" + serviceName + ", " + revokeRequest + ")");
+		}
+
+		RESTResponse     ret  = new RESTResponse();
+		RangerPerfTracer perf = null;
+		HiveOperationType hiveOperationType = revokeRequest.getHiveOperationType();
+
+		if(RangerPerfTracer.isPerfTraceEnabled(PERF_LOG)) {
+			perf = RangerPerfTracer.getPerfTracer(PERF_LOG, "ServiceREST.consistentRules(serviceName=" + serviceName + ")");
+		}
+
+		if (serviceUtil.isValidateHttpsAuthentication(serviceName, request)) {
+			try {
+				String               userName     = revokeRequest.getGrantor();
+				Set<String>          userGroups   =  userMgr.getGroupsForUser(userName);
+				RangerAccessResource resource     = new RangerAccessResourceImpl(revokeRequest.getResource());
+
+				boolean isAdmin = hasAdminAccess(serviceName, userName, userGroups, resource);
+
+				if(!isAdmin) {
+					LOG.warn("<== ServiceREST.consistentRules(" + serviceName + ", " + revokeRequest + ") policy unauthorized or not delegateadmin!" + ret);
+				} else {
+					mockSession(request, userName);
+
+					RangerPolicy policy = getExactMatchPolicyForResource(serviceName, resource);
+
+					if(policy != null) {
+						switch (hiveOperationType) {
+							case DROPDATABASE:
+							case DROPTABLE:
+								svcStore.deletePolicy(policy.getId());
+								break;
+							default:
+								LOG.error("consistentRules(" + serviceName + ") mismatched hive operation " + hiveOperationType.name());
+								break;
+						}
+					} else {
+						// nothing to consistent!
+					}
+				}
+			} catch(WebApplicationException excp) {
+				throw excp;
+			} catch(Throwable excp) {
+				LOG.error("consistentRules(" + serviceName + ", " + revokeRequest + ") failed", excp);
+				throw restErrorUtil.createRESTException(excp.getMessage());
+			} finally {
+				RangerPerfTracer.log(perf);
+			}
+
+			ret.setStatusCode(RESTResponse.STATUS_SUCCESS);
+		}
+
+		if(LOG.isDebugEnabled()) {
+			LOG.debug("<== ServiceREST.consistentRules(" + serviceName + ", " + revokeRequest + "): " + ret);
 		}
 
 		return ret;

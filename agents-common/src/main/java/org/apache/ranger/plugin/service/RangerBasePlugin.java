@@ -48,6 +48,7 @@ public class RangerBasePlugin {
 	private RangerPolicyEngine        policyEngine = null;
 	private RangerPolicyEngineOptions policyEngineOptions = new RangerPolicyEngineOptions();
 	private RangerAccessResultProcessor resultProcessor = null;
+	private RangerAdminClient         rangerAdminClient = null;
 
 	Map<String, LogHistory> logHistoryList = new Hashtable<String, RangerBasePlugin.LogHistory>();
 	int logInterval = 30000; // 30 seconds
@@ -57,6 +58,8 @@ public class RangerBasePlugin {
 		this.serviceType = serviceType;
 		this.appId       = appId;
 	}
+
+	public RangerAdminClient getRangerAdminClient() { return rangerAdminClient; }
 
 	public String getServiceType() {
 		return serviceType;
@@ -100,9 +103,9 @@ public class RangerBasePlugin {
 		policyEngineOptions.disableCustomConditions = RangerConfiguration.getInstance().getBoolean(propertyPrefix + ".policyengine.option.disable.custom.conditions", false);
 
 
-		RangerAdminClient admin = createAdminClient(propertyPrefix);
+		rangerAdminClient = createAdminClient(propertyPrefix);
 
-		refresher = new PolicyRefresher(this, serviceType, appId, serviceName, admin, pollingIntervalMs, cacheDir);
+		refresher = new PolicyRefresher(this, serviceType, appId, serviceName, rangerAdminClient, pollingIntervalMs, cacheDir);
 		refresher.startRefresher();
 	}
 

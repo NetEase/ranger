@@ -40,6 +40,7 @@ public class RangerRESTUtils {
 	public static final String REST_URL_POLICY_GET_SERVICE_INI_IF_UPDATED = "/service/plugins/policies/download/ini/";
 	public static final String REST_URL_SERVICE_GRANT_ACCESS              = "/service/plugins/services/grant/";
 	public static final String REST_URL_SERVICE_REVOKE_ACCESS             = "/service/plugins/services/revoke/";
+	public static final String REST_URL_SERVICE_CONSISTENCY_RULES         = "/service/plugins/services/consistency/";
 
 	public static final String REST_EXPECTED_MIME_TYPE = "application/json" ;
 	public static final String REST_MIME_TYPE_JSON     = "application/json" ;

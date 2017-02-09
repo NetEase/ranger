@@ -28,11 +28,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.security.AccessControlException;
 import org.apache.ranger.admin.client.datatype.RESTResponse;
 import org.apache.ranger.authorization.hadoop.config.RangerConfiguration;
-import org.apache.ranger.plugin.util.GrantRevokeRequest;
-import org.apache.ranger.plugin.util.RangerRESTClient;
-import org.apache.ranger.plugin.util.RangerRESTUtils;
-import org.apache.ranger.plugin.util.ServicePolicies;
-
+import org.apache.ranger.plugin.util.*;
 
 public class RangerAdminRESTClient implements RangerAdminClient {
 	private static final Log LOG = LogFactory.getLog(RangerAdminRESTClient.class);
@@ -69,9 +65,12 @@ public class RangerAdminRESTClient implements RangerAdminClient {
 
 		ServicePolicies ret = null;
 
-		for (int i = 0; i < serviceUrls.length; i ++) {
+		int index = 0;
+		do {
 			try {
-				restClient = init(serviceUrls[i], sslConfigFileName, restClientConnTimeOutMs , restClientReadTimeOutMs);
+				if (null == restClient) {
+					restClient = init(serviceUrls[index], sslConfigFileName, restClientConnTimeOutMs, restClientReadTimeOutMs);
+				}
 				WebResource webResource = restClient.getResource(RangerRESTUtils.REST_URL_POLICY_GET_FOR_SERVICE_IF_UPDATED + serviceName)
 						.queryParam(RangerRESTUtils.REST_PARAM_LAST_KNOWN_POLICY_VERSION, Long.toString(lastKnownVersion))
 						.queryParam(RangerRESTUtils.REST_PARAM_PLUGIN_ID, pluginId);
@@ -90,10 +89,11 @@ public class RangerAdminRESTClient implements RangerAdminClient {
 					throw new Exception(resp.getMessage());
 				}
 			} catch (Exception e) {
-				LOG.error("Error getting policies. request=" + serviceUrls[i] + ", serviceName=" + serviceName);
+				restClient = null;
+				LOG.error("Error getting policies. request=" + serviceUrls[index++] + ", serviceName=" + serviceName);
 				e.printStackTrace();
 			}
-		}
+		} while(index < serviceUrls.length);
 
 		if(LOG.isDebugEnabled()) {
 			LOG.debug("<== RangerAdminRESTClient.getServicePoliciesIfUpdated(" + lastKnownVersion + "): " + ret);
@@ -108,9 +108,12 @@ public class RangerAdminRESTClient implements RangerAdminClient {
 			LOG.debug("==> RangerAdminRESTClient.grantAccess(" + request + ")");
 		}
 
-		for (int i = 0; i < serviceUrls.length; i ++) {
+		int index = 0;
+		do {
 			try {
-				restClient = init(serviceUrls[i], sslConfigFileName, restClientConnTimeOutMs , restClientReadTimeOutMs);
+				if (null == restClient) {
+					restClient = init(serviceUrls[index], sslConfigFileName, restClientConnTimeOutMs, restClientReadTimeOutMs);
+				}
 				WebResource webResource = restClient.getResource(RangerRESTUtils.REST_URL_SERVICE_GRANT_ACCESS + serviceName)
 						.queryParam(RangerRESTUtils.REST_PARAM_PLUGIN_ID, pluginId);
 				ClientResponse response = webResource.accept(RangerRESTUtils.REST_EXPECTED_MIME_TYPE)
@@ -118,11 +121,6 @@ public class RangerAdminRESTClient implements RangerAdminClient {
 
 				if(response != null && response.getStatus() != 200) {
 					LOG.error("grantAccess() failed: HTTP status=" + response.getStatus());
-
-					if(response.getStatus() == 401) {
-						throw new AccessControlException();
-					}
-
 					throw new Exception("HTTP " + response.getStatus());
 				} else if(response == null) {
 					throw new Exception("unknown error during grantAccess. serviceName="  + serviceName);
@@ -130,10 +128,11 @@ public class RangerAdminRESTClient implements RangerAdminClient {
 					break;
 				}
 			} catch (Exception e) {
-				LOG.error("Error getting policies. request=" + serviceUrls[i] + ", serviceName=" + serviceName);
+				restClient = null;
+				LOG.error("Error getting policies. request=" + serviceUrls[index++] + ", serviceName=" + serviceName);
 				e.printStackTrace();
 			}
-		}
+		} while(index < serviceUrls.length);
 
 		if(LOG.isDebugEnabled()) {
 			LOG.debug("<== RangerAdminRESTClient.grantAccess(" + request + ")");
@@ -146,9 +145,12 @@ public class RangerAdminRESTClient implements RangerAdminClient {
 			LOG.debug("==> RangerAdminRESTClient.revokeAccess(" + request + ")");
 		}
 
-		for (int i = 0; i < serviceUrls.length; i++) {
+		int index = 0;
+		do {
 			try {
-				restClient = init(serviceUrls[i], sslConfigFileName, restClientConnTimeOutMs, restClientReadTimeOutMs);
+				if (null == restClient) {
+					restClient = init(serviceUrls[index], sslConfigFileName, restClientConnTimeOutMs, restClientReadTimeOutMs);
+				}
 				WebResource webResource = restClient.getResource(RangerRESTUtils.REST_URL_SERVICE_REVOKE_ACCESS + serviceName)
 						.queryParam(RangerRESTUtils.REST_PARAM_PLUGIN_ID, pluginId);
 				ClientResponse response = webResource.accept(RangerRESTUtils.REST_EXPECTED_MIME_TYPE)
@@ -156,11 +158,6 @@ public class RangerAdminRESTClient implements RangerAdminClient {
 
 				if (response != null && response.getStatus() != 200) {
 					LOG.error("revokeAccess() failed: HTTP status=" + response.getStatus());
-
-					if (response.getStatus() == 401) {
-						throw new AccessControlException();
-					}
-
 					throw new Exception("HTTP " + response.getStatus());
 				} else if (response == null) {
 					throw new Exception("unknown error. revokeAccess(). serviceName=" + serviceName);
@@ -168,13 +165,52 @@ public class RangerAdminRESTClient implements RangerAdminClient {
 					break;
 				}
 			} catch (Exception e) {
-				LOG.error("Error getting policies. request=" + serviceUrls[i] + ", serviceName=" + serviceName);
+				restClient = null;
+				LOG.error("Error getting policies. request=" + serviceUrls[index++] + ", serviceName=" + serviceName);
 				e.printStackTrace();
 			}
-		}
+		} while(index < serviceUrls.length);
 
 		if (LOG.isDebugEnabled()) {
 			LOG.debug("<== RangerAdminRESTClient.revokeAccess(" + request + ")");
+		}
+	}
+
+	@Override
+	public void consistentRules(GrantRevokeRequest request, HiveOperationType hiveOperationType) throws Exception {
+		if (LOG.isDebugEnabled()) {
+			LOG.debug("==> RangerAdminRESTClient.consistentRules(" + request + ")");
+		}
+
+		int index = 0;
+		do {
+			try {
+				if (null == restClient) {
+					restClient = init(serviceUrls[index], sslConfigFileName, restClientConnTimeOutMs, restClientReadTimeOutMs);
+				}
+				WebResource webResource = restClient.getResource(RangerRESTUtils.REST_URL_SERVICE_CONSISTENCY_RULES + serviceName)
+						.queryParam(RangerRESTUtils.REST_PARAM_PLUGIN_ID, pluginId)
+						.queryParam("hiveOperationType", hiveOperationType.name());
+				ClientResponse response = webResource.accept(RangerRESTUtils.REST_EXPECTED_MIME_TYPE)
+						.type(RangerRESTUtils.REST_EXPECTED_MIME_TYPE).post(ClientResponse.class, restClient.toJson(request));
+
+				if (response != null && response.getStatus() != 200) {
+					LOG.error("consistentRules() failed: HTTP status=" + response.getStatus());
+					throw new Exception("HTTP " + response.getStatus());
+				} else if (response == null) {
+					throw new Exception("unknown error. consistentRules(). serviceName=" + serviceName);
+				} else {
+					break;
+				}
+			} catch (Exception e) {
+				restClient = null;
+				LOG.error("Error getting policies. request=" + serviceUrls[index++] + ", serviceName=" + serviceName);
+				e.printStackTrace();
+			}
+		} while(index < serviceUrls.length);
+
+		if (LOG.isDebugEnabled()) {
+			LOG.debug("<== RangerAdminRESTClient.consistentRules(" + request + ")");
 		}
 	}
 
