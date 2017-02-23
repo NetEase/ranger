@@ -33,16 +33,7 @@ import org.apache.ranger.common.SearchField;
 import org.apache.ranger.common.SortField;
 import org.apache.ranger.common.SearchField.DATA_TYPE;
 import org.apache.ranger.common.SearchField.SEARCH_TYPE;
-import org.apache.ranger.entity.XXAccessTypeDef;
-import org.apache.ranger.entity.XXContextEnricherDef;
-import org.apache.ranger.entity.XXDBBase;
-import org.apache.ranger.entity.XXEnumDef;
-import org.apache.ranger.entity.XXEnumElementDef;
-import org.apache.ranger.entity.XXPolicyConditionDef;
-import org.apache.ranger.entity.XXResourceDef;
-import org.apache.ranger.entity.XXServiceConfigDef;
-import org.apache.ranger.entity.XXServiceDef;
-import org.apache.ranger.entity.XXServiceDefBase;
+import org.apache.ranger.entity.*;
 import org.apache.ranger.plugin.model.RangerServiceDef;
 import org.apache.ranger.plugin.model.RangerServiceDef.RangerAccessTypeDef;
 import org.apache.ranger.plugin.model.RangerServiceDef.RangerContextEnricherDef;
@@ -148,6 +139,16 @@ public abstract class RangerServiceDefServiceBase<T extends XXServiceDefBase, V 
 			}
 			serviceDef.setEnums(enums);
 		}
+
+		List<XXServiceConfigMap> xConfigMaps = daoMgr.getXXServiceConfigMap().findByServiceId(serviceDefId);
+		if (!stringUtil.isEmpty(xConfigMaps)) {
+			Map<String, String> configkeys = new HashMap<>();
+			for (XXServiceConfigMap xConfigMap : xConfigMaps) {
+				configkeys.put(xConfigMap.getConfigkey(), xConfigMap.getConfigvalue());
+			}
+			serviceDef.setConfigKeys(configkeys);
+		}
+
 		return serviceDef;
 	}
 	

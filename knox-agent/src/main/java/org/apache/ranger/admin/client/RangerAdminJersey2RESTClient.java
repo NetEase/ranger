@@ -209,7 +209,7 @@ public class RangerAdminJersey2RESTClient implements RangerAdminClient {
 	}
 
 	@Override
-	public void consistentRules(GrantRevokeRequest request, HiveOperationType hiveOperationType) throws Exception {
+	public void syncPolicys(GrantRevokeRequest request, HiveOperationType hiveOperationType) throws Exception {
 		LOG.warn("==> RangerAdminJersey2RESTClient.consistentRules not implement");
 	}
 

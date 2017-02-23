@@ -57,18 +57,16 @@ public class GrantRevokeRequest implements Serializable {
 	private String              clientType                 = null;
 	private String              requestData                = null;
 	private String              sessionId                  = null;
-	private String              location                   = null;
-	private HiveOperationType   hiveOperationType          = null;
 
 	public GrantRevokeRequest() {
-		this(null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+		this(null, null, null, null, null, null, null, null, null, null, null, null, null);
 	}
 
 	public GrantRevokeRequest(String grantor, Map<String, String> resource, Set<String> users,
 														Set<String> groups, Set<String> accessTypes, Boolean delegateAdmin,
 														Boolean enableAudit, Boolean replaceExistingPermissions, Boolean isRecursive,
 														String clientIPAddress, String clientType, String requestData,
-														String sessionId, String location, HiveOperationType hiveOperationType) {
+														String sessionId) {
 		setGrantor(grantor);
 		setResource(resource);
 		setUsers(users);
@@ -82,36 +80,6 @@ public class GrantRevokeRequest implements Serializable {
 		setClientType(clientType);
 		setRequestData(requestData);
 		setSessionId(sessionId);
-		setLocation(location);
-		setHiveOperationType(hiveOperationType);
-	}
-
-	/**
-	 * @return the location
-	 */
-	public String getLocation() {
-		return location;
-	}
-
-	/**
-	 * @param location the location to set
-	 */
-	public void setLocation(String location) {
-		this.location = location;
-	}
-
-	/**
-	 * @return the hiveOperationType
-	 */
-	public HiveOperationType getHiveOperationType() {
-		return hiveOperationType;
-	}
-
-	/**
-	 * @param hiveOperationType the hiveOperationType to set
-	 */
-	public void setHiveOperationType(HiveOperationType hiveOperationType) {
-		this.hiveOperationType = hiveOperationType;
 	}
 
 	/**
@@ -351,8 +319,6 @@ public class GrantRevokeRequest implements Serializable {
 		sb.append("clientType={").append(clientType).append("} ");
 		sb.append("requestData={").append(requestData).append("} ");
 		sb.append("sessionId={").append(sessionId).append("} ");
-		sb.append("location={").append(location).append("} ");
-		sb.append("hiveOperationType={").append(hiveOperationType.name()).append("} ");
 
 		sb.append("}");
 

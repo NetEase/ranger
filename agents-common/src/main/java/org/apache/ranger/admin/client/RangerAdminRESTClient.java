@@ -25,7 +25,6 @@ import com.sun.jersey.api.client.WebResource;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.security.AccessControlException;
 import org.apache.ranger.admin.client.datatype.RESTResponse;
 import org.apache.ranger.authorization.hadoop.config.RangerConfiguration;
 import org.apache.ranger.plugin.util.*;
@@ -177,7 +176,7 @@ public class RangerAdminRESTClient implements RangerAdminClient {
 	}
 
 	@Override
-	public void consistentRules(GrantRevokeRequest request, HiveOperationType hiveOperationType) throws Exception {
+	public void syncPolicys(GrantRevokeRequest request, HiveOperationType hiveOperationType) throws Exception {
 		if (LOG.isDebugEnabled()) {
 			LOG.debug("==> RangerAdminRESTClient.consistentRules(" + request + ")");
 		}
@@ -188,7 +187,7 @@ public class RangerAdminRESTClient implements RangerAdminClient {
 				if (null == restClient) {
 					restClient = init(serviceUrls[index], sslConfigFileName, restClientConnTimeOutMs, restClientReadTimeOutMs);
 				}
-				WebResource webResource = restClient.getResource(RangerRESTUtils.REST_URL_SERVICE_CONSISTENCY_RULES + serviceName)
+				WebResource webResource = restClient.getResource(RangerRESTUtils.REST_URL_POLICY_SYNC_HDFS + serviceName)
 						.queryParam(RangerRESTUtils.REST_PARAM_PLUGIN_ID, pluginId)
 						.queryParam("hiveOperationType", hiveOperationType.name());
 				ClientResponse response = webResource.accept(RangerRESTUtils.REST_EXPECTED_MIME_TYPE)

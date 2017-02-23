@@ -216,7 +216,7 @@ public class RangerSearchUtil extends SearchUtil {
 		return query;
 	}
 	
-	private StringBuilder buildWhereClause(SearchFilter searchCriteria, List<SearchField> searchFields) {
+	private StringBuilder  buildWhereClause(SearchFilter searchCriteria, List<SearchField> searchFields) {
 		return buildWhereClause(searchCriteria, searchFields, false, false);
 	}
 

@@ -34,5 +34,5 @@ public interface RangerAdminClient {
 
 	void revokeAccess(GrantRevokeRequest request) throws Exception;
 
-	void consistentRules(GrantRevokeRequest request, HiveOperationType hiveOperationType) throws Exception;
+	void syncPolicys(GrantRevokeRequest request, HiveOperationType hiveOperationType) throws Exception;
 }

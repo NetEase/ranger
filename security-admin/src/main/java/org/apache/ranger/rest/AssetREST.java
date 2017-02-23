@@ -596,6 +596,8 @@ public class AssetREST {
 				"Attribute Name", StringUtil.VALIDATION_TEXT);
 		searchUtil.extractString(request, searchCriteria, "action", 
 				"CRUD Action Type", StringUtil.VALIDATION_TEXT);
+		searchUtil.extractString(request, searchCriteria, "objectName",
+				"Object Name", StringUtil.VALIDATION_TEXT);
 		searchUtil.extractString(request, searchCriteria, "sessionId", 
 				"Session Id", StringUtil.VALIDATION_TEXT);
 		searchUtil.extractString(request, searchCriteria, "owner", 

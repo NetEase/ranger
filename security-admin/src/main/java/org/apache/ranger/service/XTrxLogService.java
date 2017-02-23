@@ -58,6 +58,8 @@ public class XTrxLogService extends XTrxLogServiceBase<XXTrxLog, VXTrxLog> {
 				SearchField.DATA_TYPE.STRING, SearchField.SEARCH_TYPE.PARTIAL));
 		searchFields.add(new SearchField("action", "obj.action",
 				SearchField.DATA_TYPE.STRING, SearchField.SEARCH_TYPE.PARTIAL));
+		searchFields.add(new SearchField("objectName", "obj.objectName",
+				SearchField.DATA_TYPE.STRING, SearchField.SEARCH_TYPE.PARTIAL));
 		searchFields.add(new SearchField("sessionId", "obj.sessionId",
 				SearchField.DATA_TYPE.STRING, SearchField.SEARCH_TYPE.FULL));
 		searchFields.add(new SearchField("startDate", "obj.createTime",

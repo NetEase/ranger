@@ -24,9 +24,13 @@ import java.util.Map.Entry;
 
 import javax.annotation.PostConstruct;
 
+import org.apache.commons.httpclient.URI;
+import org.apache.commons.httpclient.URIException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 import org.apache.ranger.common.AppConstants;
 import org.apache.ranger.common.ContextUtil;
 import org.apache.ranger.common.DateUtil;
@@ -96,9 +100,13 @@ import org.apache.ranger.plugin.model.RangerServiceDef.RangerPolicyConditionDef;
 import org.apache.ranger.plugin.model.RangerServiceDef.RangerResourceDef;
 import org.apache.ranger.plugin.model.RangerServiceDef.RangerServiceConfigDef;
 import org.apache.ranger.plugin.model.validation.RangerServiceDefHelper;
+import org.apache.ranger.plugin.policyengine.RangerAccessResource;
+import org.apache.ranger.plugin.policyengine.RangerAccessResourceImpl;
 import org.apache.ranger.plugin.store.EmbeddedServiceDefsUtil;
 import org.apache.ranger.plugin.store.ServicePredicateUtil;
 import org.apache.ranger.plugin.store.ServiceStore;
+import org.apache.ranger.plugin.util.GrantRevokeRequest;
+import org.apache.ranger.plugin.util.HiveOperationType;
 import org.apache.ranger.plugin.util.SearchFilter;
 import org.apache.ranger.plugin.util.ServicePolicies;
 import org.apache.ranger.service.RangerAuditFields;
@@ -123,6 +131,8 @@ import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.apache.commons.collections.CollectionUtils ;
+
+import static com.sun.tools.javac.jvm.ByteCodes.ret;
 
 
 @Component
@@ -1455,6 +1465,15 @@ public class ServiceDBStore implements ServiceStore {
 		bizUtil.createTrxLog(trxLogList);
 		
 		return updPolicy;
+	}
+
+	public void deletePolicys(List<RangerPolicy> rangerPolicies) throws Exception {
+		if (rangerPolicies == null) {
+			return;
+		}
+		for(RangerPolicy rangerPolicy : rangerPolicies) {
+			deletePolicy(rangerPolicy.getId());
+		}
 	}
 
 	@Override
