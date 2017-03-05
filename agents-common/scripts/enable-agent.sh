@@ -543,28 +543,28 @@ if [ "${action}" = "enable" ]
 then
     if [ "${HCOMPONENT_NAME}" = "hive" ]
     then
-        for f in ${PROJ_LIB_DIR}/*.jar ${PROJ_LIB_PLUGIN_DIR}/*.jar
+        for f in ${PROJ_LIB_PLUGIN_DIR}/*.jar
 		do
-            cp ${f} ${HCOMPONENT_INSTALL_DIR_NAME}/lib
-            echo "copy ${f} to ${HCOMPONENT_INSTALL_DIR_NAME}/lib"
+            cp ${f} ${HCOMPONENT_INSTALL_DIR_NAME}/lib/
+            echo "copy ${f} to ${HCOMPONENT_INSTALL_DIR_NAME}/lib/"
 		done
-	elif [ "${HCOMPONENT_NAME}" = "hdfs" ]
+	elif [ "${HCOMPONENT_NAME}" = "hadoop" ]
     then
-        for f in ${PROJ_LIB_DIR}/*.jar ${PROJ_LIB_PLUGIN_DIR}/*.jar
+        for f in ${PROJ_LIB_PLUGIN_DIR}/*.jar
 		do
             cp ${f} ${HCOMPONENT_INSTALL_DIR_NAME}/share/hadoop/hdfs/lib/
             echo "copy ${f} to ${HCOMPONENT_INSTALL_DIR_NAME}/share/hadoop/hdfs/lib/"
 		done
 	elif [ "${HCOMPONENT_NAME}" = "yarn" ]
     then
-        for f in ${PROJ_LIB_DIR}/*.jar ${PROJ_LIB_PLUGIN_DIR}/*.jar
+        for f in ${PROJ_LIB_PLUGIN_DIR}/*.jar
 		do
             cp ${f} ${HCOMPONENT_INSTALL_DIR_NAME}/share/hadoop/hdfs/lib/
             echo "copy ${f} to ${HCOMPONENT_INSTALL_DIR_NAME}/share/hadoop/hdfs/lib/"
 		done
-    else
-	#if [ -d "${PROJ_LIB_DIR}" ]
-	#then
+    fi
+	if [ -d "${PROJ_LIB_DIR}" ]
+	then
 		dt=`date '+%Y%m%d%H%M%S'`
 		for f in ${PROJ_LIB_DIR}/*.jar
 		do
@@ -584,19 +584,19 @@ then
 		done
 		
 		# ADD SQL CONNECTOR JAR TO PLUGIN DEPENDENCY JAR FOLDER
-		dbJar=$(getInstallProperty 'SQL_CONNECTOR_JAR')
-		if [ -f "${dbJar}" ]
-		then	
-			bn=`basename ${dbJar}`
-			if [ -f ${PROJ_LIB_PLUGIN_DIR}/${bn} ]
-			then
-			 	rm ${PROJ_LIB_PLUGIN_DIR}/${bn} 
-			fi
-			if [ ! -f ${PROJ_LIB_PLUGIN_DIR}/${bn} ]
-			then
-			    ln -s ${dbJar} ${PROJ_LIB_PLUGIN_DIR}/${bn}
-			fi
-		fi
+# 		dbJar=$(getInstallProperty 'SQL_CONNECTOR_JAR')
+# 		if [ -f "${dbJar}" ]
+# 		then
+# 			bn=`basename ${dbJar}`
+# 			if [ -f ${PROJ_LIB_PLUGIN_DIR}/${bn} ]
+# 			then
+# 			 	rm ${PROJ_LIB_PLUGIN_DIR}/${bn}
+# 			fi
+# 			if [ ! -f ${PROJ_LIB_PLUGIN_DIR}/${bn} ]
+# 			then
+# 			    ln -s ${dbJar} ${PROJ_LIB_PLUGIN_DIR}/${bn}
+# 			fi
+# 		fi
 	fi
 
 	#

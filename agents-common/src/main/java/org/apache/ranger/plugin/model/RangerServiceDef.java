@@ -55,14 +55,14 @@ public class RangerServiceDef extends RangerBaseModelObject implements java.io.S
 	private List<RangerPolicyConditionDef> policyConditions = null;
 	private List<RangerContextEnricherDef> contextEnrichers = null;
 	private List<RangerEnumDef>            enums            = null;
-
+	private Map<String, String>            configKeys       = null;
 
 	public RangerServiceDef() {
-		this(null, null, null, null, null, null, null, null, null, null);
+		this(null, null, null, null, null, null, null, null, null, null, null);
 	}
 
 	/**
-	 * @param type
+	 * @param name
 	 * @param implClass
 	 * @param label
 	 * @param description
@@ -73,7 +73,11 @@ public class RangerServiceDef extends RangerBaseModelObject implements java.io.S
 	 * @param contextEnrichers
 	 * @param enums
 	 */
-	public RangerServiceDef(String name, String implClass, String label, String description, List<RangerServiceConfigDef> configs, List<RangerResourceDef> resources, List<RangerAccessTypeDef> accessTypes, List<RangerPolicyConditionDef> policyConditions, List<RangerContextEnricherDef> contextEnrichers, List<RangerEnumDef> enums) {
+	public RangerServiceDef(String name, String implClass, String label,
+													String description, List<RangerServiceConfigDef> configs, List<RangerResourceDef> resources,
+													List<RangerAccessTypeDef> accessTypes, List<RangerPolicyConditionDef> policyConditions,
+													List<RangerContextEnricherDef> contextEnrichers, List<RangerEnumDef> enums,
+													Map<String, String> configKeys) {
 		super();
 
 		setName(name);
@@ -86,6 +90,7 @@ public class RangerServiceDef extends RangerBaseModelObject implements java.io.S
 		setPolicyConditions(policyConditions);
 		setContextEnrichers(contextEnrichers);
 		setEnums(enums);
+		setConfigKeys(configKeys);
 	}
 
 	/**
@@ -103,6 +108,7 @@ public class RangerServiceDef extends RangerBaseModelObject implements java.io.S
 		setAccessTypes(other.getAccessTypes());
 		setPolicyConditions(other.getPolicyConditions());
 		setEnums(other.getEnums());
+		setConfigKeys(other.getConfigKeys());
 	}
 
 	/**
@@ -357,6 +363,21 @@ public class RangerServiceDef extends RangerBaseModelObject implements java.io.S
 		}
 	}
 
+	public void setConfigKeys(Map<String, String> keys) {
+		if(this.configKeys == null) {
+			this.configKeys = new HashMap<>();
+		}
+
+		this.configKeys.clear();
+		if(keys != null) {
+			this.configKeys.putAll(keys);
+		}
+	}
+
+	public Map<String, String> getConfigKeys() {
+		return this.configKeys;
+	}
+
 	@Override
 	public String toString( ) {
 		StringBuilder sb = new StringBuilder();
@@ -384,6 +405,14 @@ public class RangerServiceDef extends RangerBaseModelObject implements java.io.S
 				if(config != null) {
 					config.toString(sb);
 				}
+			}
+		}
+		sb.append("} ");
+
+		sb.append("configKeys={");
+		if(configKeys != null) {
+			for (String key : configKeys.keySet()) {
+				sb.append(key).append("=").append(configKeys.get(key)).append(",");
 			}
 		}
 		sb.append("} ");

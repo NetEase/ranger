@@ -69,11 +69,12 @@
 		<value>com.mysql.jdbc.Driver</value>
 	</property>
 
+	<!--
 	<property>
 		<name>xasecure.audit.credential.provider.file</name>
 		<value>jceks://file/etc/ranger/kmsdev/auditcred.jceks</value>
 	</property>
-
+	-->
 
 	<!-- HDFS audit provider configuration -->
 	<property>

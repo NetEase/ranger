@@ -1,0 +1,10 @@
+Release Notes - Ranger - Version 0.5.4
+
+** HISTORY
+ * [ranger-0.5.4-2017012001]
+    - [JIRA:HADOOP-433] - "create/drop tabele grant reovke privilege"
+
+ * [ranger-0.5.4-20170119-02]
+    - [BUG] - "generate sentry provider, adjustment 'update' to 'insert'"
+    - [JIRA:HADOOP-428] - "Ranger plug-in supports multiple RangerAdmin addresses"
+

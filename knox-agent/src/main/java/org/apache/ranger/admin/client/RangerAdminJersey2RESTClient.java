@@ -34,10 +34,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.security.AccessControlException;
 import org.apache.ranger.authorization.hadoop.config.RangerConfiguration;
-import org.apache.ranger.plugin.util.GrantRevokeRequest;
-import org.apache.ranger.plugin.util.RangerRESTUtils;
-import org.apache.ranger.plugin.util.RangerSslHelper;
-import org.apache.ranger.plugin.util.ServicePolicies;
+import org.apache.ranger.plugin.util.*;
 import org.glassfish.jersey.client.ClientProperties;
 
 import com.google.gson.Gson;
@@ -209,6 +206,11 @@ public class RangerAdminJersey2RESTClient implements RangerAdminClient {
 		if(LOG.isDebugEnabled()) {
 			LOG.debug("<== RangerAdminRESTClient.grantAccess(" + request + ")");
 		}
+	}
+
+	@Override
+	public void syncPolicys(GrantRevokeRequest request, HiveOperationType hiveOperationType) throws Exception {
+		LOG.warn("==> RangerAdminJersey2RESTClient.consistentRules not implement");
 	}
 
 	// We get date from the policy manager as unix long!  This deserializer exists to deal with it.  Remove this class once we start send date/time per RFC 3339

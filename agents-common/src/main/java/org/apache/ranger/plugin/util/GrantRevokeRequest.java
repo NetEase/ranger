@@ -58,12 +58,15 @@ public class GrantRevokeRequest implements Serializable {
 	private String              requestData                = null;
 	private String              sessionId                  = null;
 
-
 	public GrantRevokeRequest() {
 		this(null, null, null, null, null, null, null, null, null, null, null, null, null);
 	}
 
-	public GrantRevokeRequest(String grantor, Map<String, String> resource, Set<String> users, Set<String> groups, Set<String> accessTypes, Boolean delegateAdmin, Boolean enableAudit, Boolean replaceExistingPermissions, Boolean isRecursive, String clientIPAddress, String clientType, String requestData, String sessionId) {
+	public GrantRevokeRequest(String grantor, Map<String, String> resource, Set<String> users,
+														Set<String> groups, Set<String> accessTypes, Boolean delegateAdmin,
+														Boolean enableAudit, Boolean replaceExistingPermissions, Boolean isRecursive,
+														String clientIPAddress, String clientType, String requestData,
+														String sessionId) {
 		setGrantor(grantor);
 		setResource(resource);
 		setUsers(users);

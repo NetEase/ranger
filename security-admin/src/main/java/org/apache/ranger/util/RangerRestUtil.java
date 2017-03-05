@@ -272,11 +272,28 @@ public class RangerRestUtil {
 					String action = policyItemAccess.getType().equalsIgnoreCase("all")?"*":policyItemAccess.getType();
 					// server=server1->db=*->table=*->Column=*->action=create
 					StringBuffer sbRole = new StringBuffer();
-					sbRole.append("server=" + serviceName);
-					sbRole.append("->db=" + db);
-					sbRole.append("->table=" + table);
-					sbRole.append("->column=" + column);
-					sbRole.append("->action=" + action);
+					boolean hasCol = false, hasTbl = false;
+
+					if (false == action.equalsIgnoreCase("*")) {
+						if (action.equalsIgnoreCase("update")) {
+							// adjustment 'update' to 'insert'
+							action = "insert";
+						}
+						sbRole.insert(0, "->action=" + action);
+					}
+					if (false == column.equalsIgnoreCase("*")) {
+						sbRole.insert(0, "->column=" + column);
+						hasCol = true;
+					}
+					if (false == table.equalsIgnoreCase("*") || hasCol) {
+						sbRole.insert(0, "->table=" + table);
+						hasTbl = true;
+					}
+					if (false == db.equalsIgnoreCase("*") || hasTbl) {
+						sbRole.insert(0, "->db=" + db);
+					}
+					sbRole.insert(0, "server=" + serviceName);
+
 					if (action.equalsIgnoreCase("*")) {
 						providerList.clear();
 						providerList.add(sbRole.toString());
