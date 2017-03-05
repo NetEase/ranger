@@ -177,6 +177,13 @@
 			   WHERE obj.userId=:userId		   
 		</query>
 	</named-query>
+	
+	<named-query name="XXGroupUser.updateGroupNameByParentGroupId">
+		<query>UPDATE  XXGroupUser  obj
+			   SET obj.name=:name
+			   WHERE obj.parentGroupId=:parentGroupId		   
+		</query>
+	</named-query>
 
 	<named-query name="XXGroupUser.findByUserId">
 		<query>SELECT obj FROM XXGroupUser obj
