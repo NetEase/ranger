@@ -51,7 +51,6 @@ public class XXUserDao extends BaseDao<XXUser> {
 		return null;
 	}
 	
-	// add by hzlimin2
 	public XXUser findByUserId(Long id) {
 		if (id == null) {
 			logger.debug("id is empty");

@@ -183,7 +183,6 @@ public class XUserService extends XUserServiceBase<XXUser, VXUser> {
 		return vxUser;
 	}
 	
-	// add by hzlimin2
 	public VXUser updateXUserWithOutLogin(VXUser vxUser) {
 		XXUser xxUser = daoManager.getXXUser().findByUserId(vxUser.getId());
 		if (xxUser == null) {
