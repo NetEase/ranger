@@ -272,7 +272,6 @@ public class XUserREST {
 		return xUserMgr.createXUserWithOutLogin(vXUser);
 	}
 	
-	// add by hzlimin2
 	@POST
 	@Path("/users/update")
 	@Produces({ "application/xml", "application/json" })

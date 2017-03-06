@@ -536,7 +536,6 @@ public class XUserMgr extends XUserMgrBase {
 		return xUserService.createXUserWithOutLogin(vXUser);
 	}
 	
-	// add by hzlimin2
 	public VXUser updateXUserWithOutLogin(VXUser vXUser) {
 		checkAdminAccess();
 		return xUserService.updateXUserWithOutLogin(vXUser);
@@ -766,6 +765,10 @@ public class XUserMgr extends XUserMgrBase {
 				xGroup, "update");
 		xaBizUtil.createTrxLog(trxLogList);
 		vXGroup = (VXGroup) xGroupService.updateResource(vXGroup);
+		
+		//update group_name in table x_group_user
+		daoMgr.getXXGroupUser().updateGroupNameByParentGroupId(vXGroup.getId(), vXGroup.getName());
+		
 		return vXGroup;
 	}
 	public VXGroupUser updateXGroupUser(VXGroupUser vXGroupUser) {
