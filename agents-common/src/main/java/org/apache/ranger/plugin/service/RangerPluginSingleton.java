@@ -16,20 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.ranger.plugin.util;
+package org.apache.ranger.plugin.service;
 
-// fork package org.apache.hadoop.hive.ql.security.authorization.plugin.HiveOperationType;
-public enum HiveOperationType {
-  TYPE_INIT,
-  CREATEDATABASE,
-  DROPDATABASE,
-  CREATETABLE,
-  ALTERTABLE,
-  DROPTABLE,
-  ALTERTABLE_ADDPARTS,
-  ALTERTABLE_DROPPARTS,
-  ALTERTABLE_ALTERPARTITION;
-
-  private HiveOperationType() {
+public class RangerPluginSingleton {
+  private static class RangerBasePluginHolder {
+    private static final RangerBasePlugin INSTANCE = new RangerBasePlugin("", "");
+  }
+  private RangerPluginSingleton (){}
+  public static final RangerBasePlugin getInstance() {
+    return RangerBasePluginHolder.INSTANCE;
   }
 }

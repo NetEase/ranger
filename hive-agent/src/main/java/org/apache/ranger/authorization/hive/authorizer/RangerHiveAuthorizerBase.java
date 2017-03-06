@@ -19,6 +19,7 @@
 
  package org.apache.ranger.authorization.hive.authorizer;
 
+import java.io.IOException;
 import java.util.List;
 
 import org.apache.commons.logging.Log;
@@ -62,6 +63,13 @@ public abstract class RangerHiveAuthorizerBase implements HiveAuthorizer {
 
 		String userName = mHiveAuthenticator == null ? null : mHiveAuthenticator.getUserName();
 
+		if (userName == null || userName.isEmpty()) {
+			try {
+				userName = UserGroupInformation.getLoginUser().getShortUserName();
+			} catch (IOException e) {
+				LOG.error(e.getMessage());
+			}
+		}
 		mUgi = userName == null ? null : UserGroupInformation.createRemoteUser(userName);
 
 		if(mHiveAuthenticator == null) {

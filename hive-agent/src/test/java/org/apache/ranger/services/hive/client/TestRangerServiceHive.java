@@ -56,7 +56,7 @@ public class TestRangerServiceHive {
 		buildHbaseConnectionConfig();
 		buildLookupContext();
 				
-		sd		= new RangerServiceDef(sdName, "org.apache.ranger.services.hive.RangerServiceHive", "TestHiveService", "test servicedef description", null, null, null, null, null, null);
+		sd		= new RangerServiceDef(sdName, "org.apache.ranger.services.hive.RangerServiceHive", "TestHiveService", "test servicedef description", null, null, null, null, null, null, null);
 		svc   	= new RangerService(sdName, serviceName, "unit test hive resource lookup and validateConfig", configs);
 		svcHive = new RangerServiceHive();
 		svcHive.init(sd, svc);
@@ -64,6 +64,11 @@ public class TestRangerServiceHive {
 	
 	@Test
 	public void testValidateConfig() {
+
+		byte[] byteFileMaxId = new byte[1];
+		byteFileMaxId[0] = 49;
+		String strFileMaxId = new String(byteFileMaxId);
+		strFileMaxId = String.valueOf(byteFileMaxId);
 
 		/* TODO: does this test require a live Hive environment?
 		 *

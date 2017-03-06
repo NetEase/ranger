@@ -80,10 +80,16 @@ public class RangerBasePlugin {
 	public String getAppId() {
 		return appId;
 	}
-
 	public String getServiceName() {
 		return serviceName;
 	}
+
+	public void init(String serviceType, String appId) {
+		this.serviceType = serviceType;
+		this.appId       = appId;
+		init();
+	}
+
 
 	public void init() {
 		cleanup();

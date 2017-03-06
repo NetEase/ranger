@@ -16,7 +16,6 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-
 package org.apache.ranger.binding.metastore;
 
 import org.apache.commons.lang.StringUtils;
@@ -27,11 +26,14 @@ import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.metastore.MetaStoreEventListener;
 import org.apache.hadoop.hive.metastore.api.Database;
 import org.apache.hadoop.hive.metastore.api.MetaException;
+import org.apache.hadoop.hive.metastore.api.Partition;
 import org.apache.hadoop.hive.metastore.api.Table;
 import org.apache.hadoop.hive.metastore.events.*;
 import org.apache.hadoop.hive.ql.security.authorization.plugin.*;
+import org.apache.hadoop.hive.ql.session.SessionState;
 import org.apache.hadoop.hive.shims.Utils;
 import org.apache.hadoop.security.UserGroupInformation;
+import org.apache.ranger.admin.client.RangerAdminRESTClient;
 import org.apache.ranger.authorization.hadoop.config.RangerConfiguration;
 import org.apache.ranger.authorization.hadoop.constants.RangerHadoopConstants;
 import org.apache.ranger.authorization.hive.authorizer.*;
@@ -45,8 +47,8 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.*;
 
-public class RangerMetastoreEventListener extends MetaStoreEventListener {
-  private static final Log LOGGER = LogFactory.getLog(RangerMetastoreEventListener.class);
+public class SyncMetastoreEventListener extends MetaStoreEventListener {
+  private static final Log LOGGER = LogFactory.getLog(SyncMetastoreEventListener.class);
   private static final char COLUMN_SEP = ',';
 
   private RangerBasePlugin rangerPlugin = null;
@@ -55,7 +57,7 @@ public class RangerMetastoreEventListener extends MetaStoreEventListener {
   private String                    appId        = "metastore";
   private String                    serviceName  = null;
 
-  public RangerMetastoreEventListener(Configuration config) {
+  public SyncMetastoreEventListener(Configuration config) {
     super(config);
 
     if (!(config instanceof HiveConf)) {
@@ -162,6 +164,68 @@ public class RangerMetastoreEventListener extends MetaStoreEventListener {
     syncHdfsPolicy(tableEvent, HiveOperationType.ALTERTABLE);
   }
 
+  @Override
+  public void onAddPartition(AddPartitionEvent partitionEvent) throws MetaException {
+    // don't sync path if the operation has failed
+    if (!partitionEvent.getStatus()) {
+      LOGGER.debug("Skip syncing path with Sentry server for onAddPartition event," +
+          " since the operation failed. \n");
+      return;
+    }
+
+    if (partitionEvent != null && partitionEvent.getPartitionIterator() != null) {
+      Iterator<Partition> it = partitionEvent.getPartitionIterator();
+      while (it.hasNext()) {
+        Partition part = it.next();
+        if (part.getSd() != null && part.getSd().getLocation() != null) {
+          String authzObj = part.getDbName() + "." + part.getTableName();
+          String path = part.getSd().getLocation();
+
+        }
+      }
+    }
+  }
+
+  @Override
+  public void onAlterPartition(AlterPartitionEvent partitionEvent) throws MetaException {
+    // don't sync path if the operation has failed
+    if (!partitionEvent.getStatus()) {
+      LOGGER.debug("Skip syncing path with Sentry server for onDropPartition event," +
+          " since the operation failed. \n");
+      return;
+    }
+
+    if (partitionEvent != null && partitionEvent.getNewPartition() != null) {
+      String authzObj = partitionEvent.getTable().getDbName() + "."
+          + partitionEvent.getTable().getTableName();
+      String location = partitionEvent.getOldPartition().getSd().getLocation();
+      String newLocation = partitionEvent.getNewPartition().getSd().getLocation();
+    }
+  }
+
+  @Override
+  public void onDropPartition(DropPartitionEvent partitionEvent) throws MetaException {
+    // don't sync path if the operation has failed
+    if (!partitionEvent.getStatus()) {
+      LOGGER.debug("Skip syncing path with Sentry server for onDropPartition event," +
+          " since the operation failed. \n");
+      return;
+    }
+
+    if (partitionEvent != null && partitionEvent.getPartitionIterator() != null) {
+      String authzObj = partitionEvent.getTable().getDbName() + "."
+          + partitionEvent.getTable().getTableName();
+      Iterator<Partition> it = partitionEvent.getPartitionIterator();
+      while (it.hasNext()) {
+        Partition part = it.next();
+        if (part.getSd() != null && part.getSd().getLocation() != null) {
+          String path = part.getSd().getLocation();
+
+        }
+      }
+    }
+  }
+
   public void syncHdfsPolicy(ListenerEvent tableEvent, HiveOperationType hiveOperationType) throws MetaException {
     UserGroupInformation ugi;
     try {
@@ -184,8 +248,7 @@ public class RangerMetastoreEventListener extends MetaStoreEventListener {
       hivePrincipals.add(hivePrincipal);
     }
 
-    HivePrivilegeObject.HivePrivilegeObjectType hivePrivilegeObjectType
-        = HivePrivilegeObject.HivePrivilegeObjectType.TABLE_OR_VIEW;
+    HivePrivilegeObject.HivePrivilegeObjectType hivePrivilegeObjectType = HivePrivilegeObject.HivePrivilegeObjectType.TABLE_OR_VIEW;
     String dbName = "", objName = "";
     String newDbName = null, newObjName = null;
     String location = "";
@@ -261,7 +324,7 @@ public class RangerMetastoreEventListener extends MetaStoreEventListener {
       HivePrivilege hivePrivilege = new HivePrivilege(hiveAccessType.name(), (List)null);
       List<HivePrivilege> hivePrivileges = new ArrayList<HivePrivilege>();
       hivePrivileges.add(hivePrivilege);
-      SyncHdfsPolicyRequest request  = createSyncHdfsPolicyRequest(resource, newResource, hivePrincipals,
+      SyncHdfsPolicyRequest request  = createSyncPolicyRequest(resource, newResource, hivePrincipals,
           hivePrivileges, grantorPrincipal, location, newLocation);
 
       if(LOGGER.isDebugEnabled()) {
@@ -276,7 +339,7 @@ public class RangerMetastoreEventListener extends MetaStoreEventListener {
     }
   }
 
-  private SyncHdfsPolicyRequest createSyncHdfsPolicyRequest(RangerHiveResource  resource,
+  private SyncHdfsPolicyRequest createSyncPolicyRequest(RangerHiveResource  resource,
                                                     RangerHiveResource  newResource,
                                                     List<HivePrincipal> hivePrincipals,
                                                     List<HivePrivilege> hivePrivileges,
@@ -290,13 +353,13 @@ public class RangerMetastoreEventListener extends MetaStoreEventListener {
             || resource.getObjectType() == HiveObjectType.VIEW
             || resource.getObjectType() == HiveObjectType.COLUMN
             || resource.getObjectType() == HiveObjectType.PARTITION )) {
-      throw new MetaException("createSyncHdfsPolicyRequest: unexpected object type '"
+      throw new MetaException("createSyncPolicyRequest: unexpected object type '"
           + (resource == null ? null : resource.getObjectType().name()));
     }
 
     SyncHdfsPolicyRequest ret = new SyncHdfsPolicyRequest();
 
-    ret.setGrantor(grantorPrincipal.getName());
+    ret.setGrantor(getGrantorUsername(grantorPrincipal));
     ret.setDelegateAdmin(Boolean.TRUE);
     ret.setEnableAudit(Boolean.TRUE);
     ret.setReplaceExistingPermissions(Boolean.FALSE);
@@ -360,11 +423,52 @@ public class RangerMetastoreEventListener extends MetaStoreEventListener {
           StringUtils.equalsIgnoreCase(privName, HiveAccessType.UPDATE.name())) {
         ret.getAccessTypes().add(privName.toLowerCase());
       } else {
-        LOGGER.warn("createSyncHdfsPolicyRequest: unexpected privilege type '" + privName + "'. Ignored");
+        LOGGER.warn("createSyncPolicyRequest: unexpected privilege type '" + privName + "'. Ignored");
       }
     }
 
     return ret;
+  }
+
+  private String getGrantorUsername(HivePrincipal grantorPrincipal) {
+    String grantor = grantorPrincipal != null ? grantorPrincipal.getName() : null;
+
+    /*
+    if(StringUtil.isEmpty(grantor)) {
+      UserGroupInformation ugi = this.getCurrentUserGroupInfo();
+
+      grantor = ugi != null ? ugi.getShortUserName() : null;
+    }
+    */
+
+    return grantor;
+  }
+
+  private void auditConsistentRules(GrantRevokeRequest request, String action, boolean isSuccess,
+                                    RangerAccessResultProcessor resultProcessor) {
+    if(request != null && resultProcessor != null) {
+      RangerHiveAccessRequest accessRequest = new RangerHiveAccessRequest();
+      RangerAccessResourceImpl rangerAccessResource = new RangerAccessResourceImpl(request.getResource());
+      rangerAccessResource.setServiceDef(rangerPlugin.getServiceDef());
+      accessRequest.setResource(rangerAccessResource);
+      accessRequest.setUser(request.getGrantor());
+      accessRequest.setAccessType(action);
+      accessRequest.setAction(action);
+      accessRequest.setClientIPAddress(request.getClientIPAddress());
+      accessRequest.setClientType(request.getClientType());
+      accessRequest.setRequestData(request.getRequestData());
+      accessRequest.setSessionId(request.getSessionId());
+      accessRequest.getResource().getServiceDef();
+
+      RangerAccessResult accessResult = new RangerAccessResult(serviceName, rangerPlugin.getServiceDef(), accessRequest);
+      accessResult.setIsAllowed(isSuccess);
+      accessResult.setIsAudited(true);
+      accessResult.setReason("consistent rule");
+      if(! isSuccess) {
+        accessResult.setPolicyId(-1);
+      }
+      resultProcessor.processResult(accessResult);
+    }
   }
 
   private RangerHiveResource getHiveResource(HiveOperationType hiveOpType, HivePrivilegeObject hiveObj) {

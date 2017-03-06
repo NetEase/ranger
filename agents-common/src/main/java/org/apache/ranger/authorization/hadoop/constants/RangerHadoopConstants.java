@@ -79,7 +79,7 @@ public class RangerHadoopConstants {
 	//
 	// Ranger hive operation sync hdfs acl
 	//
-	public static final String SYNC_CREATE_WITH_POLICY_STORE			= "sentry.hive.sync.create";
-	public static final String SYNC_DROP_WITH_POLICY_STORE				= "ranger.hive.sync.drop";
-	public static final String SYNC_ALTER_WITH_POLICY_STORE				= "ranger.hive.sync.alter";
+	public static final String SYNC_CREATE_WITH_POLICY_STORE			= "ranger.sync.metastore.create";
+	public static final String SYNC_DROP_WITH_POLICY_STORE				= "ranger.sync.metastore.drop";
+	public static final String SYNC_ALTER_WITH_POLICY_STORE				= "ranger.sync.metastore.alter";
 }
