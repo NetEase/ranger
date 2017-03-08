@@ -1,6 +1,16 @@
 Release Notes - Ranger - Version 0.5.4
 
 ** HISTORY
+
+ * [ranger-0.5.4-0.2.0]
+   - match mammut-v4.5
+
+ * [ranger-0.5.4-0.1.0]
+   - match mammut-v4.3
+
+ * [sync meta change to zookeeper]
+    thrift -gen java ~/NetEase/ne-ranger/hive-agent/src/main/thrift/MetastoreUpdater.thrift
+
  * [ranger-0.5.4-2017012001]
     - [JIRA:HADOOP-433] - "create/drop tabele grant reovke privilege"
 

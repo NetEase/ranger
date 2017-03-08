@@ -21,10 +21,7 @@ package org.apache.ranger.services.hive.client;
 
 import static org.junit.Assert.*;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import org.apache.ranger.plugin.client.HadoopException;
 import org.apache.ranger.plugin.model.RangerService;
@@ -65,10 +62,10 @@ public class TestRangerServiceHive {
 	@Test
 	public void testValidateConfig() {
 
-		byte[] byteFileMaxId = new byte[1];
-		byteFileMaxId[0] = 49;
-		String strFileMaxId = new String(byteFileMaxId);
-		strFileMaxId = String.valueOf(byteFileMaxId);
+		Calendar calendar = Calendar.getInstance();
+		calendar.setTimeInMillis(1488770702838L);
+		Date d = calendar.getTime();
+		int day = d.getDay();
 
 		/* TODO: does this test require a live Hive environment?
 		 *

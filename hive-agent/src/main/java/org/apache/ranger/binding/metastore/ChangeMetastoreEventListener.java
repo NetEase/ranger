@@ -24,6 +24,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.framework.api.ACLProvider;
+import org.apache.curator.framework.api.GetChildrenBuilder;
 import org.apache.curator.framework.api.transaction.CuratorTransaction;
 import org.apache.curator.framework.api.transaction.CuratorTransactionFinal;
 import org.apache.curator.framework.recipes.locks.InterProcessMutex;
@@ -40,7 +41,6 @@ import org.apache.hadoop.hive.metastore.api.Partition;
 import org.apache.hadoop.hive.metastore.events.*;
 import org.apache.hadoop.hive.shims.Utils;
 import org.apache.hadoop.security.UserGroupInformation;
-import org.apache.ranger.authorization.hadoop.constants.RangerHadoopConstants;
 import org.apache.ranger.binding.metastore.thrift.*;
 import org.apache.thrift.transport.*;
 import org.apache.thrift.protocol.TProtocol;
@@ -52,9 +52,7 @@ import org.datanucleus.util.StringUtils;
 
 import java.io.IOException;
 import java.net.InetAddress;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
 
@@ -212,6 +210,30 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
       InterProcessMutex lock = new InterProcessMutex(zkClient, zkPath_ + DISTRIBUTED_LOCK_FILE_NAME);
       lock.acquire(3, TimeUnit.SECONDS);
       lockLocal.set(lock);
+
+      // delete expired data 3 days ago
+      GetChildrenBuilder childrenBuilder = zkClient.getChildren();
+      List<String> children = childrenBuilder.forPath(zkPath_);
+      Calendar calendar = Calendar.getInstance();
+      calendar.setTime(new Date());
+      calendar.set(Calendar.DATE, calendar.get(Calendar.DATE) - 2);
+      if(calendar.getTime().getMinutes()%10 == 0) {
+        // execute once every ten minutes
+        for (String child : children) {
+          child = "/" + child;
+          if (child.equalsIgnoreCase(DISTRIBUTED_LOCK_FILE_NAME)
+              || child.equalsIgnoreCase(MAX_ID_FILE_NAME)) {
+            // do not delete maxid and lock file
+            continue;
+          }
+          String childPath = zkPath_ + child;
+          Stat stat = zkClient.checkExists().forPath(childPath);
+          if (null != stat && (stat.getCtime() - calendar.getTimeInMillis()) < 0) {
+            zkClient.delete().forPath(childPath);
+          }
+        }
+      }
+
       Stat stat = zkClient.checkExists().forPath(zkPath_ + MAX_ID_FILE_NAME);
       Long newMaxFileId = 1L;
       if (null != stat) {
