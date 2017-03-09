@@ -70,7 +70,7 @@ public class RangerHadoopConstants {
 	
 	public static final String AUDITLOG_EMPTY_STRING 					= "" ;
 	
-	public static final String AUDITLOG_HDFS_EXCLUDE_LIST_PROP 			= "xasecure.auditlog.hdfs.excludeusers" ;
+	public static final String AUDITLOG_HDFS_EXCLUDE_LIST_PROP 		= "xasecure.auditlog.hdfs.excludeusers" ;
 	public static final String AUDITLOG_REPOSITORY_NAME_PROP 			= "xasecure.audit.repository.name" ;
 	public static final String AUDITLOG_IS_ENABLED_PROP 			    = "xasecure.audit.is.enabled" ;
 	
@@ -79,7 +79,12 @@ public class RangerHadoopConstants {
 	//
 	// Ranger hive operation sync hdfs acl
 	//
-	public static final String SYNC_CREATE_WITH_POLICY_STORE			= "ranger.sync.metastore.create";
-	public static final String SYNC_DROP_WITH_POLICY_STORE				= "ranger.sync.metastore.drop";
-	public static final String SYNC_ALTER_WITH_POLICY_STORE				= "ranger.sync.metastore.alter";
+	public static final String SYNC_CREATE_WITH_POLICY_STORE			= "ranger.plugin.hive.sync.metastore.create";
+	public static final String SYNC_DROP_WITH_POLICY_STORE				= "ranger.plugin.hive.sync.metastore.drop";
+	public static final String SYNC_ALTER_WITH_POLICY_STORE				= "ranger.plugin.hive.sync.metastore.alter";
+
+	public static final String RANGER_ZK_QUORUM                   = "ranger.zookeeper.quorum";
+	public static final String RANGER_ZK_RETRYCNT                 = "ranger.zookeeper.retry.count";
+	public static final String RANGER_ZK_TIMEOUT                  = "ranger.zookeeper.timeoutMs";
+	public static final String RANGER_ZK_MS_CHANGELOG_PATH        = "ranger.zookeeper.metastore.changelog.path";
 }
