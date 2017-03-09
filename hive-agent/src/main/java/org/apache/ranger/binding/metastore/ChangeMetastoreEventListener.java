@@ -41,6 +41,8 @@ import org.apache.hadoop.hive.metastore.api.Partition;
 import org.apache.hadoop.hive.metastore.events.*;
 import org.apache.hadoop.hive.shims.Utils;
 import org.apache.hadoop.security.UserGroupInformation;
+import org.apache.ranger.authorization.hadoop.config.RangerConfiguration;
+import org.apache.ranger.authorization.hadoop.constants.RangerHadoopConstants;
 import org.apache.ranger.binding.metastore.thrift.*;
 import org.apache.thrift.transport.*;
 import org.apache.thrift.protocol.TProtocol;
@@ -78,19 +80,15 @@ class zkListener implements ConnectionStateListener {
 public class ChangeMetastoreEventListener extends MetaStoreEventListener {
   private static final Log LOGGER = LogFactory.getLog(ChangeMetastoreEventListener.class);
 
-  private final String METASTOREZKQUORUM = "hive.metastore.zookeeper.quorum";
-  private final String METASTOREZKRETRYCNT = "hive.metastore.zookeeper.retry.count";
-  private final String METASTOREZKTIMEOUT = "hive.metastore.zookeeper.timeout";
-
   protected static CuratorFramework zkClient;
   private static zkListener listener = null;
   private static ThreadLocal<InterProcessMutex> lockLocal = new ThreadLocal<InterProcessMutex>();
 
-  protected HiveConf conf;
+//  protected HiveConf conf;
   private static String zkHostPort_ = "";
   private static String zkPath_ = "/hive-metastore-changelog";
   private final static String MAX_ID_FILE_NAME = "/maxid";
-  private final static String DISTRIBUTED_LOCK_FILE_NAME = "/lock";
+  private final static String LOCK_RELATIVE_PATH = "/lock";
 
   private final MetaStoreUpdateServiceVersion MetaStore_Update_Service_Version = MetaStoreUpdateServiceVersion.V1;
   private ConcurrentLinkedQueue<TUpdateDelta> tUpdateDeltaQueue_ = new ConcurrentLinkedQueue<TUpdateDelta>();;
@@ -100,16 +98,20 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
 
   public ChangeMetastoreEventListener(Configuration config) {
     super(config);
-    conf = new HiveConf(config, this.getClass());
+    HiveConf hiveConf = new HiveConf(config, this.getClass());
 
-    zkHostPort_ = config.get(METASTOREZKQUORUM);
-    Preconditions.checkNotNull(conf.get(METASTOREZKQUORUM), METASTOREZKQUORUM + " not config");
+    RangerConfiguration.getInstance().addResourcesForServiceType("hive");
+    Preconditions.checkNotNull(RangerConfiguration.getInstance().get(RangerHadoopConstants.RANGER_ZK_QUORUM),
+        RangerHadoopConstants.RANGER_ZK_QUORUM + " not config");
+    Preconditions.checkNotNull(RangerConfiguration.getInstance().get(RangerHadoopConstants.RANGER_ZK_MS_CHANGELOG_PATH),
+        RangerHadoopConstants.RANGER_ZK_MS_CHANGELOG_PATH + " not config");
+    zkHostPort_ = RangerConfiguration.getInstance().get(RangerHadoopConstants.RANGER_ZK_MS_CHANGELOG_PATH);
 
     try {
       InetAddress inetAddress = InetAddress.getLocalHost();
       hostName_ = inetAddress.getHostAddress();
-      setUpZooKeeperAuth(conf);
-      getSingletonClient(conf);
+      setUpZooKeeperAuth(hiveConf);
+      getSingletonClient();
     } catch (IOException e) {
       LOGGER.error(e.getMessage());
     } catch (Exception e) {
@@ -152,17 +154,18 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
     }
   };
 
-  private void getSingletonClient(HiveConf conf) throws Exception {
+  private void getSingletonClient() throws Exception {
     if (zkClient == null) {
       synchronized (ChangeMetastoreEventListener.class) {
         if (zkClient == null) {
           zkClient =
               CuratorFrameworkFactory
                   .builder()
-                  .connectString(conf.get(METASTOREZKQUORUM))
+                  .connectString(RangerConfiguration.getInstance().get(RangerHadoopConstants.RANGER_ZK_QUORUM))
                   .aclProvider(zooKeeperAclProvider)
-                  .retryPolicy(new RetryNTimes(conf.getInt(METASTOREZKRETRYCNT, 3),
-                          conf.getInt(METASTOREZKTIMEOUT, 3000)))
+                  .retryPolicy(
+                      new RetryNTimes(RangerConfiguration.getInstance().getInt(RangerHadoopConstants.RANGER_ZK_RETRYCNT, 3),
+                      RangerConfiguration.getInstance().getInt(RangerHadoopConstants.RANGER_ZK_TIMEOUT, 3000)))
                   .build();
           listener = new zkListener();
           zkClient.getConnectionStateListenable().addListener(listener);
@@ -207,7 +210,7 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
       return;
 
     try {
-      InterProcessMutex lock = new InterProcessMutex(zkClient, zkPath_ + DISTRIBUTED_LOCK_FILE_NAME);
+      InterProcessMutex lock = new InterProcessMutex(zkClient, zkPath_ + LOCK_RELATIVE_PATH);
       lock.acquire(3, TimeUnit.SECONDS);
       lockLocal.set(lock);
 
@@ -221,7 +224,7 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
         // execute once every ten minutes
         for (String child : children) {
           child = "/" + child;
-          if (child.equalsIgnoreCase(DISTRIBUTED_LOCK_FILE_NAME)
+          if (child.equalsIgnoreCase(LOCK_RELATIVE_PATH)
               || child.equalsIgnoreCase(MAX_ID_FILE_NAME)) {
             // do not delete maxid and lock file
             continue;

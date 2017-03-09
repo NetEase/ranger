@@ -86,4 +86,34 @@
 			RangerRestClient read Timeout in Milli Seconds
 		</description>
 	</property>
+
+	<property>
+		<name>ranger.plugin.hive.sync.metastore.create</name>
+		<value>true</value>
+	</property>
+	<property>
+		<name>ranger.plugin.hive.sync.metastore.drop</name>
+		<value>true</value>
+	</property>
+	<property>
+		<name>ranger.plugin.hive.sync.metastore.alter</name>
+		<value>true</value>
+	</property>
+
+	<property>
+		<name>ranger.zookeeper.quorum</name>
+		<value></value>
+	</property>
+	<property>
+		<name>ranger.zookeeper.retry.count</name>
+		<value></value>
+	</property>
+	<property>
+		<name>ranger.zookeeper.timeoutMs</name>
+		<value></value>
+	</property>
+	<property>
+		<name>ranger.zookeeper.metastore.changelog.path</name>
+		<value></value>
+	</property>
 </configuration>
