@@ -30,10 +30,10 @@ public class RangerHadoopConstants {
 	public static final String HDFS_ROOT_FOLDER_PATH = "/";
 	
 	public static final String  HIVE_UPDATE_RANGER_POLICIES_ON_GRANT_REVOKE_PROP 	     = "xasecure.hive.update.xapolicies.on.grant.revoke" ;
-	public static final boolean HIVE_UPDATE_RANGER_POLICIES_ON_GRANT_REVOKE_DEFAULT_VALUE = true;
+	public static final boolean HIVE_UPDATE_RANGER_POLICIES_ON_GRANT_REVOKE_DEFAULT_VALUE = false;
 
 	public static final String  HBASE_UPDATE_RANGER_POLICIES_ON_GRANT_REVOKE_PROP 	     = "xasecure.hbase.update.xapolicies.on.grant.revoke" ;
-	public static final boolean HBASE_UPDATE_RANGER_POLICIES_ON_GRANT_REVOKE_DEFAULT_VALUE = true;
+	public static final boolean HBASE_UPDATE_RANGER_POLICIES_ON_GRANT_REVOKE_DEFAULT_VALUE = false;
 	
 	public static final String KNOX_ACCESS_VERIFIER_CLASS_NAME_PROP 	= "knox.authorization.verifier.classname" ;
 	public static final String KNOX_ACCESS_VERIFIER_CLASS_NAME_DEFAULT_VALUE = "org.apache.ranger.pdp.knox.RangerAuthorizer" ;
@@ -87,4 +87,6 @@ public class RangerHadoopConstants {
 	public static final String RANGER_ZK_RETRYCNT                 = "ranger.zookeeper.retry.count";
 	public static final String RANGER_ZK_TIMEOUT                  = "ranger.zookeeper.timeoutMs";
 	public static final String RANGER_ZK_MS_CHANGELOG_PATH        = "ranger.zookeeper.metastore.changelog.path";
+
+	public static final String CHECK_PRIVILEGE_URI_ACCESS_ALLOW   = "check.privilege.uri.access.allow";
 }

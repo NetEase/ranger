@@ -249,9 +249,9 @@ public class RangerHiveAuthorizer extends RangerHiveAuthorizerBase {
 						String   path       = hiveObj.getObjectName();
 						FsAction permission = FsAction.READ;
 
-		                if(!isURIAccessAllowed(user, groups, permission, path, getHiveConf())) {
-		    				throw new HiveAccessControlException(String.format("Permission denied: user [%s] does not have [%s] privilege on [%s]", user, permission.name(), path));
-		                }
+						if(!isURIAccessAllowed(user, groups, permission, path, getHiveConf())) {
+							throw new HiveAccessControlException(String.format("Permission denied: user [%s] does not have [%s] privilege on [%s]", user, permission.name(), path));
+						}
 
 						continue;
 					}
@@ -282,9 +282,9 @@ public class RangerHiveAuthorizer extends RangerHiveAuthorizerBase {
 						String   path       = hiveObj.getObjectName();
 						FsAction permission = FsAction.WRITE;
 
-		                if(!isURIAccessAllowed(user, groups, permission, path, getHiveConf())) {
-		    				throw new HiveAccessControlException(String.format("Permission denied: user [%s] does not have [%s] privilege on [%s]", user, permission.name(), path));
-		                }
+						if(!isURIAccessAllowed(user, groups, permission, path, getHiveConf())) {
+							throw new HiveAccessControlException(String.format("Permission denied: user [%s] does not have [%s] privilege on [%s]", user, permission.name(), path));
+						}
 
 						continue;
 					}
@@ -861,40 +861,41 @@ public class RangerHiveAuthorizer extends RangerHiveAuthorizerBase {
 		return accessType;
 	}
 
-    private boolean isURIAccessAllowed(String userName, Set<String> groups, FsAction action, String uri, HiveConf conf) {
-        boolean ret = false;
+	private boolean isURIAccessAllowed(String userName, Set<String> groups, FsAction action, String uri, HiveConf conf) {
+		boolean ret = false;
+		boolean checkUirAccessAllow = RangerConfiguration.getInstance().getBoolean(RangerHadoopConstants.CHECK_PRIVILEGE_URI_ACCESS_ALLOW, false);
 
-        if(action == FsAction.NONE) {
-            ret = true;
-        } else {
-            try {
-                Path       filePath   = new Path(uri);
-                FileSystem fs         = FileSystem.get(filePath.toUri(), conf);
-                // Path       path       = FileUtils.getPathOrParentThatExists(fs, filePath);
-                // FileStatus fileStatus = fs.getFileStatus(path);
-                FileStatus fileStatus = FileUtils.getPathOrParentThatExists(fs, filePath);
+		if(false == checkUirAccessAllow || action == FsAction.NONE) {
+				ret = true;
+		} else {
+			try {
+				Path filePath = new Path(uri);
+				FileSystem fs = FileSystem.get(filePath.toUri(), conf);
+				// Path       path       = FileUtils.getPathOrParentThatExists(fs, filePath);
+				// FileStatus fileStatus = fs.getFileStatus(path);
+				FileStatus fileStatus = FileUtils.getPathOrParentThatExists(fs, filePath);
 
-                if (FileUtils.isOwnerOfFileHierarchy(fs, fileStatus, userName)) {
-                    ret = true;
-                } else {
-                    ret = FileUtils.isActionPermittedForFileHierarchy(fs, fileStatus, userName, action);
-                }
-            } catch(Exception excp) {
-                LOG.error("Error getting permissions for " + uri, excp);
-            }
-        }
+				if (FileUtils.isOwnerOfFileHierarchy(fs, fileStatus, userName)) {
+						ret = true;
+				} else {
+						ret = FileUtils.isActionPermittedForFileHierarchy(fs, fileStatus, userName, action);
+				}
+			} catch(Exception excp) {
+				LOG.error("Error getting permissions for " + uri, excp);
+			}
+		}
 
-        return ret;
-    }
+		return ret;
+	}
 
 	private void handleDfsCommand(HiveOperationType         hiveOpType,
-								  List<HivePrivilegeObject> inputHObjs,
-							      List<HivePrivilegeObject> outputHObjs,
-							      HiveAuthzContext          context,
-							      HiveAuthzSessionContext   sessionContext,
-								  String                    user,
-								  Set<String>               groups,
-								  RangerHiveAuditHandler    auditHandler)
+																List<HivePrivilegeObject> inputHObjs,
+																List<HivePrivilegeObject> outputHObjs,
+																HiveAuthzContext          context,
+																HiveAuthzSessionContext   sessionContext,
+																String                    user,
+																Set<String>               groups,
+																RangerHiveAuditHandler    auditHandler)
 	      throws HiveAuthzPluginException, HiveAccessControlException {
 
 		String dfsCommandParams = null;
