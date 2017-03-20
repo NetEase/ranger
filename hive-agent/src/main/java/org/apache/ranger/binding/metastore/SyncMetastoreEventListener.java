@@ -30,10 +30,8 @@ import org.apache.hadoop.hive.metastore.api.Partition;
 import org.apache.hadoop.hive.metastore.api.Table;
 import org.apache.hadoop.hive.metastore.events.*;
 import org.apache.hadoop.hive.ql.security.authorization.plugin.*;
-import org.apache.hadoop.hive.ql.session.SessionState;
 import org.apache.hadoop.hive.shims.Utils;
 import org.apache.hadoop.security.UserGroupInformation;
-import org.apache.ranger.admin.client.RangerAdminRESTClient;
 import org.apache.ranger.authorization.hadoop.config.RangerConfiguration;
 import org.apache.ranger.authorization.hadoop.constants.RangerHadoopConstants;
 import org.apache.ranger.authorization.hive.authorizer.*;
@@ -91,7 +89,7 @@ public class SyncMetastoreEventListener extends MetaStoreEventListener {
       return;
     }
 
-    syncHdfsPolicy(dbEvent, HiveOperationType.CREATEDATABASE);
+    synchronizePolicy(dbEvent, HiveOperationType.CREATEDATABASE);
   }
 
   @Override
@@ -107,7 +105,7 @@ public class SyncMetastoreEventListener extends MetaStoreEventListener {
       return;
     }
 
-    syncHdfsPolicy(dbEvent, HiveOperationType.DROPDATABASE);
+    synchronizePolicy(dbEvent, HiveOperationType.DROPDATABASE);
   }
 
   @Override
@@ -124,7 +122,7 @@ public class SyncMetastoreEventListener extends MetaStoreEventListener {
       return;
     }
 
-    syncHdfsPolicy(tableEvent, HiveOperationType.CREATETABLE);
+    synchronizePolicy(tableEvent, HiveOperationType.CREATETABLE);
   }
 
   @Override
@@ -141,7 +139,7 @@ public class SyncMetastoreEventListener extends MetaStoreEventListener {
       return;
     }
 
-    syncHdfsPolicy(tableEvent, HiveOperationType.DROPTABLE);
+    synchronizePolicy(tableEvent, HiveOperationType.DROPTABLE);
   }
 
   /**
@@ -161,7 +159,7 @@ public class SyncMetastoreEventListener extends MetaStoreEventListener {
       return;
     }
 
-    syncHdfsPolicy(tableEvent, HiveOperationType.ALTERTABLE);
+    synchronizePolicy(tableEvent, HiveOperationType.ALTERTABLE);
   }
 
   @Override
@@ -226,7 +224,7 @@ public class SyncMetastoreEventListener extends MetaStoreEventListener {
     }
   }
 
-  public void syncHdfsPolicy(ListenerEvent tableEvent, HiveOperationType hiveOperationType) throws MetaException {
+  public void synchronizePolicy(ListenerEvent tableEvent, HiveOperationType hiveOperationType) throws MetaException {
     UserGroupInformation ugi;
     try {
       ugi = Utils.getUGI();
@@ -324,7 +322,7 @@ public class SyncMetastoreEventListener extends MetaStoreEventListener {
       HivePrivilege hivePrivilege = new HivePrivilege(hiveAccessType.name(), (List)null);
       List<HivePrivilege> hivePrivileges = new ArrayList<HivePrivilege>();
       hivePrivileges.add(hivePrivilege);
-      SyncHdfsPolicyRequest request  = createSyncPolicyRequest(resource, newResource, hivePrincipals,
+      SynchronizeRequest request  = createSyncPolicyRequest(resource, newResource, hivePrincipals,
           hivePrivileges, grantorPrincipal, location, newLocation);
 
       if(LOGGER.isDebugEnabled()) {
@@ -339,7 +337,7 @@ public class SyncMetastoreEventListener extends MetaStoreEventListener {
     }
   }
 
-  private SyncHdfsPolicyRequest createSyncPolicyRequest(RangerHiveResource  resource,
+  private SynchronizeRequest createSyncPolicyRequest(RangerHiveResource  resource,
                                                     RangerHiveResource  newResource,
                                                     List<HivePrincipal> hivePrincipals,
                                                     List<HivePrivilege> hivePrivileges,
@@ -357,7 +355,7 @@ public class SyncMetastoreEventListener extends MetaStoreEventListener {
           + (resource == null ? null : resource.getObjectType().name()));
     }
 
-    SyncHdfsPolicyRequest ret = new SyncHdfsPolicyRequest();
+    SynchronizeRequest ret = new SynchronizeRequest();
 
     ret.setGrantor(getGrantorUsername(grantorPrincipal));
     ret.setDelegateAdmin(Boolean.TRUE);

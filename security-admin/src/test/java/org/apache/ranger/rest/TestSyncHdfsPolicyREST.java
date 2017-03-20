@@ -81,7 +81,7 @@ public class TestSyncHdfsPolicyREST {
 
       // Waiting for hive plugin synchronization policy
       System.out.println("==> Waiting for hive plugin synchronization policy ... [" + WAITING_SYNC_MILLIS + "ms]");
-//      Thread.sleep(WAITING_SYNC_MILLIS);
+      Thread.sleep(WAITING_SYNC_MILLIS);
       System.out.println("<== Waiting for hive plugin synchronization policy ... [" + WAITING_SYNC_MILLIS + "ms]");
 
       databaseTest();
