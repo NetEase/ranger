@@ -85,7 +85,6 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
   private static ThreadLocal<InterProcessMutex> lockLocal = new ThreadLocal<InterProcessMutex>();
 
 //  protected HiveConf conf;
-  private static String zkHostPort_ = "";
   private static String zkPath_ = "/hive-metastore-changelog";
   private final static String MAX_ID_FILE_NAME = "/maxid";
   private final static String LOCK_RELATIVE_PATH = "/lock";
@@ -105,7 +104,7 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
         RangerHadoopConstants.RANGER_ZK_QUORUM + " not config");
     Preconditions.checkNotNull(RangerConfiguration.getInstance().get(RangerHadoopConstants.RANGER_ZK_MS_CHANGELOG_PATH),
         RangerHadoopConstants.RANGER_ZK_MS_CHANGELOG_PATH + " not config");
-    zkHostPort_ = RangerConfiguration.getInstance().get(RangerHadoopConstants.RANGER_ZK_MS_CHANGELOG_PATH);
+    zkPath_ = RangerConfiguration.getInstance().get(RangerHadoopConstants.RANGER_ZK_MS_CHANGELOG_PATH);
 
     try {
       InetAddress inetAddress = InetAddress.getLocalHost();
