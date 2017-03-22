@@ -29,6 +29,7 @@ import com.sun.jersey.api.client.ClientResponse;
 import com.sun.jersey.api.client.WebResource;
 import org.apache.hadoop.security.AccessControlException;
 import org.apache.ranger.authorization.hadoop.config.RangerConfiguration;
+import org.apache.ranger.plugin.store.rest.ServiceRESTStore;
 import org.apache.ranger.plugin.util.*;
 import org.apache.ranger.util.RangerRestUtil;
 import org.apache.shiro.config.Ini;
@@ -1100,4 +1101,61 @@ public class TestServiceREST {
 		System.out.print(strIni);
 	}
 
+	@Test
+	public void test37getPolicy() throws Exception {
+		String policyId = "430";
+		RangerPolicy ret = getPolicy(policyId);
+	}
+
+	public RangerPolicy getPolicy(String policyId) throws Exception {
+		String host = "http://hadoop357.lt.163.org:6080";
+
+		RangerRESTClient restClient = new RangerRESTClient();
+		restClient.setBasicAuthInfo("admin", "admin");
+		restClient.setUrl(host);
+
+		// get policy by id
+		RangerPolicy ret = null;
+		WebResource webResource = restClient.getResource("/service/plugins/policies/" + policyId);
+		ClientResponse response = webResource.accept(RangerRESTUtils.REST_MIME_TYPE_JSON).get(ClientResponse.class);
+
+		if(response != null && response.getStatus() == 200) {
+			ret = response.getEntity(RangerPolicy.class);
+		} else {
+			RESTResponse resp = RESTResponse.fromClientResponse(response);
+
+			throw new Exception(resp.getMessage());
+		}
+
+		return ret;
+	}
+
+	@Test
+	public void test38updatePolicy() throws Exception {
+		String host = "http://hadoop357.lt.163.org:6080";
+		String policyId = "430";
+
+		RangerRESTClient restClient = new RangerRESTClient();
+		restClient.setBasicAuthInfo("admin", "admin");
+		restClient.setUrl(host);
+
+		// get policy by id
+		RangerPolicy updatePolicy = getPolicy(policyId);
+		updatePolicy.setName("test36updatePolicy");
+		updatePolicy.getPolicyItems().remove(0);
+
+		RangerPolicy ret = null;
+
+		WebResource webResource = restClient.getResource("/service/plugins/policies/" + updatePolicy.getId());
+		ClientResponse response = webResource.accept(RangerRESTUtils.REST_MIME_TYPE_JSON)
+				.type(RangerRESTUtils.REST_MIME_TYPE_JSON).put(ClientResponse.class, restClient.toJson(updatePolicy));
+
+		if(response != null && response.getStatus() == 200) {
+			ret = response.getEntity(RangerPolicy.class);
+		} else {
+			RESTResponse resp = RESTResponse.fromClientResponse(response);
+
+			throw new Exception(resp.getMessage());
+		}
+	}
 }

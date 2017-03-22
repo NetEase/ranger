@@ -766,6 +766,8 @@ public class MiscUtil {
 	}
 
 	public static Date getUTCDateForLocalDate(Date date) {
+		return date;
+		/*
 		 TimeZone gmtTimeZone = TimeZone.getTimeZone("GMT+0");
 		 Calendar local  = Calendar.getInstance();
 		 int      offset = local.getTimeZone().getOffset(local.getTimeInMillis());
@@ -773,6 +775,7 @@ public class MiscUtil {
 		 utc.setTimeInMillis(date.getTime());
 		 utc.add(Calendar.MILLISECOND, -offset);
 		 return utc.getTime();
+		 */
 	}
 	public static Date getUTCDate() {
 		TimeZone gmtTimeZone = TimeZone.getTimeZone("GMT+0");

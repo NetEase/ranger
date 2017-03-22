@@ -2,7 +2,7 @@ Release Notes - Ranger - Version 0.5.4
 
 ** HISTORY
 
- * [ranger-0.5.4-0.2.0]
+ * [ranger-0.5.4-0.2.x]
    - match mammut-v4.5
 
  * [ranger-0.5.4-0.1.0]

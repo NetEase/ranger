@@ -148,11 +148,11 @@ public class AuthzAuditEventDbObj implements Serializable {
 
 	public AuthzAuditEventDbObj(AuthzAuditEvent event) {
 		super();
-		Date utcDate=null;
+		Date utcDate = null;
 		if(event.getEventTime()!=null){
-			utcDate=MiscUtil.getUTCDateForLocalDate(event.getEventTime());
+			utcDate = event.getEventTime();
 		}else{
-			utcDate=MiscUtil.getUTCDate();
+			utcDate = new Date();
 		}
 		this.repositoryType = event.getRepositoryType();
 		this.repositoryName = event.getRepositoryName();

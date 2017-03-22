@@ -32,16 +32,16 @@ import java.util.*;
 @JsonIgnoreProperties(ignoreUnknown=true)
 @XmlRootElement
 @XmlAccessorType(XmlAccessType.FIELD)
-public class SyncHdfsPolicyRequest extends GrantRevokeRequest{
+public class SynchronizeRequest extends GrantRevokeRequest{
   private String              location                   = null;
   private String              newLocation                = null;
   private Map<String, String> newResource                = null;
 
-  public SyncHdfsPolicyRequest() {
+  public SynchronizeRequest() {
     this(null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
   }
 
-  public SyncHdfsPolicyRequest(String grantor, Map<String, String> resource, Set<String> users,
+  public SynchronizeRequest(String grantor, Map<String, String> resource, Set<String> users,
                             Set<String> groups, Set<String> accessTypes, Boolean delegateAdmin,
                             Boolean enableAudit, Boolean replaceExistingPermissions, Boolean isRecursive,
                             String clientIPAddress, String clientType, String requestData,
