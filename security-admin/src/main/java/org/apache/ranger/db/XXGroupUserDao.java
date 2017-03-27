@@ -53,6 +53,24 @@ public class XXGroupUserDao extends BaseDao<XXGroupUser> {
 				.executeUpdate();
 	}
 	
+	public List<XXGroupUser> getXGroupUsersByGroupName(String groupName) {
+		if (groupName != null) {
+			try {
+				return getEntityManager()
+						.createNamedQuery("XXGroupUser.getXGroupUsersByGroupName", XXGroupUser.class)
+						.setParameter("name", groupName)
+						.getResultList();
+			} catch (NoResultException e) {
+				logger.debug(e.getMessage());
+			}
+		} else {
+			logger.debug("groupName not provided.");
+			return new ArrayList<XXGroupUser>();
+		}
+		
+		return null;
+	}
+	
 	public void updateGroupNameByParentGroupId(Long parentGroupId, String name) {
 		getEntityManager()
 				.createNamedQuery("XXGroupUser.updateGroupNameByParentGroupId")
