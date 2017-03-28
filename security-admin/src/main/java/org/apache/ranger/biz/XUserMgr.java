@@ -606,6 +606,13 @@ public class XUserMgr extends XUserMgrBase {
 		
 		return vXGroupUsers;
 	}
+	
+	//get all groupusers from x_group_user by groupname
+	public List<XXGroupUser> getXGroupUsersByGroupName(String groupName) {
+		checkAdminAccess();
+		
+		return daoMgr.getXXGroupUser().getXGroupUsersByGroupName(groupName);
+	}
 
 	public VXUser getXUser(Long id) {
 		VXUser vXUser=null;

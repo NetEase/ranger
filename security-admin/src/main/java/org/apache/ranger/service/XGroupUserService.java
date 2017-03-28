@@ -100,7 +100,7 @@ public class XGroupUserService extends
 	public void deleteByUserId(Long userId) {
 		rangerDaoManager.getXXGroupUser().deleteByUserId(userId);
 	}
-
+	
 	public VXGroupUser readResourceWithOutLogin(Long id) {
 		XXGroupUser resource = getDao().getById(id);
 		if (resource == null) {

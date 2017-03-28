@@ -45,6 +45,7 @@ import org.apache.ranger.common.StringUtil;
 import org.apache.ranger.common.annotation.RangerAnnotationClassName;
 import org.apache.ranger.common.annotation.RangerAnnotationJSMgrName;
 import org.apache.ranger.db.RangerDaoManager;
+import org.apache.ranger.entity.XXGroupUser;
 import org.apache.ranger.security.context.RangerAPIList;
 import org.apache.ranger.service.AuthSessionService;
 import org.apache.ranger.service.XAuditMapService;
@@ -425,7 +426,15 @@ public class XUserREST {
     public List<VXGroupUser> deleteXGroupUser(List<VXGroupUser> vXGroupUsers) {
         return xUserMgr.deleteXGroupUsers(vXGroupUsers);
     }
-
+    
+    //get all groupusers from x_group_user by groupname
+    @GET
+	@Path("/groupusers/groupName/{groupName}")
+	@Produces({ "application/xml", "application/json" })
+	@PreAuthorize("hasRole('ROLE_SYS_ADMIN')")
+	public List<XXGroupUser> getXGroupUsersByGroupName(@PathParam("groupName") String groupName) {
+		return xUserMgr.getXGroupUsersByGroupName(groupName);
+	}
 	/**
 	 * Implements the traditional search functionalities for XGroupUsers
 	 * 

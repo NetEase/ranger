@@ -213,6 +213,12 @@
 		<query>SELECT obj FROM XXGroupUser obj WHERE obj.parentGroupId=:groupId
 		</query>
 	</named-query>
+	
+	<named-query name="XXGroupUser.getXGroupUsersByGroupName">
+		<query>SELECT obj FROM XXGroupUser obj
+			   WHERE obj.name=:name		   
+		</query>
+	</named-query>
 
 	<named-query name="XXTrxLog.findByTrxId">
 		<query>SELECT obj FROM XXTrxLog obj WHERE obj.transactionId = :transactionId
