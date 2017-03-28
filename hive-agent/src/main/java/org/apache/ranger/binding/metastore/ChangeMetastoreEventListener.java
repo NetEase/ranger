@@ -84,7 +84,6 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
   private static zkListener listener = null;
   private static ThreadLocal<InterProcessMutex> lockLocal = new ThreadLocal<InterProcessMutex>();
 
-//  protected HiveConf conf;
   private static String zkPath_ = "/hive-metastore-changelog";
   private final static String MAX_ID_FILE_NAME = "/maxid";
   private final static String LOCK_RELATIVE_PATH = "/lock";
