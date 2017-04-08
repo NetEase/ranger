@@ -53,6 +53,13 @@ public class XXGroupUserDao extends BaseDao<XXGroupUser> {
 				.executeUpdate();
 	}
 	
+	public void deleteByGroupName(String groupName) {
+		getEntityManager()
+				.createNamedQuery("XXGroupUser.deleteByGroupName")
+				.setParameter("name", groupName)
+				.executeUpdate();
+	}
+	
 	public List<XXGroupUser> getXGroupUsersByGroupName(String groupName) {
 		if (groupName != null) {
 			try {

@@ -570,13 +570,35 @@ public class XUserMgr extends XUserMgrBase {
 		return vXGroupUser;
 	}
 	
-	//修改多个组里的多个用户
-	public List<VXGroupUser> createXGroupUsers(List<VXGroupUser> vXGroupUsers) {
+	//修改多个用户的多个组  : 删除用户的所有组，再添加新的组
+	public List<VXGroupUser> modifyXGroupUsersByUser(List<VXGroupUser> vXGroupUsers) {
 		checkAdminAccess();
 		
 		//将现有的userid从group_user中删除
 		for (VXGroupUser vXGroupUser : vXGroupUsers) {
 			xGroupUserService.deleteByUserId(vXGroupUser.getUserId());
+		}
+			
+		//groupname是必传参数，groupid可不传
+		for (VXGroupUser vXGroupUser : vXGroupUsers) {
+			XXGroup xGroup = daoManager.getXXGroup().findByGroupName(vXGroupUser.getName());
+			vXGroupUser.setParentGroupId(xGroup.getId());
+			vXGroupUser = xGroupUserService.createResource(vXGroupUser);
+		}
+		
+		XXServiceDao serviceDao = daoMgr.getXXService();
+		serviceDao.updatePolicyVersion();
+		
+		return vXGroupUsers;
+	}
+	
+	//修改多个组的多个用户  : 删除组的所有用户，再添加新的用户
+	public List<VXGroupUser> modifyXGroupUsersByGroup(List<VXGroupUser> vXGroupUsers) {
+		checkAdminAccess();
+		
+		//将现有的userid从group_user中删除
+		for (VXGroupUser vXGroupUser : vXGroupUsers) {
+			xGroupUserService.deleteByGroupName(vXGroupUser.getName());
 		}
 			
 		//groupname是必传参数，groupid可不传
