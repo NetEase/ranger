@@ -178,6 +178,12 @@
 		</query>
 	</named-query>
 	
+	<named-query name="XXGroupUser.deleteByGroupName">
+		<query>DELETE FROM  XXGroupUser  obj
+			   WHERE obj.name=:name		   
+		</query>
+	</named-query>
+	
 	<named-query name="XXGroupUser.updateGroupNameByParentGroupId">
 		<query>UPDATE  XXGroupUser  obj
 			   SET obj.name=:name

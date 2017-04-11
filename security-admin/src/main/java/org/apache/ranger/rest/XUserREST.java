@@ -409,13 +409,22 @@ public class XUserREST {
 		xUserMgr.deleteXGroupUser(id, force);
 	}
 	
-    //修改多个组里的多个用户 
+    //修改多个用户的多个组  : 删除用户的所有组，再添加新的组
     @POST
-    @Path("/groupusers/modify")
+    @Path("/groupusers/modify/user")
     @Produces({ "application/xml", "application/json" })
     @PreAuthorize("hasRole('ROLE_SYS_ADMIN')")
-    public List<VXGroupUser> modifyXGroupUser(List<VXGroupUser> vXGroupUsers) {
-        return xUserMgr.createXGroupUsers(vXGroupUsers);
+    public List<VXGroupUser> modifyXGroupUserByUser(List<VXGroupUser> vXGroupUsers) {
+        return xUserMgr.modifyXGroupUsersByUser(vXGroupUsers);
+    }
+    
+    //修改多个组的多个用户  : 删除组的所有用户，再添加新的用户
+    @POST
+    @Path("/groupusers/modify/group")
+    @Produces({ "application/xml", "application/json" })
+    @PreAuthorize("hasRole('ROLE_SYS_ADMIN')")
+    public List<VXGroupUser> modifyXGroupUserByGroup(List<VXGroupUser> vXGroupUsers) {
+        return xUserMgr.modifyXGroupUsersByGroup(vXGroupUsers);
     }
     
     //将用户从所属的所有组中删除 
