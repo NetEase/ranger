@@ -19,6 +19,14 @@
 #
 # This script will generate install configuration based on the current installation and run setup to upgrade schema
 
+if [ -z $JAVA_HOME ];then
+    export JAVA_HOME=/home/hadoop/java-current
+fi
+
+if [ -z $HADOOP_HOME ];then
+    export HADOOP_HOME=/home/hadoop/hadoop-current
+fi
+
 ./upgrade_admin.py
 if [ $? -eq 0 ]
 then

@@ -15,8 +15,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-export JAVA_HOME=/home/hadoop/java-current
-export HADOOP_HOME=/home/hadoop/hadoop-current
+if [ -z $JAVA_HOME ];then
+    export JAVA_HOME=/home/hadoop/java-current
+fi
+
+if [ -z $HADOOP_HOME ];then
+    export HADOOP_HOME=/home/hadoop/hadoop-current
+fi
 
 function getInstallProperty() {
     local propertyName=$1
