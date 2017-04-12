@@ -203,6 +203,8 @@ public class RangerHiveAuthorizer extends RangerHiveAuthorizerBase {
 		      throws HiveAuthzPluginException, HiveAccessControlException {
 		UserGroupInformation ugi = getCurrentUserGroupInfo();
 
+		String exceptionDispUser = "";
+
 		if(ugi == null) {
 			throw new HiveAccessControlException("Permission denied: user information not available");
 		}
@@ -214,6 +216,17 @@ public class RangerHiveAuthorizer extends RangerHiveAuthorizerBase {
 			String                  user           = ugi.getShortUserName();
 			Set<String>             groups         = Sets.newHashSet(ugi.getGroupNames());
 
+			SessionState ss = SessionState.get();
+			if(ss != null) {
+				Map<String, String> hiveVar = ss.getHiveVariables();
+				String rangerUserName = hiveVar.get("ranger.user.name");
+				if (null != rangerUserName && !rangerUserName.isEmpty()) {
+					exceptionDispUser = rangerUserName;
+				} else {
+					exceptionDispUser = user;
+				}
+			}
+
 			if(LOG.isDebugEnabled()) {
 				LOG.debug(toString(hiveOpType, inputHObjs, outputHObjs, context, sessionContext));
 			}
@@ -222,6 +235,18 @@ public class RangerHiveAuthorizer extends RangerHiveAuthorizerBase {
 				handleDfsCommand(hiveOpType, inputHObjs, outputHObjs, context, sessionContext, user, groups, auditHandler);
 
 				return;
+			}
+
+			if(hiveOpType == HiveOperationType.CREATEFUNCTION) {
+				if (outputHObjs.size() == 1) {
+					HivePrivilegeObject hivePrivilegeObject = outputHObjs.get(0);
+					if(hivePrivilegeObject.getType() == HivePrivilegeObjectType.FUNCTION) {
+						HivePrivilegeObject temporaryPrivilegeObject
+								= new HivePrivilegeObject(HivePrivilegeObjectType.FUNCTION, "_TEMPORARY_UDF_DB_", hivePrivilegeObject.getObjectName());
+						outputHObjs.remove(0);
+						outputHObjs.add(temporaryPrivilegeObject);
+					}
+				}
 			}
 
 			List<RangerHiveAccessRequest> requests = new ArrayList<RangerHiveAccessRequest>();
@@ -250,7 +275,7 @@ public class RangerHiveAuthorizer extends RangerHiveAuthorizerBase {
 						FsAction permission = FsAction.READ;
 
 						if(!isURIAccessAllowed(user, groups, permission, path, getHiveConf())) {
-							throw new HiveAccessControlException(String.format("Permission denied: user [%s] does not have [%s] privilege on [%s]", user, permission.name(), path));
+							throw new HiveAccessControlException(String.format("Permission denied: user [%s] does not have [%s] privilege on [%s]", exceptionDispUser, permission.name(), path));
 						}
 
 						continue;
@@ -283,7 +308,7 @@ public class RangerHiveAuthorizer extends RangerHiveAuthorizerBase {
 						FsAction permission = FsAction.WRITE;
 
 						if(!isURIAccessAllowed(user, groups, permission, path, getHiveConf())) {
-							throw new HiveAccessControlException(String.format("Permission denied: user [%s] does not have [%s] privilege on [%s]", user, permission.name(), path));
+							throw new HiveAccessControlException(String.format("Permission denied: user [%s] does not have [%s] privilege on [%s]", exceptionDispUser, permission.name(), path));
 						}
 
 						continue;
@@ -353,7 +378,7 @@ public class RangerHiveAuthorizer extends RangerHiveAuthorizerBase {
 					String path = resource.getAsString();
 
 					throw new HiveAccessControlException(String.format("Permission denied: user [%s] does not have [%s] privilege on [%s]",
-														 user, request.getHiveAccessType().name(), path));
+							exceptionDispUser, request.getHiveAccessType().name(), path));
 				}
 			}
 		} finally {
