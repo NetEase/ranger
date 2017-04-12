@@ -89,4 +89,5 @@ public class RangerHadoopConstants {
 	public static final String RANGER_ZK_MS_CHANGELOG_PATH        = "ranger.zookeeper.metastore.changelog.path";
 
 	public static final String CHECK_PRIVILEGE_URI_ACCESS_ALLOW   = "check.privilege.uri.access.allow";
+	public static final String CHECK_PRIVILEGE_DFS_COMMAND   			= "check.privilege.dfs.command";
 }

@@ -923,6 +923,11 @@ public class RangerHiveAuthorizer extends RangerHiveAuthorizerBase {
 																RangerHiveAuditHandler    auditHandler)
 	      throws HiveAuthzPluginException, HiveAccessControlException {
 
+		boolean checkDfsCommandAllow = RangerConfiguration.getInstance().getBoolean(RangerHadoopConstants.CHECK_PRIVILEGE_DFS_COMMAND, false);
+		if(false == checkDfsCommandAllow) {
+			return;
+		}
+
 		String dfsCommandParams = null;
 
 		if(inputHObjs != null) {
