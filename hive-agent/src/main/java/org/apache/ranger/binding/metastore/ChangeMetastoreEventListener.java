@@ -38,6 +38,7 @@ import org.apache.hadoop.hive.metastore.MetaStoreEventListener;
 import org.apache.hadoop.hive.metastore.api.FieldSchema;
 import org.apache.hadoop.hive.metastore.api.MetaException;
 import org.apache.hadoop.hive.metastore.api.Partition;
+import org.apache.hadoop.hive.metastore.api.Table;
 import org.apache.hadoop.hive.metastore.events.*;
 import org.apache.hadoop.hive.shims.Utils;
 import org.apache.hadoop.security.UserGroupInformation;
@@ -540,5 +541,23 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
       tUpdateDelta.setOperation(TOperation.DROP_PARTITION);
       tUpdateDeltaQueue_.add(tUpdateDelta);
     }
+  }
+
+  @Override
+  public void onLoadPartitionDone(LoadPartitionDoneEvent partSetDoneEvent) throws MetaException {
+    if (!partSetDoneEvent.getStatus()) {
+      LOGGER.debug("Skip notify onLoadPartitionDone event, since the operation failed.");
+      return;
+    }
+
+  }
+
+  @Override
+  public void onInsert(InsertEvent insertEvent) throws MetaException {
+    if (!insertEvent.getStatus()) {
+      LOGGER.debug("Skip notify onInsert event, since the operation failed.");
+      return;
+    }
+
   }
 }
