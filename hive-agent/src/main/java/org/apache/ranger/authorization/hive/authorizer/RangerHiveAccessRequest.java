@@ -19,6 +19,7 @@
 
 package org.apache.ranger.authorization.hive.authorizer;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.Map;
@@ -28,6 +29,7 @@ import org.apache.hadoop.hive.ql.security.authorization.plugin.HiveAuthzContext;
 import org.apache.hadoop.hive.ql.security.authorization.plugin.HiveAuthzSessionContext;
 import org.apache.hadoop.hive.ql.security.authorization.plugin.HiveOperationType;
 import org.apache.hadoop.hive.ql.session.SessionState;
+import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.ranger.authorization.hadoop.config.RangerConfiguration;
 import org.apache.ranger.authorization.hadoop.constants.RangerHadoopConstants;
 import org.apache.ranger.authorization.utils.StringUtil;
@@ -61,10 +63,7 @@ public class RangerHiveAccessRequest extends RangerAccessRequestImpl {
 			Map<String, String> hiveVar = ss.getHiveVariables();
 			String rangerUserName = hiveVar.get("ranger.user.name");
 			String rangerUserPassword = hiveVar.get("ranger.user.password");
-			String hiveProxyUsers[] = RangerConfiguration.getInstance()
-					.getStrings(RangerHadoopConstants.HIVE_USERS_PROXY_RANGER);
-			if ((null != rangerUserName && !rangerUserName.trim().isEmpty())
-					&& Arrays.asList(hiveProxyUsers).contains(user)) {
+			if (null != rangerUserName && !rangerUserName.trim().isEmpty()) {
 				this.setUser(rangerUserName);
 				this.setUserPassword(rangerUserPassword);
 			}
