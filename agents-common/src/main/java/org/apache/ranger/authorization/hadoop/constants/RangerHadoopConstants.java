@@ -91,5 +91,4 @@ public class RangerHadoopConstants {
 	public static final String CHECK_PRIVILEGE_URI_ACCESS_ALLOW   = "check.privilege.uri.access.allow";
 	public static final String CHECK_PRIVILEGE_DFS_COMMAND        = "check.privilege.dfs.command";
 
-	public static final String HIVE_USERS_PROXY_RANGER            = "hive.users.proxy.ranger";
 }

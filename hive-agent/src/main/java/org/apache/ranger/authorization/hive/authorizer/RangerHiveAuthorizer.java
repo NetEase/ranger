@@ -19,6 +19,7 @@
 
  package org.apache.ranger.authorization.hive.authorizer;
 
+import java.io.IOException;
 import java.util.*;
 
 import org.apache.commons.collections.CollectionUtils;
@@ -215,10 +216,7 @@ public class RangerHiveAuthorizer extends RangerHiveAuthorizerBase {
 			if(ss != null) {
 				Map<String, String> hiveVar = ss.getHiveVariables();
 				String rangerUserName = hiveVar.get("ranger.user.name");
-				String hiveProxyUsers[] = RangerConfiguration.getInstance()
-						.getStrings(RangerHadoopConstants.HIVE_USERS_PROXY_RANGER);
-				if ((null != rangerUserName && !rangerUserName.trim().isEmpty())
-						&& Arrays.asList(hiveProxyUsers).contains(user)) {
+				if (null != rangerUserName && !rangerUserName.trim().isEmpty()) {
 					exceptionDispUser = rangerUserName;
 				} else {
 					exceptionDispUser = user;
