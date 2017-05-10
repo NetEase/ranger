@@ -19,14 +19,6 @@
 #
 # This script will install policymanager webapplication under tomcat and also, initialize the database with ranger users/tables.
 
-if [ -z $JAVA_HOME ];then
-    export JAVA_HOME=/home/hadoop/java-current
-fi
-
-if [ -z $HADOOP_HOME ];then
-    export HADOOP_HOME=/home/hadoop/hadoop-current
-fi
-
 PROPFILE=$PWD/install.properties
 propertyValue=''
 
@@ -1009,17 +1001,16 @@ log "[I] hostname=`hostname`"
 init_variables
 get_distro
 check_java_version
-#check_db_connector
-#setup_unix_user_group
+check_db_connector
+setup_unix_user_group
 setup_install_files
 sanity_check_files
-#copy_db_connector
+copy_db_connector
 check_python_command
 run_dba_steps
 if [ "$?" == "0" ]
 then
-#$PYTHON_COMMAND_INVOKER db_setup.py
-log "[I] Don't execute db_setup.py."
+$PYTHON_COMMAND_INVOKER db_setup.py
 else
 	exit 1
 fi
