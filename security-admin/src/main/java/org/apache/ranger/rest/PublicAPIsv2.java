@@ -21,9 +21,12 @@ package org.apache.ranger.rest;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
+import org.apache.ranger.biz.ServiceDBStore;
 import org.apache.ranger.common.RESTErrorUtil;
 import org.apache.ranger.common.annotation.RangerAnnotationJSMgrName;
 import org.apache.ranger.plugin.model.RangerPolicy;
+import org.apache.ranger.plugin.model.RangerPolicy.RangerPolicyItem;
+import org.apache.ranger.plugin.model.RangerPolicy.RangerPolicyResource;
 import org.apache.ranger.plugin.model.RangerService;
 import org.apache.ranger.plugin.model.RangerServiceDef;
 import org.apache.ranger.plugin.util.SearchFilter;
@@ -34,6 +37,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.RequestBody;
+
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -57,6 +63,9 @@ public class PublicAPIsv2 {
 
 	@Autowired
 	RESTErrorUtil restErrorUtil;
+	
+	@Autowired
+	ServiceDBStore svcStore;
 
 	/*
 	* ServiceDef Manipulation APIs
@@ -367,6 +376,119 @@ public class PublicAPIsv2 {
 			for (RangerPolicy policy : deletePolicies) {
 				serviceREST.deletePolicy(policy.getId());
 			}
+		}
+		
+		return retPolicies;
+	}
+	
+	
+	@POST
+	@Path("/api/hivepolicy/modifyBatch")
+	@Produces({ "application/json", "application/xml" })
+	public List<RangerPolicy> modifyHivePoliciesBatch(@RequestBody JSONObject params) throws Exception {
+		
+		Long serviceId = params.getLong("serviceId");
+		JSONArray objs = params.getJSONArray("policies");
+		
+		List<RangerPolicy> retPolicies = new ArrayList();
+		try {
+			for (int index = 0; index < objs.size(); ++index) {
+				RangerPolicy policy = objs.getObject(index, RangerPolicy.class);
+				Map<String, RangerPolicyResource> resources = policy.getResources();
+				if (resources.get("database").getValues().size() > 1 ||
+					resources.get("table").getValues().size() > 1 ||
+					resources.get("column").getValues().size() > 1) {
+					logger.error("### policy format not support, resources = " + resources.toString());
+					continue;
+				}
+				
+				String database = resources.get("database").getValues().get(0);
+				String table = resources.get("table").getValues().get(0);
+				String column = resources.get("column").getValues().get(0);
+				
+				SearchFilter filter = new SearchFilter();
+				filter.setParam("resource:database", database);
+				filter.setParam("resource:table", table);
+				filter.setParam("resource:column", column);
+				
+				List<RangerPolicyItem> newPolicyItems = policy.getPolicyItems();
+				
+				List<RangerPolicy> oldPolicies = svcStore.getServicePolicies(serviceId, filter);
+				if (oldPolicies == null) {
+					logger.error("### error happend when get service policies");
+					return null;
+				}
+				
+				if (oldPolicies.isEmpty()) {
+					serviceREST.createPolicy(policy);
+				} else {
+					
+					// 资源对应的policy是否已经存在，不存在则需要createPolicy
+					boolean resourceUsed = false;
+					
+					// <db, *, *> 会匹配出多条policy， 需要根据resource严格匹配
+					for (RangerPolicy oldPolicy : oldPolicies) {
+						
+						Map<String, RangerPolicyResource> innerResources = oldPolicy.getResources();
+						if (innerResources.get("database").getValues().size() > 1 ||
+							innerResources.get("table").getValues().size() > 1 ||
+							innerResources.get("column").getValues().size() > 1) {
+								logger.error("### policy format not support, resources = " + innerResources.toString());
+								continue;
+						}
+						
+						String innerDatabase = innerResources.get("database").getValues().get(0);
+						String innerTable = innerResources.get("table").getValues().get(0);
+						String innerColumn = innerResources.get("column").getValues().get(0);
+						if (!innerDatabase.equals(database) || !innerTable.equals(table) || !innerColumn.equals(column)) {
+							continue;
+						}
+						
+						// 资源对应的policy已经存在
+						resourceUsed = true;
+						
+						// policy with resource <db,table,column> has already exist, merge
+						Long policyId = oldPolicy.getId();
+						logger.info("### resource existed in policy " + policyId);
+						
+						List<RangerPolicyItem> policyItems = oldPolicies.get(0).getPolicyItems();
+						for (RangerPolicyItem policyItem : policyItems) {
+							
+							// 老的policy中组是否存在新的policy：若存在，以新的policy中为准；不存在，叠加老的policy
+							boolean groupExist = false;
+							for (RangerPolicyItem newPolicyItem : newPolicyItems) {
+								if (newPolicyItem.getGroups().contains(policyItem.getGroups().get(0))) {
+									groupExist = true;
+									break;
+								}
+							}
+							
+							// 老policy的组不存在于新的policy
+							if (!groupExist) {
+								newPolicyItems.add(policyItem);
+							} else {
+								// 老的组存在于新的policy，用新的policy覆盖
+								logger.info("### group permission replace by new policy");
+							}
+						}
+						
+						policy.setId(policyId);
+						serviceREST.updatePolicy(policy);
+						
+						// 资源对应的policy只有一条，找到对应的之后，后面的policy肯定不会完全匹配，没必要再遍历
+						break;
+					}
+					
+					// 资源对应的policy不存在，create
+					if (!resourceUsed) {
+						serviceREST.createPolicy(policy);
+					}
+				}
+				
+				retPolicies.add(policy);
+			}	
+		} catch (Exception e) {
+			logger.error(e.getMessage(), e);
 		}
 		
 		return retPolicies;
