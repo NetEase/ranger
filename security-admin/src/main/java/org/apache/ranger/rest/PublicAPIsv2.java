@@ -451,7 +451,7 @@ public class PublicAPIsv2 {
 						Long policyId = oldPolicy.getId();
 						logger.info("### resource existed in policy " + policyId);
 						
-						List<RangerPolicyItem> policyItems = oldPolicies.get(0).getPolicyItems();
+						List<RangerPolicyItem> policyItems = oldPolicy.getPolicyItems();
 						for (RangerPolicyItem policyItem : policyItems) {
 							
 							// 老的policy中组是否存在新的policy：若存在，以新的policy中为准；不存在，叠加老的policy
