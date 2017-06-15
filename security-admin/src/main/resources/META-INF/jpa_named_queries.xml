@@ -225,6 +225,12 @@
 			   WHERE obj.name=:name		   
 		</query>
 	</named-query>
+	
+	<named-query name="XXGroupUser.deleteByGroupNameAndUserIds">
+		<query>DELETE FROM  XXGroupUser  obj
+			   WHERE obj.name=:name	AND obj.userId IN :userIds	   
+		</query>
+	</named-query>
 
 	<named-query name="XXTrxLog.findByTrxId">
 		<query>SELECT obj FROM XXTrxLog obj WHERE obj.transactionId = :transactionId

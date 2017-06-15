@@ -98,6 +98,9 @@ import org.apache.ranger.view.VXUserList;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
+
 import javax.servlet.http.HttpServletResponse;
 
 import org.apache.ranger.view.VXResponse;
@@ -627,6 +630,25 @@ public class XUserMgr extends XUserMgrBase {
 		serviceDao.updatePolicyVersion();
 		
 		return vXGroupUsers;
+	}
+	
+	//将多个用户从指定组中删除  : 传groupname和 list<userid>
+	public void deleteXGroupUsers(JSONObject params) {
+		checkAdminAccess();
+		
+		String groupName = params.getString("name");
+		JSONArray users = params.getJSONArray("users");
+		
+		List<Long> userIds = new ArrayList();
+		for (int i = 0; i < users.size(); ++i) {
+			Long userId = users.getObject(i, Long.class);
+			userIds.add(userId);
+		}
+		
+		daoMgr.getXXGroupUser().deleteByGroupNameAndUserIds(groupName, userIds);
+
+		XXServiceDao serviceDao = daoMgr.getXXService();
+		serviceDao.updatePolicyVersion();
 	}
 	
 	//get all groupusers from x_group_user by groupname

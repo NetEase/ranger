@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Set;
 
 import javax.persistence.NoResultException;
+import javax.persistence.Query;
 
 import org.apache.log4j.Logger;
 import org.apache.ranger.common.db.BaseDao;
@@ -168,5 +169,13 @@ public class XXGroupUserDao extends BaseDao<XXGroupUser> {
 		}
 
 		return groupList;
+	}
+	
+	public void deleteByGroupNameAndUserIds(String groupName, List<Long> userIds) {
+		getEntityManager()
+				.createNamedQuery("XXGroupUser.deleteByGroupNameAndUserIds")
+				.setParameter("name", groupName)
+				.setParameter("userIds", userIds)
+				.executeUpdate();
 	}
 }
