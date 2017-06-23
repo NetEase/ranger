@@ -97,6 +97,8 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
 
   public ChangeMetastoreEventListener(Configuration config) {
     super(config);
+
+    LOGGER.info("ChangeMetastoreEventListener >>>");
     HiveConf hiveConf = new HiveConf(config, this.getClass());
 
     RangerConfiguration.getInstance().addResourcesForServiceType("hive");
@@ -124,6 +126,7 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
       e.printStackTrace();
     }
     saveMetaStoreChangeThread.start();
+    LOGGER.info("ChangeMetastoreEventListener <<<");
   }
 
   /**
@@ -201,12 +204,10 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
   }
 
   private void writeZNodeData(List<TUpdateDelta> tUpdateDeltas) {
-    if(LOGGER.isDebugEnabled()) {
-      LOGGER.debug("==> writeZNodeData()");
-    }
-
     if (tUpdateDeltas.size() == 0)
       return;
+
+    LOGGER.info("==> writeZNodeData()");
 
     try {
       InterProcessMutex lock = new InterProcessMutex(zkClient, zkPath_ + LOCK_RELATIVE_PATH);
@@ -218,7 +219,7 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
       List<String> children = childrenBuilder.forPath(zkPath_);
       Calendar calendar = Calendar.getInstance();
       calendar.setTime(new Date());
-      calendar.set(Calendar.DATE, calendar.get(Calendar.DATE) - 2);
+      calendar.set(Calendar.DATE, calendar.get(Calendar.DATE) - 7);
       if(calendar.getTime().getMinutes()%10 == 0) {
         // execute once every ten minutes
         for (String child : children) {
@@ -277,19 +278,20 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
       }
     } catch (Exception e) {
       e.printStackTrace();
+      LOGGER.error(e.getMessage());
     } finally {
       try {
         InterProcessMutex lock = lockLocal.get();
         lock.release();
       } catch (Exception e) {
         e.printStackTrace();
+        LOGGER.error(e.getMessage());
       }
     }
 
-    if(LOGGER.isDebugEnabled()) {
-      LOGGER.debug("<== writeZNodeData()");
-    }
+    LOGGER.info("<== writeZNodeData() : " + tUpdateDeltas.toString());
   }
+
   // the consumer TUpdateDelta from the queue
   class SaveMetaStoreChangeRunnable implements Runnable {
     ConcurrentLinkedQueue<TUpdateDelta> queue;
@@ -339,6 +341,8 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
     tUpdateDelta.setTable("");
     tUpdateDelta.setOperation(TOperation.CREATE_DATABASE);
     tUpdateDeltaQueue_.add(tUpdateDelta);
+
+    LOGGER.info("onCreateDatabase()" + tUpdateDelta.toString());
   }
 
   @Override
@@ -356,10 +360,12 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
     tUpdateDelta.setTable("");
     tUpdateDelta.setOperation(TOperation.DROP_DATABASE);
     tUpdateDeltaQueue_.add(tUpdateDelta);
+
+    LOGGER.info("onDropDatabase()" + tUpdateDelta.toString());
   }
 
   @Override
-  public void onCreateTable (CreateTableEvent tableEvent) throws MetaException {
+  public void onCreateTable(CreateTableEvent tableEvent) throws MetaException {
     // don't sync paths/privileges if the operation has failed
     if (!tableEvent.getStatus()) {
       LOGGER.debug("Skip notify onCreateTable event, since the operation failed. \n");
@@ -374,6 +380,8 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
     tUpdateDelta.setTable(tableName);
     tUpdateDelta.setOperation(TOperation.CREATE_TABLE);
     tUpdateDeltaQueue_.add(tUpdateDelta);
+
+    LOGGER.info("onCreateTable()" + tUpdateDelta.toString());
   }
 
   @Override
@@ -392,13 +400,15 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
     tUpdateDelta.setTable(tableName);
     tUpdateDelta.setOperation(TOperation.DROP_TABLE);
     tUpdateDeltaQueue_.add(tUpdateDelta);
+
+    LOGGER.info("onDropTable()" + tUpdateDelta.toString());
   }
 
   /**
    * Adjust the privileges when table is renamed
    */
   @Override
-  public void onAlterTable (AlterTableEvent tableEvent) throws MetaException {
+  public void onAlterTable(AlterTableEvent tableEvent) throws MetaException {
     // don't sync privileges if the operation has failed
     if (!tableEvent.getStatus()) {
       LOGGER.debug("Skip notify onAlterTable event, since the operation failed.");
@@ -418,6 +428,8 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
     else
       tUpdateDelta.setOperation(TOperation.REMAME_TABLE);
     tUpdateDeltaQueue_.add(tUpdateDelta);
+
+    LOGGER.info("onAlterTable()" + tUpdateDelta.toString());
   }
 
   @Override
@@ -458,6 +470,8 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
       tUpdateDelta.setPartition(partName);
       tUpdateDelta.setOperation(TOperation.ADD_PARTITION);
       tUpdateDeltaQueue_.add(tUpdateDelta);
+
+      LOGGER.info("onAddPartition()" + tUpdateDelta.toString());
     }
   }
 
@@ -500,6 +514,8 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
     tUpdateDelta.setNew_name(newPartName);
     tUpdateDelta.setOperation(TOperation.ALTER_PARTITION);
     tUpdateDeltaQueue_.add(tUpdateDelta);
+
+    LOGGER.info("onAlterPartition()" + tUpdateDelta.toString());
   }
 
   @Override
@@ -540,6 +556,8 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
       tUpdateDelta.setPartition(partName);
       tUpdateDelta.setOperation(TOperation.DROP_PARTITION);
       tUpdateDeltaQueue_.add(tUpdateDelta);
+
+      LOGGER.info("onDropPartition()" + tUpdateDelta.toString());
     }
   }
 
