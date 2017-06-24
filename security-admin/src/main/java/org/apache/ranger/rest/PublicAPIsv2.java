@@ -23,6 +23,7 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.apache.ranger.biz.ServiceDBStore;
 import org.apache.ranger.common.RESTErrorUtil;
+import org.apache.ranger.common.RangerServicePoliciesCache;
 import org.apache.ranger.common.annotation.RangerAnnotationJSMgrName;
 import org.apache.ranger.plugin.model.RangerPolicy;
 import org.apache.ranger.plugin.model.RangerPolicy.RangerPolicyItem;
@@ -30,6 +31,7 @@ import org.apache.ranger.plugin.model.RangerPolicy.RangerPolicyResource;
 import org.apache.ranger.plugin.model.RangerService;
 import org.apache.ranger.plugin.model.RangerServiceDef;
 import org.apache.ranger.plugin.util.SearchFilter;
+import org.apache.ranger.service.RangerPolicyService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Scope;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -66,6 +68,9 @@ public class PublicAPIsv2 {
 	
 	@Autowired
 	ServiceDBStore svcStore;
+	
+	@Autowired
+	RangerPolicyService policyService;
 
 	/*
 	* ServiceDef Manipulation APIs
@@ -387,13 +392,30 @@ public class PublicAPIsv2 {
 	@Produces({ "application/json", "application/xml" })
 	public List<RangerPolicy> modifyHivePoliciesBatch(@RequestBody JSONObject params) throws Exception {
 		
-		Long serviceId = params.getLong("serviceId");
+		String serviceName = params.getString("serviceName");
 		JSONArray objs = params.getJSONArray("policies");
+		logger.info("### batch modify size is " + objs.size());
 		
+		// 一次性查询出service对应的所有policy
+		long startSearchTime = System.currentTimeMillis();
+		List<RangerPolicy> oldPolicies = RangerServicePoliciesCache.getInstance().
+				getServicePolicies(serviceName, svcStore).getPolicies();
+		long endSearchTime = System.currentTimeMillis();
+		if (oldPolicies == null) {
+			logger.error("### error happend when get service policies");
+			return null;
+		}
+		logger.info("search policy cost time = " + (endSearchTime - startSearchTime) +
+				" , policy num is " + oldPolicies.size());
+		
+		long startTime = System.currentTimeMillis();
 		List<RangerPolicy> retPolicies = new ArrayList();
 		try {
 			for (int index = 0; index < objs.size(); ++index) {
+				long onePolicyStart = System.currentTimeMillis();
 				RangerPolicy policy = objs.getObject(index, RangerPolicy.class);
+				logger.info("### modify policy values is = " + policy.toString());
+				
 				Map<String, RangerPolicyResource> resources = policy.getResources();
 				if (resources.get("database").getValues().size() > 1 ||
 					resources.get("table").getValues().size() > 1 ||
@@ -410,86 +432,96 @@ public class PublicAPIsv2 {
 				filter.setParam("resource:database", database);
 				filter.setParam("resource:table", table);
 				filter.setParam("resource:column", column);
+				filter.setParam(SearchFilter.SERVICE_NAME, "mammut_dev");
 				
 				List<RangerPolicyItem> newPolicyItems = policy.getPolicyItems();
-				
-				List<RangerPolicy> oldPolicies = svcStore.getServicePolicies(serviceId, filter);
-				if (oldPolicies == null) {
-					logger.error("### error happend when get service policies");
-					return null;
-				}
-				
-				if (oldPolicies.isEmpty()) {
-					serviceREST.createPolicy(policy);
-				} else {
 					
-					// 资源对应的policy是否已经存在，不存在则需要createPolicy
-					boolean resourceUsed = false;
+				// 资源对应的policy是否已经存在，不存在则需要createPolicy
+				boolean resourceUsed = false;
+				
+				// <db, *, *> 会匹配出多条policy， 需要根据resource严格匹配
+				for (RangerPolicy oldPolicy : oldPolicies) {
 					
-					// <db, *, *> 会匹配出多条policy， 需要根据resource严格匹配
-					for (RangerPolicy oldPolicy : oldPolicies) {
-						
-						Map<String, RangerPolicyResource> innerResources = oldPolicy.getResources();
-						if (innerResources.get("database").getValues().size() > 1 ||
-							innerResources.get("table").getValues().size() > 1 ||
-							innerResources.get("column").getValues().size() > 1) {
-								logger.error("### policy format not support, resources = " + innerResources.toString());
-								continue;
-						}
-						
-						String innerDatabase = innerResources.get("database").getValues().get(0);
-						String innerTable = innerResources.get("table").getValues().get(0);
-						String innerColumn = innerResources.get("column").getValues().get(0);
-						if (!innerDatabase.equals(database) || !innerTable.equals(table) || !innerColumn.equals(column)) {
+					Map<String, RangerPolicyResource> innerResources = oldPolicy.getResources();
+					if (innerResources.get("database") == null ||
+						innerResources.get("table") == null ||
+						innerResources.get("column") == null ||
+						innerResources.get("database").getValues().size() > 1 ||
+						innerResources.get("table").getValues().size() > 1 ||
+						innerResources.get("column").getValues().size() > 1) {
+							logger.error("### policy format not support, resources = " + innerResources.toString());
 							continue;
-						}
-						
-						// 资源对应的policy已经存在
-						resourceUsed = true;
-						
-						// policy with resource <db,table,column> has already exist, merge
-						Long policyId = oldPolicy.getId();
-						logger.info("### resource existed in policy " + policyId);
-						
-						List<RangerPolicyItem> policyItems = oldPolicy.getPolicyItems();
-						for (RangerPolicyItem policyItem : policyItems) {
-							
-							// 老的policy中组是否存在新的policy：若存在，以新的policy中为准；不存在，叠加老的policy
-							boolean groupExist = false;
-							for (RangerPolicyItem newPolicyItem : newPolicyItems) {
-								if (newPolicyItem.getGroups().contains(policyItem.getGroups().get(0))) {
-									groupExist = true;
-									break;
-								}
-							}
-							
-							// 老policy的组不存在于新的policy
-							if (!groupExist) {
-								newPolicyItems.add(policyItem);
-							} else {
-								// 老的组存在于新的policy，用新的policy覆盖
-								logger.info("### group permission replace by new policy");
-							}
-						}
-						
-						policy.setId(policyId);
-						serviceREST.updatePolicy(policy);
-						
-						// 资源对应的policy只有一条，找到对应的之后，后面的policy肯定不会完全匹配，没必要再遍历
-						break;
 					}
 					
-					// 资源对应的policy不存在，create
-					if (!resourceUsed) {
-						serviceREST.createPolicy(policy);
+					String innerDatabase = innerResources.get("database").getValues().get(0);
+					String innerTable = innerResources.get("table").getValues().get(0);
+					String innerColumn = innerResources.get("column").getValues().get(0);
+					if (!innerDatabase.equals(database) || !innerTable.equals(table) || !innerColumn.equals(column)) {
+						continue;
 					}
+					
+					// 资源对应的policy已经存在
+					resourceUsed = true;
+					
+					// policy with resource <db,table,column> has already exist, merge
+					Long policyId = oldPolicy.getId();
+					logger.info("### resource existed in policy " + policyId);
+					
+					long checkStartTime = System.currentTimeMillis();
+					
+					List<RangerPolicyItem> policyItems = oldPolicy.getPolicyItems();
+					for (RangerPolicyItem policyItem : policyItems) {
+						
+						// 老的policy中组是否存在新的policy：若存在，以新的policy中为准；不存在，叠加老的policy
+						boolean groupExist = false;
+						for (RangerPolicyItem newPolicyItem : newPolicyItems) {
+							if (newPolicyItem.getGroups().contains(policyItem.getGroups().get(0))) {
+								groupExist = true;
+								break;
+							}
+						}
+						
+						// 老policy的组不存在于新的policy
+						if (!groupExist) {
+							newPolicyItems.add(policyItem);
+						} else {
+							// 老的组存在于新的policy，用新的policy覆盖
+							logger.info("### group permission replace by new policy");
+						}
+					}
+					
+					long checkEndTime = System.currentTimeMillis();
+					logger.info("### check one polciy cost time = " + (checkEndTime - checkStartTime));
+					
+					policy.setId(policyId);
+					long updateStartTime = System.currentTimeMillis();
+					serviceREST.updatePolicy(policy);
+					long updateEndTime = System.currentTimeMillis();
+					logger.info("#### upadte policy cost time = " + (updateEndTime - updateStartTime));
+					
+					// 资源对应的policy只有一条，找到对应的之后，后面的policy肯定不会完全匹配，没必要再遍历
+					break;
 				}
 				
+				// 资源对应的policy不存在，create
+				if (!resourceUsed) {
+					long createStartTime = System.currentTimeMillis();
+					serviceREST.createPolicy(policy);
+					long createEndTime = System.currentTimeMillis();
+					logger.info("create policy cost time = " + (createEndTime - createStartTime));
+				}
+
 				retPolicies.add(policy);
+				
+				long onePolicyEnd = System.currentTimeMillis();
+				logger.info("#### one policy cost time = " + (onePolicyEnd - onePolicyStart));
 			}	
 		} catch (Exception e) {
 			logger.error(e.getMessage(), e);
 		}
+		
+		long endTime = System.currentTimeMillis();
+		logger.info("total cost time = " + (endTime - startTime));
 		
 		return retPolicies;
 	}
