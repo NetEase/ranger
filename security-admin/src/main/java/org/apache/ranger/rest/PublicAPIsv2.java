@@ -412,7 +412,6 @@ public class PublicAPIsv2 {
 		List<RangerPolicy> retPolicies = new ArrayList();
 		try {
 			for (int index = 0; index < objs.size(); ++index) {
-				long onePolicyStart = System.currentTimeMillis();
 				RangerPolicy policy = objs.getObject(index, RangerPolicy.class);
 				logger.info("### modify policy values is = " + policy.toString());
 				
@@ -467,8 +466,6 @@ public class PublicAPIsv2 {
 					Long policyId = oldPolicy.getId();
 					logger.info("### resource existed in policy " + policyId);
 					
-					long checkStartTime = System.currentTimeMillis();
-					
 					List<RangerPolicyItem> policyItems = oldPolicy.getPolicyItems();
 					for (RangerPolicyItem policyItem : policyItems) {
 						
@@ -490,31 +487,19 @@ public class PublicAPIsv2 {
 						}
 					}
 					
-					long checkEndTime = System.currentTimeMillis();
-					logger.info("### check one polciy cost time = " + (checkEndTime - checkStartTime));
-					
 					policy.setId(policyId);
-					long updateStartTime = System.currentTimeMillis();
 					serviceREST.updatePolicy(policy);
-					long updateEndTime = System.currentTimeMillis();
-					logger.info("#### upadte policy cost time = " + (updateEndTime - updateStartTime));
-					
+				
 					// 资源对应的policy只有一条，找到对应的之后，后面的policy肯定不会完全匹配，没必要再遍历
 					break;
 				}
 				
 				// 资源对应的policy不存在，create
 				if (!resourceUsed) {
-					long createStartTime = System.currentTimeMillis();
 					serviceREST.createPolicy(policy);
-					long createEndTime = System.currentTimeMillis();
-					logger.info("create policy cost time = " + (createEndTime - createStartTime));
 				}
 
 				retPolicies.add(policy);
-				
-				long onePolicyEnd = System.currentTimeMillis();
-				logger.info("#### one policy cost time = " + (onePolicyEnd - onePolicyStart));
 			}	
 		} catch (Exception e) {
 			logger.error(e.getMessage(), e);
