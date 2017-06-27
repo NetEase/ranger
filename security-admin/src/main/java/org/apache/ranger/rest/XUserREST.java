@@ -89,6 +89,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.alibaba.fastjson.JSONObject;
+
 
 @Path("xusers")
 @Component
@@ -444,6 +446,19 @@ public class XUserREST {
 	public List<XXGroupUser> getXGroupUsersByGroupName(@PathParam("groupName") String groupName) {
 		return xUserMgr.getXGroupUsersByGroupName(groupName);
 	}
+    
+    //将多个用户从指定组中删除  : 传groupname和 list<userid>
+    @POST
+    @Path("/groupusers/muliti/delete")
+    @Produces({ "application/xml", "application/json" })
+    @PreAuthorize("hasRole('ROLE_SYS_ADMIN')")
+    public JSONObject deleteXGroupUsersByGroupNameAndUserids(JSONObject params) {
+        xUserMgr.deleteXGroupUsers(params);
+        
+        return params;
+    }
+    
+    
 	/**
 	 * Implements the traditional search functionalities for XGroupUsers
 	 * 
