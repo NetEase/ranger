@@ -89,6 +89,10 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.bind.annotation.RequestBody;
+
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
 
 @Path("plugins")
 @Component
@@ -2463,5 +2467,35 @@ public class ServiceREST {
 		return ret;
 	}
 
-
+	@POST
+	@Path("/policies/modify")
+	@Produces({ "application/json", "application/xml" })
+	public List<RangerPolicy> modifyPolicies(@RequestBody Map<String, List<RangerPolicy>> policies) {
+		
+		List<RangerPolicy> createPolicies = policies.get("createPolicies");
+		List<RangerPolicy> updatePolicies = policies.get("updatePolicies");
+		List<RangerPolicy> deletePolicies = policies.get("deletePolicies");
+		
+		List<RangerPolicy> retPolicies = new ArrayList();
+		
+		if (createPolicies != null) {
+			for (RangerPolicy policy : createPolicies) {
+				retPolicies.add(this.createPolicy(policy));
+			}
+		}
+		
+		if (updatePolicies != null) {
+			for (RangerPolicy policy : updatePolicies) {
+				retPolicies.add(this.updatePolicy(policy));
+			}
+		}
+		
+		if (deletePolicies != null) {
+			for (RangerPolicy policy : deletePolicies) {
+				this.deletePolicy(policy.getId());
+			}
+		}
+		
+		return retPolicies;
+	}
 }
