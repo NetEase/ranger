@@ -22,6 +22,7 @@ package org.apache.ranger.common;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.ranger.authorization.hadoop.config.RangerConfiguration;
+import org.apache.ranger.entity.XXService;
 import org.apache.ranger.plugin.model.RangerPolicy;
 import org.apache.ranger.plugin.store.ServiceStore;
 
@@ -291,6 +292,57 @@ public class RangerServicePoliciesCache {
 			toString(sb);
 
 			return sb.toString();
+		}
+		
+		void updatePolicy (String action, RangerPolicy policy, ServiceStore serviceStore) {
+			
+			Long servicePolicyVersionInDb = serviceStore.getServicePolicyVersion(policy.getService());
+
+			// update policy in cache
+			if (servicePolicies != null && !servicePolicyVersionInDb.equals(servicePolicies.getPolicyVersion())) {
+				if (LOG.isDebugEnabled()) {
+					LOG.debug("loading servicePolicies from db ... cachedServicePoliciesVersion=" + (servicePolicies != null ? servicePolicies.getPolicyVersion() : null) + ", servicePolicyVersionInDb=" + servicePolicyVersionInDb);
+				}
+				
+				// TODO
+				if (action.equals("create")) {
+					servicePolicies.getPolicies().add(policy);
+				} else {
+					for (int i = 0; i < servicePolicies.getPolicies().size(); ++i) {
+						RangerPolicy oldPolicy = servicePolicies.getPolicies().get(i);
+						if (oldPolicy.getId().equals(policy.getId())) {
+							if (action.equals("update")) {
+								servicePolicies.getPolicies().remove(i);
+								servicePolicies.getPolicies().add(policy);
+							} else if (action.equals("delete")) {
+								servicePolicies.getPolicies().remove(i);
+							}
+							
+							break;
+						}
+					}
+				}
+				
+				servicePolicies.setPolicyVersion(servicePolicyVersionInDb);
+			}
+		}
+	}
+	
+	public void updatePolicyInCache (String action, RangerPolicy policy, ServiceStore serviceStore) {
+		
+		String serviceName = policy.getService();
+		
+		ServicePoliciesWrapper servicePoliciesWrapper = null;
+
+		synchronized (this) {
+			servicePoliciesWrapper = servicePoliciesMap.get(serviceName);
+
+			if (servicePoliciesWrapper == null) {
+				servicePoliciesWrapper = new ServicePoliciesWrapper();
+				servicePoliciesMap.put(serviceName, servicePoliciesWrapper);
+			}
+			
+			servicePoliciesWrapper.updatePolicy(action, policy, serviceStore);
 		}
 	}
 }

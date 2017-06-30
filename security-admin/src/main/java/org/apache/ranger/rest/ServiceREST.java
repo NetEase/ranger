@@ -1521,6 +1521,8 @@ public class ServiceREST {
 			ensureAdminAccess(policy.getService(), policy.getResources());
 
 			ret = svcStore.createPolicy(policy);
+			
+			RangerServicePoliciesCache.getInstance().updatePolicyInCache("create", ret, svcStore);
 		} catch(WebApplicationException excp) {
 			throw excp;
 		} catch(Throwable excp) {
@@ -1580,6 +1582,7 @@ public class ServiceREST {
 			}
 
 			ret = svcStore.updatePolicy(policy);
+			RangerServicePoliciesCache.getInstance().updatePolicyInCache("update", ret, svcStore);
 		} catch(WebApplicationException excp) {
 			throw excp;
 		} catch(Throwable excp) {
@@ -1634,6 +1637,7 @@ public class ServiceREST {
 			}
 
 			svcStore.deletePolicy(id);
+			RangerServicePoliciesCache.getInstance().updatePolicyInCache("delete", policy, svcStore);
 		} catch(WebApplicationException excp) {
 			throw excp;
 		} catch(Throwable excp) {
@@ -2465,37 +2469,5 @@ public class ServiceREST {
 		}
 
 		return ret;
-	}
-
-	@POST
-	@Path("/policies/modify")
-	@Produces({ "application/json", "application/xml" })
-	public List<RangerPolicy> modifyPolicies(@RequestBody Map<String, List<RangerPolicy>> policies) {
-		
-		List<RangerPolicy> createPolicies = policies.get("createPolicies");
-		List<RangerPolicy> updatePolicies = policies.get("updatePolicies");
-		List<RangerPolicy> deletePolicies = policies.get("deletePolicies");
-		
-		List<RangerPolicy> retPolicies = new ArrayList();
-		
-		if (createPolicies != null) {
-			for (RangerPolicy policy : createPolicies) {
-				retPolicies.add(this.createPolicy(policy));
-			}
-		}
-		
-		if (updatePolicies != null) {
-			for (RangerPolicy policy : updatePolicies) {
-				retPolicies.add(this.updatePolicy(policy));
-			}
-		}
-		
-		if (deletePolicies != null) {
-			for (RangerPolicy policy : deletePolicies) {
-				this.deletePolicy(policy.getId());
-			}
-		}
-		
-		return retPolicies;
 	}
 }
