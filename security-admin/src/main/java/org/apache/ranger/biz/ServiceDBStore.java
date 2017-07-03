@@ -31,17 +31,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.ranger.common.AppConstants;
-import org.apache.ranger.common.ContextUtil;
-import org.apache.ranger.common.DateUtil;
-import org.apache.ranger.common.MessageEnums;
-import org.apache.ranger.common.PasswordUtils;
-import org.apache.ranger.common.RESTErrorUtil;
-import org.apache.ranger.common.RangerCommonEnums;
 import org.apache.ranger.common.*;
-import org.apache.ranger.common.RangerFactory;
-import org.apache.ranger.common.StringUtil;
-import org.apache.ranger.common.UserSessionBase;
 import org.apache.ranger.db.RangerDaoManager;
 import org.apache.ranger.db.XXAccessTypeDefDao;
 import org.apache.ranger.db.XXAccessTypeDefGrantsDao;
@@ -1398,6 +1388,9 @@ public class ServiceDBStore implements ServiceStore {
 		List<XXTrxLog> trxLogList = policyService.getTransactionLog(createdPolicy, RangerPolicyService.OPERATION_CREATE_CONTEXT);
 		bizUtil.createTrxLog(trxLogList);
 
+		RangerServicePoliciesCache.getInstance().
+			updatePolicyInCache("create", createdPolicy, this);
+		
 		return createdPolicy;
 	}
 
@@ -1464,6 +1457,9 @@ public class ServiceDBStore implements ServiceStore {
 		
 		bizUtil.createTrxLog(trxLogList);
 		
+		RangerServicePoliciesCache.getInstance().
+			updatePolicyInCache("update", updPolicy, this);
+		
 		return updPolicy;
 	}
 
@@ -1516,6 +1512,9 @@ public class ServiceDBStore implements ServiceStore {
 		dataHistService.createObjectDataHistory(policy, RangerDataHistService.ACTION_DELETE);
 		
 		bizUtil.createTrxLog(trxLogList);
+		
+		RangerServicePoliciesCache.getInstance().
+			updatePolicyInCache("delete", policy, this);
 		
 		LOG.info("Policy Deleted Successfully. PolicyName : " + policyName);
 	}
