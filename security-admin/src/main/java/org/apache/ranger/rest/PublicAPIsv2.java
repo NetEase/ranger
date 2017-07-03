@@ -423,6 +423,38 @@ public class PublicAPIsv2 {
 		}
 	}
 	
+	@POST
+	@Path("/api/policies/modify")
+	@Produces({ "application/json", "application/xml" })
+	public List<RangerPolicy> modifyPolicies(@RequestBody Map<String, List<RangerPolicy>> policies) {
+		
+		List<RangerPolicy> createPolicies = policies.get("createPolicies");
+		List<RangerPolicy> updatePolicies = policies.get("updatePolicies");
+		List<RangerPolicy> deletePolicies = policies.get("deletePolicies");
+		
+		List<RangerPolicy> retPolicies = new ArrayList();
+		
+		if (createPolicies != null) {
+			for (RangerPolicy policy : createPolicies) {
+				retPolicies.add(serviceREST.createPolicy(policy));
+			}
+		}
+		
+		if (updatePolicies != null) {
+			for (RangerPolicy policy : updatePolicies) {
+				retPolicies.add(serviceREST.updatePolicy(policy));
+			}
+		}
+		
+		if (deletePolicies != null) {
+			for (RangerPolicy policy : deletePolicies) {
+				serviceREST.deletePolicy(policy.getId());
+			}
+		}
+		
+		return retPolicies;
+	}
+	
 	/**
 	 * 此接口每个policy会作为一次事务提交，将失败的policy返回给猛犸
 	 * @param params
@@ -430,7 +462,7 @@ public class PublicAPIsv2 {
 	 * @throws Exception
 	 */
 	@POST
-	@Path("/api/policy/hivepolicies/modifyBatch")
+	@Path("/api/hivepolicies/modifyBatch")
 	@Produces({ "application/json", "application/xml" })
 	public List<RangerPolicy> modifyHivePoliciesBatch(@RequestBody JSONObject params) throws Exception {
 		
@@ -548,7 +580,7 @@ public class PublicAPIsv2 {
 			if (!resourceUsed) {
 				try {
 					long createStartTime = System.currentTimeMillis();
-					this.createPolicy(policy);
+					serviceREST.createPolicy(policy);
 					logger.info("### create policy cost time = " + 
 							(System.currentTimeMillis() - createStartTime));
 				} catch (Exception e) {
