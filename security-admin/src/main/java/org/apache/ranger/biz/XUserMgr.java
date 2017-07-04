@@ -63,6 +63,7 @@ import org.apache.ranger.db.XXGroupUserDao;
 import org.apache.ranger.db.XXPermMapDao;
 import org.apache.ranger.db.XXPolicyDao;
 import org.apache.ranger.db.XXPolicyItemAccessDao;
+import org.apache.ranger.db.XXPolicyItemConditionDao;
 import org.apache.ranger.db.XXPolicyItemDao;
 import org.apache.ranger.db.XXPolicyItemGroupPermDao;
 import org.apache.ranger.db.XXPortalUserDao;
@@ -1650,6 +1651,10 @@ public class XUserMgr extends XUserMgrBase {
 			}
 			
 			if (!policyItemIds.isEmpty()) {
+				// 删除不在x_group_item_user_perm中的x_policy_item_condition对象
+				XXPolicyItemConditionDao xXPolicyItemConditionDao = daoManager.getXXPolicyItemCondition();
+				xXPolicyItemConditionDao.deleteByPolicyItemIdsNotInPolicyItemUserPerm(policyItemIds);
+				
 				// 删除不在x_group_item_user_perm中的x_policy_item_access对象
 				XXPolicyItemAccessDao xXPolicyItemAccessDao = daoManager.getXXPolicyItemAccess();
 				xXPolicyItemAccessDao.deleteByPolicyItemIdsNotInPolicyItemUserPerm(policyItemIds);

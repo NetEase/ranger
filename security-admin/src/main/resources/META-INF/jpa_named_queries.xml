@@ -546,6 +546,13 @@
 		</query>
 	</named-query>
 	
+	<named-query name="XXPolicyItemCondition.deleteByPolicyItemIdsNotInPolicyItemUserPerm">
+		<query>DELETE FROM  XXPolicyItemCondition obj
+			   WHERE obj.policyItemId IN :policyItemIds	 
+			   	and obj.policyItemId NOT IN (select polItemUser.policyItemId from XXPolicyItemUserPerm polItemUser) 
+		</query>
+	</named-query>
+	
 	<!-- XXPolicyItemGroupPerm -->
 	<named-query name="XXPolicyItemGroupPerm.findByPolicyItemId">
 		<query>select obj from XXPolicyItemGroupPerm obj where obj.policyItemId = :polItemId order by obj.order</query>
