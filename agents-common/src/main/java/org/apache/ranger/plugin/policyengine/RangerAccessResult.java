@@ -31,7 +31,10 @@ public class RangerAccessResult {
 	private boolean  isAllowed = false;
 	private boolean isAuditedDetermined = false;
 	private boolean  isAudited = false;
+	private long     auditPolicyId  = -1;
 	private long     policyId  = -1;
+	private long     evaluatedPoliciesCount = 0;
+
 	private String   reason    = null;
 
 	public RangerAccessResult(String serviceName, RangerServiceDef serviceDef, RangerAccessRequest request) {
@@ -42,7 +45,9 @@ public class RangerAccessResult {
 		this.isAllowed   = false;
 		this.isAuditedDetermined = false;
 		this.isAudited   = false;
+		this.auditPolicyId = -1;
 		this.policyId    = -1;
+		this.evaluatedPoliciesCount = 0;
 		this.reason      = null;
 	}
 
@@ -145,6 +150,26 @@ public class RangerAccessResult {
 		return ret;
 	}
 
+
+	/**
+	 * @return the auditPolicyId
+	 */
+	public long getAuditPolicyId() {
+		return auditPolicyId;
+	}
+
+	public long getEvaluatedPoliciesCount() { return this.evaluatedPoliciesCount; }
+
+
+	/**
+	 * @param policyId the auditPolicyId to set
+	 */
+	public void setAuditPolicyId(long policyId) {
+		this.auditPolicyId = policyId;
+	}
+
+	public void incrementEvaluatedPoliciesCount() { this.evaluatedPoliciesCount++; }
+
 	@Override
 	public String toString( ) {
 		StringBuilder sb = new StringBuilder();
@@ -161,6 +186,8 @@ public class RangerAccessResult {
 		sb.append("isAllowed={").append(isAllowed).append("} ");
         sb.append("isAuditedDetermined={").append(isAuditedDetermined).append("} ");
         sb.append("isAudited={").append(isAudited).append("} ");
+		sb.append("auditPolicyId={").append(auditPolicyId).append("} ");
+		sb.append("evaluatedPoliciesCount={").append(evaluatedPoliciesCount).append("} ");
 		sb.append("policyId={").append(policyId).append("} ");
 		sb.append("reason={").append(reason).append("} ");
 

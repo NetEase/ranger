@@ -57,13 +57,19 @@ public class PerfDataRecorder {
 			instance.dumpStatistics();
 		}
 	}
+
+	public static void clearStatistics() {
+		if (instance != null) {
+			instance.clear();
+		}
+	}
 	public static void recordStatistic(String tag, long elapsedTime) {
 		if (instance != null) {
 			instance.record(tag, elapsedTime);
 		}
 	}
 
-	private void dumpStatistics() {
+	synchronized private void dumpStatistics() {
 		List<String> tags = new ArrayList<String>(perfStatistics.keySet());
 
 		Collections.sort(tags);
@@ -93,7 +99,11 @@ public class PerfDataRecorder {
 		}
 	}
 
-	private void record(String tag, long elapsedTime) {
+	synchronized private void clear() {
+		perfStatistics.clear();
+	}
+
+	synchronized private void record(String tag, long elapsedTime) {
 		PerfStatistic perfStatistic = perfStatistics.get(tag);
 
 		if (perfStatistic == null  && !initPerfStatisticsOnce) {

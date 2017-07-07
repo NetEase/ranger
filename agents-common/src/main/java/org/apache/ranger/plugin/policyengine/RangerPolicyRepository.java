@@ -28,7 +28,6 @@ import org.apache.ranger.plugin.contextenricher.RangerContextEnricher;
 import org.apache.ranger.plugin.model.RangerPolicy;
 import org.apache.ranger.plugin.model.RangerServiceDef;
 import org.apache.ranger.plugin.policyevaluator.RangerCachedPolicyEvaluator;
-import org.apache.ranger.plugin.policyevaluator.RangerDefaultPolicyEvaluator;
 import org.apache.ranger.plugin.policyevaluator.RangerOptimizedPolicyEvaluator;
 import org.apache.ranger.plugin.policyevaluator.RangerPolicyEvaluator;
 import org.apache.ranger.plugin.util.RangerPerfTracer;
@@ -54,6 +53,7 @@ public class RangerPolicyRepository {
     private final Map<String, Boolean>        accessAuditCache;
 
     private static int RANGER_POLICYENGINE_AUDITRESULT_CACHE_SIZE = 64*1024;
+
 
     RangerPolicyRepository(ServicePolicies servicePolicies, RangerPolicyEngineOptions options) {
         super();
@@ -310,6 +310,33 @@ public class RangerPolicyRepository {
         return altered;
     }
 
+
+
+     void reorderPolicyEvaluators() {
+         if (LOG.isDebugEnabled()) {
+             LOG.debug("==> reorderPolicyEvaluators()");
+         }
+
+         this.policyEvaluators = getReorderedPolicyEvaluators(this.policyEvaluators);
+         if (LOG.isDebugEnabled()) {
+             LOG.debug("<== reorderPolicyEvaluators()");
+         }
+     }
+
+     private List<RangerPolicyEvaluator> getReorderedPolicyEvaluators(List<RangerPolicyEvaluator> evaluators) {
+         List<RangerPolicyEvaluator> ret = evaluators;
+
+         if (CollectionUtils.isNotEmpty(evaluators)) {
+
+             ret = new ArrayList<RangerPolicyEvaluator>(evaluators);
+             Collections.sort(ret);
+
+             ret = Collections.unmodifiableList(ret);
+         }
+
+         return ret;
+     }
+
     @Override
     public String toString( ) {
         StringBuilder sb = new StringBuilder();
@@ -345,5 +372,10 @@ public class RangerPolicyRepository {
 
         return sb;
     }
+
+
+
+
+
 
 }
