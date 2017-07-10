@@ -1521,8 +1521,7 @@ public class ServiceREST {
 			ensureAdminAccess(policy.getService(), policy.getResources());
 
 			ret = svcStore.createPolicy(policy);
-			
-			RangerServicePoliciesCache.getInstance().updatePolicyInCache("create", ret, svcStore);
+
 		} catch(WebApplicationException excp) {
 			throw excp;
 		} catch(Throwable excp) {
@@ -1582,7 +1581,7 @@ public class ServiceREST {
 			}
 
 			ret = svcStore.updatePolicy(policy);
-			RangerServicePoliciesCache.getInstance().updatePolicyInCache("update", ret, svcStore);
+			
 		} catch(WebApplicationException excp) {
 			throw excp;
 		} catch(Throwable excp) {
@@ -1637,7 +1636,7 @@ public class ServiceREST {
 			}
 
 			svcStore.deletePolicy(id);
-			RangerServicePoliciesCache.getInstance().updatePolicyInCache("delete", policy, svcStore);
+
 		} catch(WebApplicationException excp) {
 			throw excp;
 		} catch(Throwable excp) {
