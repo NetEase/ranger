@@ -267,6 +267,13 @@
                 order by obj.policyId, obj.id
         </query>
 	</named-query>
+	
+	<named-query name="XXPolicyItem.deleteByIdsNotInPolicyItemUserPerm">
+		<query>DELETE FROM  XXPolicyItem obj
+			   WHERE obj.id IN :itemIds	 
+			   	AND obj.id NOT IN (select polItemUser.policyItemId from XXPolicyItemUserPerm polItemUser)
+		</query>
+	</named-query>
 
 	<!-- XXPolicy -->
 	<named-query name="XXPolicy.findByNameAndServiceId">
@@ -502,6 +509,13 @@
 		</query>
 	</named-query>
 	
+	<named-query name="XXPolicyItemAccess.deleteByPolicyItemIdsNotInPolicyItemUserPerm">
+		<query>DELETE FROM  XXPolicyItemAccess obj
+			   WHERE obj.policyItemId IN :policyItemIds	 
+			   	and obj.policyItemId NOT IN (select polItemUser.policyItemId from XXPolicyItemUserPerm polItemUser) 
+		</query>
+	</named-query>
+	
 	<!-- XXPolicyItemCondition -->
 	<named-query name="XXPolicyItemCondition.findByPolicyItemId">
 		<query>select obj from XXPolicyItemCondition obj where obj.policyItemId = :polItemId order by obj.order</query>
@@ -532,6 +546,13 @@
 		</query>
 	</named-query>
 	
+	<named-query name="XXPolicyItemCondition.deleteByPolicyItemIdsNotInPolicyItemUserPerm">
+		<query>DELETE FROM  XXPolicyItemCondition obj
+			   WHERE obj.policyItemId IN :policyItemIds	 
+			   	and obj.policyItemId NOT IN (select polItemUser.policyItemId from XXPolicyItemUserPerm polItemUser) 
+		</query>
+	</named-query>
+	
 	<!-- XXPolicyItemGroupPerm -->
 	<named-query name="XXPolicyItemGroupPerm.findByPolicyItemId">
 		<query>select obj from XXPolicyItemGroupPerm obj where obj.policyItemId = :polItemId order by obj.order</query>
@@ -545,6 +566,18 @@
 		</query>
 	</named-query>
 
+	<named-query name="XXPolicyItemGroupPerm.findByGroupId">
+		<query>select obj from XXPolicyItemGroupPerm obj
+		        where obj.groupId = :groupId
+		</query>
+	</named-query>
+
+	<named-query name="XXPolicyItemGroupPerm.deleteByGroupId">
+		<query>delete from XXPolicyItemGroupPerm obj
+		        where obj.groupId = :groupId
+		</query>
+	</named-query>
+	
 	<named-query name="XXPolicyItemGroupPerm.findByServiceId">
 		<query>select obj from XXPolicyItemGroupPerm obj, XXPolicyItem item
 		        where obj.policyItemId = item.id

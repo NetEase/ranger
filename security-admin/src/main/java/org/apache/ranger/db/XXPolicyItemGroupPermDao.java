@@ -69,4 +69,24 @@ public class XXPolicyItemGroupPermDao extends BaseDao<XXPolicyItemGroupPerm> {
 			return new ArrayList<XXPolicyItemGroupPerm>();
 		}
 	}
+	
+	public List<XXPolicyItemGroupPerm> findByGroupId(Long groupId) {
+		if(groupId == null) {
+			return new ArrayList<XXPolicyItemGroupPerm>();
+		}
+		try {
+			return getEntityManager()
+					.createNamedQuery("XXPolicyItemGroupPerm.findByGroupId", tClass)
+					.setParameter("groupId", groupId).getResultList();
+		} catch (NoResultException e) {
+			return new ArrayList<XXPolicyItemGroupPerm>();
+		}
+	}
+	
+	public void deleteByGroupId(Long groupId) {
+		getEntityManager()
+				.createNamedQuery("XXPolicyItemGroupPerm.deleteByGroupId")
+				.setParameter("groupId", groupId)
+				.executeUpdate();
+	}
 }

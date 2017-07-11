@@ -62,6 +62,10 @@ import org.apache.ranger.db.XXGroupPermissionDao;
 import org.apache.ranger.db.XXGroupUserDao;
 import org.apache.ranger.db.XXPermMapDao;
 import org.apache.ranger.db.XXPolicyDao;
+import org.apache.ranger.db.XXPolicyItemAccessDao;
+import org.apache.ranger.db.XXPolicyItemConditionDao;
+import org.apache.ranger.db.XXPolicyItemDao;
+import org.apache.ranger.db.XXPolicyItemGroupPermDao;
 import org.apache.ranger.db.XXPortalUserDao;
 import org.apache.ranger.db.XXPortalUserRoleDao;
 import org.apache.ranger.db.XXResourceDao;
@@ -75,6 +79,7 @@ import org.apache.ranger.entity.XXGroupGroup;
 import org.apache.ranger.entity.XXGroupUser;
 import org.apache.ranger.entity.XXPermMap;
 import org.apache.ranger.entity.XXPolicy;
+import org.apache.ranger.entity.XXPolicyItemGroupPerm;
 import org.apache.ranger.entity.XXPortalUser;
 import org.apache.ranger.entity.XXResource;
 import org.apache.ranger.entity.XXTrxLog;
@@ -1622,8 +1627,9 @@ public class XUserMgr extends XUserMgrBase {
 					xXGroupGroupDao.remove(xXGroupGroup.getId());
 				}
 			}
+			
 			//delete XXPolicyItemGroupPerm records of group
-			for (XXPolicy xXPolicy : xXPolicyList) {
+			/*for (XXPolicy xXPolicy : xXPolicyList) {
 				RangerPolicy rangerPolicy = policyService.getPopulatedViewObject(xXPolicy);
 				List<RangerPolicyItem> policyItems = rangerPolicy.getPolicyItems();
 				removeUserGroupReferences(policyItems,null,vXGroup.getName());
@@ -1634,7 +1640,33 @@ public class XUserMgr extends XUserMgrBase {
 					logger.error("updatePolicy(" + rangerPolicy + ") failed", excp);
 					restErrorUtil.createRESTException(excp.getMessage());
 				}
+			}*/
+			
+			XXPolicyItemGroupPermDao xXPolicyItemGroupPermDao=daoManager.getXXPolicyItemGroupPerm();
+			// 查找需要删除的x_policy_item
+			List<XXPolicyItemGroupPerm> policyItemGroupPerms = xXPolicyItemGroupPermDao.findByGroupId(id);
+			List<Long> policyItemIds = new ArrayList();
+			for (XXPolicyItemGroupPerm policyItemGroupPerm : policyItemGroupPerms) {
+				policyItemIds.add(policyItemGroupPerm.getPolicyitemid());
 			}
+			
+			if (!policyItemIds.isEmpty()) {
+				// 删除不在x_group_item_user_perm中的x_policy_item_condition对象
+				XXPolicyItemConditionDao xXPolicyItemConditionDao = daoManager.getXXPolicyItemCondition();
+				xXPolicyItemConditionDao.deleteByPolicyItemIdsNotInPolicyItemUserPerm(policyItemIds);
+				
+				// 删除不在x_group_item_user_perm中的x_policy_item_access对象
+				XXPolicyItemAccessDao xXPolicyItemAccessDao = daoManager.getXXPolicyItemAccess();
+				xXPolicyItemAccessDao.deleteByPolicyItemIdsNotInPolicyItemUserPerm(policyItemIds);
+				
+				// 删除x_policy_item_group_perm中记录
+				xXPolicyItemGroupPermDao.deleteByGroupId(id);
+				
+				// 删除不在x_group_item_user_perm中的x_policy_item对象
+				XXPolicyItemDao xXPolicyItemDao = daoManager.getXXPolicyItem(); 
+				xXPolicyItemDao.deleteByIdsNotInPolicyItemUserPerm(policyItemIds);
+			}			
+			
 			if(CollectionUtils.isNotEmpty(xXGroupPermissions)){
 				for (XXGroupPermission xXGroupPermission : xXGroupPermissions) {
 					if(xXGroupPermission!=null){
@@ -1652,6 +1684,10 @@ public class XUserMgr extends XUserMgrBase {
 			List<XXTrxLog> xXTrxLogsXXGroup = xGroupService.getTransactionLog(xGroupService.populateViewBean(xXGroup),
 					"delete");
 			xaBizUtil.createTrxLog(xXTrxLogsXXGroup);
+			
+			// policies in cache has not been updated, should update in other interface
+			XXServiceDao serviceDao = daoMgr.getXXService();
+			serviceDao.updatePolicyVersion();
 		} else {
 			boolean hasReferences=false;
 
