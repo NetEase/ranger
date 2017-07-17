@@ -31,13 +31,16 @@ import org.apache.ranger.plugin.policyevaluator.RangerCachedPolicyEvaluator;
 import org.apache.ranger.plugin.policyevaluator.RangerOptimizedPolicyEvaluator;
 import org.apache.ranger.plugin.policyevaluator.RangerPolicyEvaluator;
 import org.apache.ranger.plugin.util.RangerPerfTracer;
+import org.apache.ranger.plugin.util.RangerResourceTrie;
 import org.apache.ranger.plugin.util.ServicePolicies;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class RangerPolicyRepository {
     private static final Log LOG = LogFactory.getLog(RangerPolicyRepository.class);
@@ -51,6 +54,8 @@ public class RangerPolicyRepository {
     private List<RangerContextEnricher>       contextEnrichers;
     private List<RangerPolicyEvaluator>       policyEvaluators;
     private final Map<String, Boolean>        accessAuditCache;
+    private final boolean                         disableTrieLookupPrefilter;
+    private final Map<String, RangerResourceTrie> policyResourceTrie;
 
     private static int RANGER_POLICYENGINE_AUDITRESULT_CACHE_SIZE = 64*1024;
 
@@ -115,6 +120,17 @@ public class RangerPolicyRepository {
         } else {
         	accessAuditCache = null;
         }
+
+        this.disableTrieLookupPrefilter = options.disableTrieLookupPrefilter;
+
+        if(this.disableTrieLookupPrefilter) {
+            policyResourceTrie    = null;
+        } else {
+            policyResourceTrie    = new HashMap<String, RangerResourceTrie>();
+
+        }
+
+        initResourceTries();
     }
 
     public String getServiceName() {
@@ -139,6 +155,70 @@ public class RangerPolicyRepository {
 
     public List<RangerPolicyEvaluator> getPolicyEvaluators() {
         return policyEvaluators;
+    }
+
+    List<RangerPolicyEvaluator> getPolicyEvaluators(RangerAccessResource resource) {
+        return disableTrieLookupPrefilter ? getPolicyEvaluators() : getPolicyEvaluators(policyResourceTrie, resource);
+    }
+
+
+    private List<RangerPolicyEvaluator> getPolicyEvaluators(Map<String, RangerResourceTrie> resourceTrie, RangerAccessResource resource) {
+        List<RangerPolicyEvaluator> ret          = null;
+        Set<String> resourceKeys = resource == null ? null : resource.getKeys();
+
+        if(CollectionUtils.isNotEmpty(resourceKeys)) {
+            boolean isRetModifiable = false;
+
+            for(String resourceName : resourceKeys) {
+                RangerResourceTrie trie = resourceTrie.get(resourceName);
+
+                if(trie == null) { // if no trie exists for this resource level, ignore and continue to next level
+                    continue;
+                }
+
+                List<RangerPolicyEvaluator> resourceEvaluators = trie.getPoliciesForResource(resource.getValue(resourceName));
+
+                if(CollectionUtils.isEmpty(resourceEvaluators)) { // no policies for this resource, bail out
+                    ret = null;
+                } else if(ret == null) { // initialize ret with policies found for this resource
+                    ret = resourceEvaluators;
+                } else { // remove policies from ret that are not in resourceEvaluators
+                    if(isRetModifiable) {
+                        ret.retainAll(resourceEvaluators);
+                    } else {
+                        final List<RangerPolicyEvaluator> shorterList;
+                        final List<RangerPolicyEvaluator> longerList;
+
+                        if (ret.size() < resourceEvaluators.size()) {
+                            shorterList = ret;
+                            longerList  = resourceEvaluators;
+                        } else {
+                            shorterList = resourceEvaluators;
+                            longerList  = ret;
+                        }
+
+                        ret = new ArrayList<>(shorterList);
+                        ret.retainAll(longerList);
+                        isRetModifiable = true;
+                    }
+                }
+
+                if(CollectionUtils.isEmpty(ret)) { // if no policy exists, bail out and return empty list
+                    ret = null;
+                    break;
+                }
+            }
+        }
+
+        if(ret == null) {
+            ret = Collections.emptyList();
+        }
+
+        if(LOG.isDebugEnabled()) {
+            LOG.debug("<== RangerPolicyRepository.getPolicyEvaluators(" + resource.getAsString() + "): evaluatorCount=" + ret.size());
+        }
+
+        return ret;
     }
 
     public static boolean isDelegateAdminPolicy(RangerPolicy policy) {
@@ -173,6 +253,18 @@ public class RangerPolicyRepository {
         }
         return ret;
     }
+
+    private void initResourceTries() {
+        if(! this.disableTrieLookupPrefilter) {
+            policyResourceTrie.clear();
+            if (serviceDef != null && serviceDef.getResources() != null) {
+                for (RangerServiceDef.RangerResourceDef resourceDef : serviceDef.getResources()) {
+                    policyResourceTrie.put(resourceDef.getName(), new RangerResourceTrie(resourceDef, policyEvaluators));
+                }
+            }
+        }
+    }
+
 
     private RangerContextEnricher buildContextEnricher(RangerServiceDef.RangerContextEnricherDef enricherDef) {
         if(LOG.isDebugEnabled()) {
@@ -311,19 +403,39 @@ public class RangerPolicyRepository {
     }
 
 
-
      void reorderPolicyEvaluators() {
          if (LOG.isDebugEnabled()) {
              LOG.debug("==> reorderPolicyEvaluators()");
          }
 
-         this.policyEvaluators = getReorderedPolicyEvaluators(this.policyEvaluators);
+         if(disableTrieLookupPrefilter) {
+             policyEvaluators          = getReorderedPolicyEvaluators(policyEvaluators);
+         } else {
+             reorderPolicyEvaluators(policyResourceTrie);
+         }
+
+
          if (LOG.isDebugEnabled()) {
              LOG.debug("<== reorderPolicyEvaluators()");
          }
      }
 
-     private List<RangerPolicyEvaluator> getReorderedPolicyEvaluators(List<RangerPolicyEvaluator> evaluators) {
+
+    private void reorderPolicyEvaluators(Map<String, RangerResourceTrie> trieMap) {
+        if(trieMap != null) {
+            for(Map.Entry<String, RangerResourceTrie> entry : trieMap.entrySet()) {
+                RangerResourceTrie trie = entry.getValue();
+
+                if(trie != null) {
+                    trie.reorderPolicyEvaluators();
+                }
+            }
+        }
+    }
+
+
+
+    private List<RangerPolicyEvaluator> getReorderedPolicyEvaluators(List<RangerPolicyEvaluator> evaluators) {
          List<RangerPolicyEvaluator> ret = evaluators;
 
          if (CollectionUtils.isNotEmpty(evaluators)) {
@@ -372,10 +484,6 @@ public class RangerPolicyRepository {
 
         return sb;
     }
-
-
-
-
 
 
 }
