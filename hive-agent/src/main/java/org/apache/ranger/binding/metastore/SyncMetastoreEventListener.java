@@ -73,46 +73,10 @@ public class SyncMetastoreEventListener extends MetaStoreEventListener {
   }
 
   @Override
-  public void onCreateDatabase(CreateDatabaseEvent dbEvent)
-      throws MetaException {
-
-    // don't sync paths/privileges if the operation has failed
-    if (!dbEvent.getStatus()) {
-      LOGGER.debug("Skip syncing paths/privileges with Sentry server for onCreateDatabase event," +
-          " since the operation failed. \n");
-      return;
-    }
-
-    // drop the privileges on the database, in case anything left behind during
-    // last drop db
-    if (!rangerConfigureIsTrue(RangerHadoopConstants.SYNC_CREATE_WITH_POLICY_STORE)) {
-      return;
-    }
-
-    synchronizePolicy(dbEvent, HiveOperationType.CREATEDATABASE);
-  }
-
-  @Override
-  public void onDropDatabase(DropDatabaseEvent dbEvent) throws MetaException {
-    // don't sync paths/privileges if the operation has failed
-    if (!dbEvent.getStatus()) {
-      LOGGER.debug("Skip syncing paths/privileges with Sentry server for onDropDatabase event," +
-          " since the operation failed. \n");
-      return;
-    }
-
-    if (!rangerConfigureIsTrue(RangerHadoopConstants.SYNC_DROP_WITH_POLICY_STORE)) {
-      return;
-    }
-
-    synchronizePolicy(dbEvent, HiveOperationType.DROPDATABASE);
-  }
-
-  @Override
   public void onCreateTable (CreateTableEvent tableEvent) throws MetaException {
     // don't sync paths/privileges if the operation has failed
     if (!tableEvent.getStatus()) {
-      LOGGER.debug("Skip sync paths/privileges with Sentry server for onCreateTable event," +
+      LOGGER.debug("Skip sync paths/privileges with Ranger server for onCreateTable event," +
           " since the operation failed. \n");
       return;
     }
@@ -149,7 +113,7 @@ public class SyncMetastoreEventListener extends MetaStoreEventListener {
   public void onAlterTable (AlterTableEvent tableEvent) throws MetaException {
     // don't sync privileges if the operation has failed
     if (!tableEvent.getStatus()) {
-      LOGGER.debug("Skip syncing privileges with Sentry server for onAlterTable event," +
+      LOGGER.debug("Skip syncing privileges with Ranger server for onAlterTable event," +
           " since the operation failed. \n");
       return;
     }
@@ -160,68 +124,6 @@ public class SyncMetastoreEventListener extends MetaStoreEventListener {
     }
 
     synchronizePolicy(tableEvent, HiveOperationType.ALTERTABLE);
-  }
-
-  @Override
-  public void onAddPartition(AddPartitionEvent partitionEvent) throws MetaException {
-    // don't sync path if the operation has failed
-    if (!partitionEvent.getStatus()) {
-      LOGGER.debug("Skip syncing path with Sentry server for onAddPartition event," +
-          " since the operation failed. \n");
-      return;
-    }
-
-    if (partitionEvent != null && partitionEvent.getPartitionIterator() != null) {
-      Iterator<Partition> it = partitionEvent.getPartitionIterator();
-      while (it.hasNext()) {
-        Partition part = it.next();
-        if (part.getSd() != null && part.getSd().getLocation() != null) {
-          String authzObj = part.getDbName() + "." + part.getTableName();
-          String path = part.getSd().getLocation();
-
-        }
-      }
-    }
-  }
-
-  @Override
-  public void onAlterPartition(AlterPartitionEvent partitionEvent) throws MetaException {
-    // don't sync path if the operation has failed
-    if (!partitionEvent.getStatus()) {
-      LOGGER.debug("Skip syncing path with Sentry server for onDropPartition event," +
-          " since the operation failed. \n");
-      return;
-    }
-
-    if (partitionEvent != null && partitionEvent.getNewPartition() != null) {
-      String authzObj = partitionEvent.getTable().getDbName() + "."
-          + partitionEvent.getTable().getTableName();
-      String location = partitionEvent.getOldPartition().getSd().getLocation();
-      String newLocation = partitionEvent.getNewPartition().getSd().getLocation();
-    }
-  }
-
-  @Override
-  public void onDropPartition(DropPartitionEvent partitionEvent) throws MetaException {
-    // don't sync path if the operation has failed
-    if (!partitionEvent.getStatus()) {
-      LOGGER.debug("Skip syncing path with Sentry server for onDropPartition event," +
-          " since the operation failed. \n");
-      return;
-    }
-
-    if (partitionEvent != null && partitionEvent.getPartitionIterator() != null) {
-      String authzObj = partitionEvent.getTable().getDbName() + "."
-          + partitionEvent.getTable().getTableName();
-      Iterator<Partition> it = partitionEvent.getPartitionIterator();
-      while (it.hasNext()) {
-        Partition part = it.next();
-        if (part.getSd() != null && part.getSd().getLocation() != null) {
-          String path = part.getSd().getLocation();
-
-        }
-      }
-    }
   }
 
   public void synchronizePolicy(ListenerEvent tableEvent, HiveOperationType hiveOperationType) throws MetaException {
@@ -249,34 +151,18 @@ public class SyncMetastoreEventListener extends MetaStoreEventListener {
     HivePrivilegeObject.HivePrivilegeObjectType hivePrivilegeObjectType = HivePrivilegeObject.HivePrivilegeObjectType.TABLE_OR_VIEW;
     String dbName = "", objName = "";
     String newDbName = null, newObjName = null;
+    String tableType = "";
     String location = "";
     String newLocation = "";
     HiveAccessType hiveAccessType = HiveAccessType.NONE;
     switch (hiveOperationType) {
-      case CREATEDATABASE:
-        hivePrivilegeObjectType = HivePrivilegeObject.HivePrivilegeObjectType.DATABASE;
-        hiveAccessType = HiveAccessType.CREATE;
-        Database createDb = ((CreateDatabaseEvent)tableEvent).getDatabase();
-        dbName = createDb.getName();
-        if (createDb.getLocationUri() != null) {
-          location = createDb.getLocationUri();
-        }
-        break;
-      case DROPDATABASE:
-        hivePrivilegeObjectType = HivePrivilegeObject.HivePrivilegeObjectType.DATABASE;
-        hiveAccessType = HiveAccessType.DROP;
-        Database dropDb = ((DropDatabaseEvent)tableEvent).getDatabase();
-        dbName = dropDb.getName();
-        if (dropDb.getLocationUri() != null) {
-          location = dropDb.getLocationUri();
-        }
-        break;
       case CREATETABLE:
         hivePrivilegeObjectType = HivePrivilegeObject.HivePrivilegeObjectType.TABLE_OR_VIEW;
         hiveAccessType = HiveAccessType.CREATE;
         Table createTable = ((CreateTableEvent)tableEvent).getTable();
         dbName = createTable.getDbName();
         objName = createTable.getTableName();
+        tableType = createTable.getTableType();
         if (createTable.getSd().getLocation() != null) {
           location = createTable.getSd().getLocation();
         }
@@ -323,10 +209,10 @@ public class SyncMetastoreEventListener extends MetaStoreEventListener {
       List<HivePrivilege> hivePrivileges = new ArrayList<HivePrivilege>();
       hivePrivileges.add(hivePrivilege);
       SynchronizeRequest request  = createSyncPolicyRequest(resource, newResource, hivePrincipals,
-          hivePrivileges, grantorPrincipal, location, newLocation);
+          hivePrivileges, grantorPrincipal, tableType, location, newLocation);
 
       if(LOGGER.isDebugEnabled()) {
-        LOGGER.debug("syncPolicys(): " + request.toString());
+        LOGGER.debug("synchronizePolicy(): " + request.toString());
       }
 
       rangerPlugin.getRangerAdminClient().syncPolicys(request, hiveOperationType);
@@ -342,6 +228,7 @@ public class SyncMetastoreEventListener extends MetaStoreEventListener {
                                                     List<HivePrincipal> hivePrincipals,
                                                     List<HivePrivilege> hivePrivileges,
                                                     HivePrincipal       grantorPrincipal,
+                                                    String              tableType,
                                                     String              location,
                                                     String              newLocation)
       throws MetaException {
@@ -361,6 +248,7 @@ public class SyncMetastoreEventListener extends MetaStoreEventListener {
     ret.setDelegateAdmin(Boolean.TRUE);
     ret.setEnableAudit(Boolean.TRUE);
     ret.setReplaceExistingPermissions(Boolean.FALSE);
+    ret.setTableType(tableType);
     ret.setLocation(location);
     ret.setNewLocation(newLocation);
 

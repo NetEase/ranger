@@ -19,6 +19,7 @@
 
 package org.apache.ranger.rest;
 
+import java.lang.reflect.Type;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.*;
@@ -36,11 +37,13 @@ import javax.ws.rs.QueryParam;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Context;
 
-import org.apache.avro.generic.GenericData;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.collections.ListUtils;
 import org.apache.commons.collections.MapUtils;
+import org.apache.commons.collections.map.HashedMap;
 import org.apache.commons.httpclient.URI;
-import org.apache.commons.httpclient.URIException;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -53,7 +56,6 @@ import org.apache.ranger.biz.ServiceMgr;
 import org.apache.ranger.biz.XUserMgr;
 import org.apache.ranger.common.*;
 import org.apache.ranger.db.RangerDaoManager;
-import org.apache.ranger.db.RangerDaoManagerBase;
 import org.apache.ranger.entity.*;
 import org.apache.ranger.plugin.model.RangerPolicy;
 import org.apache.ranger.plugin.model.RangerPolicy.RangerPolicyItem;
@@ -72,7 +74,6 @@ import org.apache.ranger.plugin.store.EmbeddedServiceDefsUtil;
 import org.apache.ranger.plugin.util.*;
 import org.apache.ranger.security.context.RangerAPIList;
 import org.apache.ranger.security.context.RangerContextHolder;
-import org.apache.ranger.security.context.RangerPreAuthSecurityHandler;
 import org.apache.ranger.security.context.RangerSecurityContext;
 import org.apache.ranger.service.RangerPolicyService;
 import org.apache.ranger.service.RangerServiceDefService;
@@ -89,10 +90,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.bind.annotation.RequestBody;
-
-import com.alibaba.fastjson.JSONArray;
-import com.alibaba.fastjson.JSONObject;
 
 @Path("plugins")
 @Component
@@ -101,6 +98,10 @@ import com.alibaba.fastjson.JSONObject;
 public class ServiceREST {
 	private static final Log LOG = LogFactory.getLog(ServiceREST.class);
 	private static final Log PERF_LOG = RangerPerfTracer.getPerfLogger("rest.ServiceREST");
+
+	private static final String EXTERNAL_TABLE_TYPE = "EXTERNAL_TABLE";
+	private static final String POLICY_DESC_TABLE_TYPE = "table_type";
+	private static final String POLICY_DESC_TABLE_LOCATION = "table_location";
 
 	@Autowired
 	RESTErrorUtil restErrorUtil;
@@ -1119,7 +1120,7 @@ public class ServiceREST {
 				String               userName   = syncRequest.getGrantor();
 				Set<String>          userGroups = userMgr.getGroupsForUser(userName);
 				RangerAccessResource resource   = new RangerAccessResourceImpl(syncRequest.getResource());
-				syncRequest.setGroups(userGroups); // update user groups
+				syncRequest.setGroups(null); // Generate user rights only
 
 				boolean isAdmin = hasAdminAccess(serviceName, userName, userGroups, resource);
 				if(!isAdmin) {
@@ -1127,7 +1128,7 @@ public class ServiceREST {
 							+ syncRequest + ") unauthorized or not delegateadmin!");
 				} else {
 					mockSession(request, userName);
-					syncHdfsPolicy(serviceName, hiveOperationType, syncRequest);
+					syncCatlog(serviceName, hiveOperationType, syncRequest);
 				}
 			} catch(WebApplicationException excp) {
 				throw excp;
@@ -1148,17 +1149,43 @@ public class ServiceREST {
 		return ret;
 	}
 
-	private RangerPolicy searchHdfsPolicy(Long hiveServiceId, String location) throws Exception {
+	private RangerPolicy searchHivePolicy(Long hiveServiceId, String dbName, String tabName) throws Exception {
 		if(LOG.isDebugEnabled()) {
-			LOG.debug("==> ServiceREST.searchHdfsPolicy(" + hiveServiceId + ", " + location + ") ");
+			LOG.debug("==> ServiceREST.searchHivePolicy(" + dbName + ", " + tabName + ") ");
+		}
+
+		SearchFilter hiveFilter = new SearchFilter();
+		hiveFilter.setParam(SearchFilter.SERVICE_ID, hiveServiceId.toString());
+		hiveFilter.setParam(SearchFilter.SERVICE_TYPE, "hive");
+		hiveFilter.setParam(SearchFilter.RESOURCE_PREFIX + "database", dbName);
+		hiveFilter.setParam(SearchFilter.RESOURCE_PREFIX + "table", tabName);
+		hiveFilter.setParam(SearchFilter.RESOURCE_PREFIX + "column", "*");
+		List<RangerPolicy> macthHivePolicies = getPolicies(hiveFilter);
+		for (RangerPolicy policy : macthHivePolicies) {
+			RangerPolicyResource dbResource = policy.getResources().get("database");
+			RangerPolicyResource tabResource = policy.getResources().get("table");
+
+			if (dbResource.getValues().containsAll(Arrays.asList(dbName))
+					&& tabResource.getValues().containsAll(Arrays.asList(tabName))) {
+				return policy;
+			}
+		}
+
+		return null;
+	}
+
+	// search hdfs policy by hdfs location
+	// a hdfs policy may correspond to multiple hive policy(.eg Multiple tables have the same location)
+	private RangerPolicy searchHdfsPolicyByLocation(Long hdfsServiceId, String location) throws Exception {
+		if(LOG.isDebugEnabled()) {
+			LOG.debug("==> ServiceREST.searchHdfsPolicyByLocation(" + hdfsServiceId + ", " + location + ") ");
 		}
 
 		URI uri = new URI(location);
 		String hdfsPath = uri.getPath();
 
-		String hdfsServiceName = getHdfsServiceName(hiveServiceId, location);
 		SearchFilter hdfsFilter = new SearchFilter();
-		hdfsFilter.setParam(SearchFilter.SERVICE_NAME, hdfsServiceName);
+		hdfsFilter.setParam(SearchFilter.SERVICE_ID, hdfsServiceId.toString());
 		hdfsFilter.setParam(SearchFilter.SERVICE_TYPE, "hdfs");
 		hdfsFilter.setParam(SearchFilter.RESOURCE_PREFIX + "path", hdfsPath);
 		List<RangerPolicy> macthHdfsPolicies = getPolicies(hdfsFilter);
@@ -1175,15 +1202,89 @@ public class ServiceREST {
 			}
 		}
 
-		if(LOG.isDebugEnabled()) {
-			if (null == hdfsPolicy) {
-				LOG.warn("can not find matching hdfs policy " + hiveServiceId + ", " + location + ") ");
-			}
-			LOG.debug("<== ServiceREST.searchHdfsPolicy(" + hiveServiceId + ", " + location + ") ");
+		if (null == hdfsPolicy) {
+			LOG.warn("can not find matching hdfs policy " + hdfsServiceId + ", " + location + ") ");
 		}
+		if(LOG.isDebugEnabled()) {
+			LOG.debug("<== ServiceREST.searchHdfsPolicyByLocation(" + hdfsServiceId + ", " + location + ") ");
+		}
+
 		return hdfsPolicy;
 	}
 
+	private RangerPolicy searchHdfsPolicyByHivePolicyName(Long hiveServiceId, String hdfsPolicyName) throws Exception {
+		if(LOG.isDebugEnabled()) {
+			LOG.debug("==> ServiceREST.searchHdfsPolicyByHivePolicyName(" + hiveServiceId + ", " + hdfsPolicyName + ") ");
+		}
+
+		RangerService hdfsService = getRelatedHdfsService(hiveServiceId);
+		SearchFilter hdfsFilter = new SearchFilter();
+		hdfsFilter.setParam(SearchFilter.SERVICE_NAME, hdfsService.getName());
+		hdfsFilter.setParam(SearchFilter.SERVICE_TYPE, "hdfs");
+		hdfsFilter.setParam(SearchFilter.POLICY_NAME, hdfsPolicyName);
+		List<RangerPolicy> macthHdfsPolicies = getPolicies(hdfsFilter);
+		RangerPolicy hdfsPolicy = null;
+		for (RangerPolicy policy : macthHdfsPolicies) {
+			if (policy.getResources().get("path") == null) {
+				continue;
+			}
+
+			hdfsPolicy = policy;
+			break;
+
+		}
+
+		if (null == hdfsPolicy) {
+			LOG.warn("can not find matching hdfs policy " + hiveServiceId + ", " + hdfsPolicyName + ") ");
+		}
+		if(LOG.isDebugEnabled()) {
+			LOG.debug("<== ServiceREST.searchHdfsPolicyByHivePolicyName(" + hiveServiceId + ", " + hdfsPolicyName + ") ");
+		}
+
+		return hdfsPolicy;
+	}
+
+	// search hdfs policy by hdfs location
+	// a hdfs policy may correspond to multiple hive policy(.eg Multiple tables have the same location)
+	private List<RangerPolicy> searchHivePolicyByLocation(Long hiveServiceId, String location) throws Exception {
+		if(LOG.isDebugEnabled()) {
+			LOG.debug("==> ServiceREST.searchHdfsPolicyByLocation(" + hiveServiceId + ", " + location + ") ");
+		}
+
+		URI uri = new URI(location);
+		String hdfsPath = uri.getPath();
+
+		SearchFilter hdfsFilter = new SearchFilter();
+		hdfsFilter.setParam(SearchFilter.SERVICE_ID, hiveServiceId.toString());
+		hdfsFilter.setParam(SearchFilter.SERVICE_TYPE, "hive");
+		hdfsFilter.setParam(SearchFilter.POLICY_DESC_PREFIX + POLICY_DESC_TABLE_LOCATION, hdfsPath);
+		List<RangerPolicy> macthHivePolicies = getPolicies(hdfsFilter);
+
+		if(LOG.isDebugEnabled()) {
+			LOG.debug("<== ServiceREST.searchHdfsPolicyByLocation(" + hiveServiceId + ", " + location + ") ");
+		}
+
+		return macthHivePolicies;
+	}
+
+	/*
+	private List<RangerPolicy> searchHivePolicyByHdfsPolicyId(Long hiveServiceId, Long hdfsPolicyId) throws Exception {
+		if(LOG.isDebugEnabled()) {
+			LOG.debug("==> ServiceREST.searchHivePolicyByHdfsPolicyName(" + hiveServiceId + ", " + hdfsPolicyId + ") ");
+		}
+
+		SearchFilter hiveFilter = new SearchFilter();
+		hiveFilter.setParam(SearchFilter.SERVICE_ID, hiveServiceId.toString());
+		hiveFilter.setParam(SearchFilter.SERVICE_TYPE, "hive");
+		hiveFilter.setParam(SearchFilter.POLICY_DESC_PREFIX+POLICY_DESC_HDFS_POLICY_ID, hdfsPolicyId.toString());
+		List<RangerPolicy> macthHivePolicies = getPolicies(hiveFilter);
+
+		if(LOG.isDebugEnabled()) {
+			LOG.debug("<== ServiceREST.searchHivePolicyByHdfsPolicyName(" + hiveServiceId + ", " + hdfsPolicyId + ") ");
+		}
+
+		return macthHivePolicies;
+	}*/
 
 	private RangerPolicy searchHdfsPolicy(RangerPolicy hivePolicy) throws Exception {
 		if(LOG.isDebugEnabled()) {
@@ -1227,15 +1328,18 @@ public class ServiceREST {
 		return ret;
 	}
 
-	private void syncHdfsPolicy(String matchHiveServiceName, HiveOperationType hiveOperationType,
-															SynchronizeRequest syncRequest) throws Exception {
-		RangerAccessResource resource = new RangerAccessResourceImpl(syncRequest.getResource());
-		RangerPolicy matchHivePolicy = getExactMatchPolicyForResource(matchHiveServiceName, resource);
-		if (null == matchHivePolicy) {
-			LOG.warn("can not find matching hive policy " + matchHiveServiceName);
-			return;
+	private RangerPolicy policiesContains(List<RangerPolicy> policies, Long policyId) {
+		for (RangerPolicy policy : policies) {
+			if (policy.getId() == policyId) {
+				return policy;
+			}
 		}
 
+		return null;
+	}
+
+	private void syncCatlog(String matchHiveServiceName, HiveOperationType hiveOperationType,
+															SynchronizeRequest syncRequest) throws Exception {
 		RangerService service = getServiceByName(matchHiveServiceName);
 		if (null == service) {
 			LOG.error("service does not exist - name=" + matchHiveServiceName);
@@ -1243,37 +1347,141 @@ public class ServiceREST {
 		}
 
 		String location = syncRequest.getLocation();
+		RangerService hdfsService = getRelatedHdfsService(service.getId());
 		switch (hiveOperationType) {
-			case CREATEDATABASE:
 			case CREATETABLE: {
-				RangerPolicy existHdfsPolicy = searchHdfsPolicy(service.getId(), location);
+				List<RangerPolicy> relatedHivePolicies = new ArrayList<>();
+				// update/create hdfs policy
+				RangerPolicy newHivePolicy = generateHivePolicy(matchHiveServiceName, syncRequest);
+				RangerPolicy relatedHdfsPolicy = searchHdfsPolicyByLocation(hdfsService.getId(), location);
+				if (null == relatedHdfsPolicy) {
+					relatedHivePolicies.add(newHivePolicy);
 
-				if (null != existHdfsPolicy) {
-					svcStore.deletePolicy(existHdfsPolicy.getId());
+					relatedHdfsPolicy = generateHdfsPolicy(relatedHivePolicies, location);
+					svcStore.createPolicy(relatedHdfsPolicy);
+				} else {
+					relatedHivePolicies = searchHivePolicyByLocation(service.getId(), location);
+					relatedHivePolicies.add(newHivePolicy);
+
+					RangerPolicy calcHdfsPolicy = generateHdfsPolicy(relatedHivePolicies, location);
+					relatedHdfsPolicy.getPolicyItems().clear();
+					relatedHdfsPolicy.getPolicyItems().addAll(calcHdfsPolicy.getPolicyItems());
+					svcStore.updatePolicy(relatedHdfsPolicy);
 				}
-				RangerPolicy genHdfsPolicy = generateHdfsPolicy(matchHivePolicy, location);
-				svcStore.createPolicy(genHdfsPolicy);
+
+				// last update hive Description(hdfsPolicyId)
+				URI uri = new URI(location);
+				String hdfsPath = uri.getPath();
+				setPolicyDesc(newHivePolicy, POLICY_DESC_TABLE_LOCATION, hdfsPath);
+				svcStore.createPolicy(newHivePolicy);
 			}
 				break;
-			case DROPDATABASE:
 			case DROPTABLE: {
 				// delete match hive policy
-				svcStore.deletePolicy(matchHivePolicy.getId());
+				RangerAccessResource resource = new RangerAccessResourceImpl(syncRequest.getResource());
+				RangerPolicy matchHivePolicy = getExactMatchPolicyForResource(matchHiveServiceName, resource);
+				if (null == matchHivePolicy) {
+					LOG.warn("can not find matching hive policy " + matchHiveServiceName);
+				} else {
+					svcStore.deletePolicy(matchHivePolicy.getId());
+				}
 
-				// delete match hdfs policy in all hdfs services
-				RangerPolicy existHdfsPolicy = searchHdfsPolicy(service.getId(), location);
-				if (null != existHdfsPolicy) {
-					svcStore.deletePolicy(existHdfsPolicy.getId());
+				RangerPolicy relatedHdfsPolicy = searchHdfsPolicyByLocation(hdfsService.getId(), location);
+				if (null != relatedHdfsPolicy) {
+					// recalc hdfs policy
+					List<RangerPolicy> hivePolicies = searchHivePolicyByLocation(service.getId(), location);
+					// the matchHivePolicy has been deleted before
+					if (hivePolicies.size() == 0) {
+						svcStore.deletePolicy(relatedHdfsPolicy.getId());
+					} else {
+						RangerPolicy calcHdfsPolicy = generateHdfsPolicy(hivePolicies, location);
+						if (calcHdfsPolicy.getPolicyItems().size() == 0) {
+							svcStore.deletePolicy(relatedHdfsPolicy.getId());
+						} else {
+							relatedHdfsPolicy.getPolicyItems().clear();
+							relatedHdfsPolicy.getPolicyItems().addAll(calcHdfsPolicy.getPolicyItems());
+							svcStore.updatePolicy(relatedHdfsPolicy);
+						}
+					}
 				}
 			}
 				break;
 			case ALTERTABLE: {
-				// update match hive policy
-				RangerPolicy hivePolicy = alterHivePolicy(matchHivePolicy, syncRequest);
-				svcStore.updatePolicy(hivePolicy);
+				RangerAccessResource resource = new RangerAccessResourceImpl(syncRequest.getResource());
+				RangerPolicy matchHivePolicy = getExactMatchPolicyForResource(matchHiveServiceName, resource);
+				if (null == matchHivePolicy) {
+					LOG.warn("can not find matching hive policy " + matchHiveServiceName);
+				}
 
-				// update match hdfs policy
-				updateHdfsPolicy(service.getId(), matchHivePolicy, syncRequest);
+				String newLocation = syncRequest.getNewLocation();
+				if (false == location.equalsIgnoreCase(newLocation)) {
+					adjustHdfsPolicyByLocation(service.getId(), location, null, matchHivePolicy);
+					/*
+					List<RangerPolicy> oldHivePolicies = new ArrayList<>();
+					RangerPolicy oldHdfsPolicy = searchHdfsPolicyByLocation(hdfsService.getId(), location);
+					if (null != oldHdfsPolicy) {
+						oldHivePolicies = searchHivePolicyByLocation(service.getId(), location);
+
+						// MOVE matchHivePolicy FROM oldHivePolicies -> newHivePolicies
+						if (null != oldHivePolicies) {
+							RangerPolicy policyContains = policiesContains(oldHivePolicies, matchHivePolicy.getId());
+							if (null != policyContains) {
+								oldHivePolicies.remove(policyContains);
+							}
+						}
+
+						// update old hdfs-policy
+						if (oldHivePolicies.size() == 0) {
+							svcStore.deletePolicy(oldHdfsPolicy.getId());
+						} else {
+							RangerPolicy calcOldHdfsPolicy = generateHdfsPolicy(oldHivePolicies, location);
+							if (calcOldHdfsPolicy.getPolicyItems().size() == 0) {
+								svcStore.deletePolicy(oldHdfsPolicy.getId());
+							} else {
+								// only modify policy item
+								oldHdfsPolicy.getPolicyItems().clear();
+								oldHdfsPolicy.getPolicyItems().addAll(calcOldHdfsPolicy.getPolicyItems());
+
+								svcStore.updatePolicy(oldHdfsPolicy);
+							}
+						}
+					}*/
+
+					// newHdfsPolicy may exist or may not exist
+					adjustHdfsPolicyByLocation(service.getId(), newLocation, matchHivePolicy, null);
+					/*
+					List<RangerPolicy> newHivePolicies = new ArrayList<>();
+					RangerPolicy newHdfsPolicy = searchHdfsPolicyByLocation(hdfsService.getId(), newLocation);
+					if (null != newHdfsPolicy) {
+						newHivePolicies = searchHivePolicyByLocation(service.getId(), newLocation);
+						RangerPolicy policyContains = policiesContains(newHivePolicies, matchHivePolicy.getId());
+						if (null == policyContains) {
+							newHivePolicies.add(matchHivePolicy);
+						}
+
+						// update new hdfs-policy
+						RangerPolicy calcNewHdfsPolicy = generateHdfsPolicy(newHivePolicies, newLocation);
+						// only modify policy item
+						newHdfsPolicy.getPolicyItems().clear();
+						newHdfsPolicy.getPolicyItems().addAll(calcNewHdfsPolicy.getPolicyItems());
+						svcStore.updatePolicy(newHdfsPolicy);
+					} else {
+						newHivePolicies.add(matchHivePolicy);
+						RangerPolicy calcNewHdfsPolicy = generateHdfsPolicy(newHivePolicies, newLocation);
+						svcStore.createPolicy(calcNewHdfsPolicy);
+					}
+					*/
+
+					// update hive-policy Description(hdfs-policy-id, location)
+					URI uri = new URI(newLocation);
+					String hdfsPath = uri.getPath();
+					setPolicyDesc(matchHivePolicy, POLICY_DESC_TABLE_LOCATION, hdfsPath);
+					svcStore.updatePolicy(matchHivePolicy);
+				} else {
+					// update hive-policy db and table name
+					RangerPolicy hivePolicy = alterHivePolicyResource(matchHivePolicy, syncRequest);
+					svcStore.updatePolicy(hivePolicy);
+				}
 			}
 				break;
 			default:
@@ -1282,20 +1490,118 @@ public class ServiceREST {
 		}
 	}
 
+	// update hive Description
+	private void updateHivePolicyDescByTableName(Long hiveServiceId, RangerPolicy hivePolicy) throws Exception {
+		RangerPolicyResource dbResource = hivePolicy.getResources().get("database");
+		RangerPolicyResource tabResource = hivePolicy.getResources().get("table");
+
+		if (null != dbResource && dbResource.getValues().size() != 1
+				&& null != tabResource && tabResource.getValues().size() != 1) {
+			return;
+		}
+
+		String dbName = dbResource.getValues().get(0);
+		String tabName = tabResource.getValues().get(0);
+		if (dbName.trim().isEmpty() || dbName.equalsIgnoreCase("*")
+				|| tabName.trim().isEmpty() || tabName.equalsIgnoreCase("*")) {
+			return;
+		}
+
+		RangerPolicy tablePolicy = searchHivePolicy(hiveServiceId, dbName, tabName);
+		if (null != tablePolicy) {
+			hivePolicy.setDescription(tablePolicy.getDescription());
+		}
+	}
+
+	private void adjustHdfsPolicyByLocation(Long hiveServiceId, String location,
+																				 RangerPolicy addPolicy, RangerPolicy minusPolicy) throws Exception {
+		if (location.isEmpty()) {
+			LOG.warn("adjustHdfsPolicyByLocation() param location is empty!");
+			return;
+		}
+
+		RangerService hdfsService = getRelatedHdfsService(hiveServiceId);
+		if (null == hdfsService) {
+			LOG.error("Related Hdfs Service does not exist - hiveServiceId = " + hiveServiceId);
+			throw new Exception("Related Hdfs Service does not exist - hiveServiceId = " + hiveServiceId);
+		}
+
+		RangerPolicy matchHdfsPolicy = searchHdfsPolicyByLocation(hdfsService.getId(), location);
+		List<RangerPolicy> hivePolicies = new ArrayList<>();
+		if (null != matchHdfsPolicy) {
+			hivePolicies = searchHivePolicyByLocation(hiveServiceId, location);
+
+			if (null != addPolicy) {
+				RangerPolicy policyContains = policiesContains(hivePolicies, addPolicy.getId());
+				if (null == policyContains) {
+					hivePolicies.add(addPolicy);
+				}
+			}
+
+			if (null != minusPolicy) {
+				RangerPolicy containPolicy = policiesContains(hivePolicies, minusPolicy.getId());
+				if (null != containPolicy) {
+					hivePolicies.remove(containPolicy);
+				}
+			}
+
+			if (hivePolicies.size() == 0) {
+				svcStore.deletePolicy(matchHdfsPolicy.getId());
+			} else {
+				// update new hdfs-policy
+				RangerPolicy genHdfsPolicy = generateHdfsPolicy(hivePolicies, location);
+				if (genHdfsPolicy.getPolicyItems().size() == 0) {
+					svcStore.deletePolicy(matchHdfsPolicy.getId());
+				} else {
+					// only modify policy item
+					matchHdfsPolicy.getPolicyItems().clear();
+					matchHdfsPolicy.getPolicyItems().addAll(genHdfsPolicy.getPolicyItems());
+					svcStore.updatePolicy(matchHdfsPolicy);
+				}
+			}
+		} else {
+			RangerPolicy genHdfsPolicy = generateHdfsPolicy(hivePolicies, location);
+			svcStore.createPolicy(genHdfsPolicy);
+		}
+	}
+
+	public void setPolicyDesc(RangerPolicy policy, String key, String value) {
+		String desc = policy.getDescription();
+		Gson gson = new Gson();
+		HashMap<String, String> mapDesc = null;
+		mapDesc = gson.fromJson(desc, new TypeToken<HashMap<String, String>>() {
+		}.getType());
+		if (null == mapDesc) {
+			mapDesc = new HashMap();
+		}
+		mapDesc.put(key, value);
+		desc = gson.toJson(mapDesc);
+		policy.setDescription(desc);
+	}
+
+	public String getPolicyDesc(RangerPolicy policy, String key) {
+		String desc = policy.getDescription();
+
+		Gson gson = new Gson();
+		HashMap<String, String> mapDesc = gson.fromJson(desc, new TypeToken<HashMap<String, String>>() {
+		}.getType());
+		if (null == mapDesc) {
+			return "";
+		}
+		return mapDesc.get(key);
+	}
+
 	public enum HiveAccessType {
 		NONE, CREATE, ALTER, DROP, INDEX, LOCK, SELECT, UPDATE, USE, ALL, ADMIN
 	}
 
-	private String getHdfsServiceName(Long hiveServiceId, String location) throws Exception {
+	private RangerService getRelatedHdfsService(Long hiveServiceId) throws Exception {
 		String hdfsServiceName = "", hdfsPath = "";
 
-		URI uri = new URI(location);
-		hdfsPath = uri.getPath();
-		String hdfsRoot = location.replace(hdfsPath, "");
 		XXServiceConfigMap hdfsServiceConfig
-				= daoManager.getXXServiceConfigMap().findByServiceAndConfigKey(hiveServiceId, hdfsRoot);
+				= daoManager.getXXServiceConfigMap().findByServiceAndConfigKey(hiveServiceId, "HdfsService");
 		if (null == hdfsServiceConfig) {
-			throw new Exception("getHdfsServiceName(" + hiveServiceId + ", " + hdfsRoot + ") is null");
+			throw new Exception("getRelatedHdfsService(" + hiveServiceId + ") is null");
 		}
 		hdfsServiceName = hdfsServiceConfig.getConfigvalue();
 		RangerService hdfsServiceDef = getServiceByName(hdfsServiceName);
@@ -1303,11 +1609,11 @@ public class ServiceREST {
 			throw new Exception("service does not exist - name = " + hdfsServiceName);
 		}
 
-		return hdfsServiceName;
+		return hdfsServiceDef;
 	}
 
-	private RangerPolicy alterHivePolicy(RangerPolicy hivePolicy, SynchronizeRequest syncRequest) throws Exception {
-		Map<String, RangerPolicyResource> policyResources = new HashMap<String, RangerPolicyResource>();
+	private RangerPolicy alterHivePolicyResource(RangerPolicy hivePolicy, SynchronizeRequest syncRequest) throws Exception {
+		Map<String, RangerPolicyResource> policyResources = new HashMap<>();
 		RangerAccessResource newResource = new RangerAccessResourceImpl(syncRequest.getNewResource());
 		Set<String> resourceNames = newResource.getKeys();
 
@@ -1325,57 +1631,25 @@ public class ServiceREST {
 		return hivePolicy;
 	}
 
-	private void updateHdfsPolicy(Long hiveServiceId, RangerPolicy matchHivePolicy,
-																SynchronizeRequest syncRequest) throws Exception {
-		String location = syncRequest.getLocation();
-		String newLocation = syncRequest.getNewLocation();
-		if (location.equalsIgnoreCase(newLocation)) {
-			// the location does not change, does not need to modify the hdfs policy
-			return;
-		}
-
-		String hdfsServiceName = getHdfsServiceName(hiveServiceId, location);
-		String newHdfsServiceName = getHdfsServiceName(hiveServiceId, newLocation);
-
-		RangerPolicy existHdfsPolicy = searchHdfsPolicy(hiveServiceId, syncRequest.getLocation());
-		RangerPolicy existNewLocationHdfsPolicy = searchHdfsPolicy(hiveServiceId, newLocation);
-		RangerPolicy latestHdfsPolicy = generateHdfsPolicy(matchHivePolicy, newLocation);
-		if (null != existNewLocationHdfsPolicy) {
-			svcStore.deletePolicy(existNewLocationHdfsPolicy.getId());
-		}
-		if (null != existHdfsPolicy) {
-			svcStore.deletePolicy(existHdfsPolicy.getId());
-		}
-		svcStore.createPolicy(latestHdfsPolicy);
-
-		/*
-		if (null == existHdfsPolicy) {
-			svcStore.createPolicy(latestHdfsPolicy);
-		} else {
-			svcStore.deletePolicy(existHdfsPolicy.getId());
-			svcStore.createPolicy(latestHdfsPolicy);
-
-			if (!newHdfsServiceName.equalsIgnoreCase(hdfsServiceName)) {
-				// hdfs service name change, recreate new hdfs policy
-				svcStore.deletePolicy(existHdfsPolicy.getId());
-				svcStore.createPolicy(latestHdfsPolicy);
-			} else {
-				latestHdfsPolicy.setId(existHdfsPolicy.getId());
-				latestHdfsPolicy.setName(existHdfsPolicy.getName());
-				latestHdfsPolicy.setDescription(existHdfsPolicy.getDescription());
-				svcStore.updatePolicy(latestHdfsPolicy);
-			}
-		}*/
-	}
-
+	// auto create hive policy
+	// hive policy name through the table name plus hdfs poicy name
 	private RangerPolicy generateHivePolicy(String hiveServiceName, SynchronizeRequest syncRequest) {
+		String dbName = syncRequest.getResource().get("database");
+		String tabName = syncRequest.getResource().get("table");
+
 		RangerPolicy policy = new RangerPolicy();
 		RangerAccessResource resource = new RangerAccessResourceImpl(syncRequest.getResource());
 		policy.setService(hiveServiceName);
-		policy.setName("auto-" + hiveServiceName + "-" + System.currentTimeMillis());
-		policy.setDescription("auto created by syncPolicy");
+		policy.setName(dbName + "-" + tabName + "-" + System.currentTimeMillis());
 		policy.setIsAuditEnabled(syncRequest.getEnableAudit());
 		policy.setCreatedBy(syncRequest.getGrantor());
+
+		Map<String, String> mapDesc = new HashedMap();
+		mapDesc.put(ServiceREST.POLICY_DESC_TABLE_TYPE, syncRequest.getTableType());
+		mapDesc.put(ServiceREST.POLICY_DESC_TABLE_LOCATION, syncRequest.getLocation());
+		Gson gson = new Gson();
+		String desc = gson.toJson(mapDesc);
+		policy.setDescription(desc);
 
 		Map<String, RangerPolicyResource> policyResources = new HashMap<String, RangerPolicyResource>();
 		Set<String>                       resourceNames   = resource.getKeys();
@@ -1393,13 +1667,92 @@ public class ServiceREST {
 		RangerPolicyItem policyItem = new RangerPolicyItem();
 		policyItem.getUsers().addAll(syncRequest.getUsers());
 		policyItem.getGroups().addAll(syncRequest.getGroups());
-		for(String accessType : syncRequest.getAccessTypes()) {
-			policyItem.getAccesses().add(new RangerPolicyItemAccess(accessType, Boolean.TRUE));
-		}
+		policyItem.getAccesses().add(new RangerPolicyItemAccess("ALL", Boolean.TRUE));
 		policyItem.setDelegateAdmin(syncRequest.getDelegateAdmin());
 		policy.getPolicyItems().add(policyItem);
 
 		return policy;
+	}
+
+	// EXTERNAL_TABLE
+	private RangerPolicy generateHdfsPolicy(List<RangerPolicy> hivePolicys, String location)
+			throws Exception {
+		if (hivePolicys.size() == 0) {
+			return null;
+		}
+
+		String hiveServiceName = hivePolicys.get(0).getService();
+		RangerService service = getServiceByName(hiveServiceName);
+		if (null == service) {
+			throw new Exception("service does not exist - name = " + hiveServiceName);
+		}
+
+		RangerService hdfsService = getRelatedHdfsService(service.getId());
+		RangerPolicy newHdfsPolicy = new RangerPolicy();
+		RangerPolicyResource policyResource = new RangerPolicyResource();
+		Map<String, RangerPolicyResource> policyResources = new HashMap<>();
+		URI uri = new URI(location);
+		String hdfsPath = uri.getPath();
+		policyResource.getValues().add(hdfsPath);
+		policyResource.setIsRecursive(Boolean.TRUE);
+		policyResources.put("path", policyResource);
+
+		newHdfsPolicy.setResources(policyResources);
+		newHdfsPolicy.setService(hdfsService.getName());
+		newHdfsPolicy.setName(generateHdfsPolicyName(hivePolicys.get(0)));
+		newHdfsPolicy.setIsAuditEnabled(true);
+		newHdfsPolicy.setCreatedBy(hivePolicys.get(0).getCreatedBy());
+
+		// access permissions
+		List<RangerPolicyItem> hdfsPolicyItems = new ArrayList<>();
+		RangerPolicyItemAccess readPolicyItemAccess = new RangerPolicyItemAccess("read", Boolean.TRUE);
+		RangerPolicyItemAccess writePolicyItemAccess = new RangerPolicyItemAccess("write", Boolean.TRUE);
+		RangerPolicyItemAccess executePolicyItemAccess = new RangerPolicyItemAccess("execute", Boolean.TRUE);
+		for (int i = 0; i < hivePolicys.size(); i ++) {
+			RangerPolicy hivePolicy = hivePolicys.get(i);
+			String tableType = getPolicyDesc(hivePolicy, POLICY_DESC_TABLE_TYPE);
+
+			for (RangerPolicyItem hivePolicyItem : hivePolicy.getPolicyItems()) {
+				RangerPolicyItem hdfsPolicyItem = new RangerPolicyItem();
+
+				// user and group
+				hdfsPolicyItem.setUsers(hivePolicyItem.getUsers());
+				hdfsPolicyItem.setGroups(hivePolicyItem.getGroups());
+				hdfsPolicyItem.setDelegateAdmin(hivePolicyItem.getDelegateAdmin());
+
+				// hdfs access type
+				Map<String, RangerPolicyItemAccess> mapRangerPolicyItemAccess = new HashMap<>();
+				List<RangerPolicyItemAccess> hdfsPolicyItemAccessList = new ArrayList<>();
+				List<RangerPolicyItemAccess> hivePolicyItemAccessList = hivePolicyItem.getAccesses();
+				for(RangerPolicyItemAccess hivePolicyItemAccess : hivePolicyItemAccessList) {
+					if (StringUtils.equalsIgnoreCase(hivePolicyItemAccess.getType(), HiveAccessType.SELECT.name())
+							|| tableType.equalsIgnoreCase(ServiceREST.EXTERNAL_TABLE_TYPE)) {
+						// EXTERNAL TABLE, hdfs only read
+						mapRangerPolicyItemAccess.put("read", readPolicyItemAccess);
+						mapRangerPolicyItemAccess.put("execute", executePolicyItemAccess);
+					} else if (StringUtils.equalsIgnoreCase(hivePolicyItemAccess.getType(), HiveAccessType.UPDATE.name())
+							|| StringUtils.equalsIgnoreCase(hivePolicyItemAccess.getType(), HiveAccessType.ALTER.name())
+							|| StringUtils.equalsIgnoreCase(hivePolicyItemAccess.getType(), HiveAccessType.CREATE.name())
+							|| StringUtils.equalsIgnoreCase(hivePolicyItemAccess.getType(), HiveAccessType.DROP.name())) {
+						mapRangerPolicyItemAccess.put("write", writePolicyItemAccess);
+						mapRangerPolicyItemAccess.put("execute", executePolicyItemAccess);
+					} else if (StringUtils.equalsIgnoreCase(hivePolicyItemAccess.getType(), HiveAccessType.ALL.name())) {
+						mapRangerPolicyItemAccess.put("read", readPolicyItemAccess);
+						mapRangerPolicyItemAccess.put("write", writePolicyItemAccess);
+						mapRangerPolicyItemAccess.put("execute", executePolicyItemAccess);
+						break;
+					}
+				}
+				for(Map.Entry<String, RangerPolicyItemAccess> accessEntry : mapRangerPolicyItemAccess.entrySet()) {
+					hdfsPolicyItemAccessList.add(accessEntry.getValue());
+				}
+				hdfsPolicyItem.setAccesses(hdfsPolicyItemAccessList);
+				hdfsPolicyItems.add(hdfsPolicyItem);
+			}
+			newHdfsPolicy.setPolicyItems(hdfsPolicyItems);
+		}
+
+		return newHdfsPolicy;
 	}
 
 	private RangerPolicy generateHdfsPolicy(RangerPolicy matchHivePolicy, String location)
@@ -1413,7 +1766,7 @@ public class ServiceREST {
 		// create new hdfs policy
 		RangerPolicy newHdfsPolicy = new RangerPolicy();
 		if (!location.isEmpty()) {
-			String hdfsServiceName = getHdfsServiceName(service.getId(), location);
+			RangerService hdfsService = getRelatedHdfsService(service.getId());
 			RangerPolicyResource policyResource = new RangerPolicyResource();
 			Map<String, RangerPolicyResource> policyResources = new HashMap<String, RangerPolicyResource>();
 			URI uri = new URI(location);
@@ -1423,12 +1776,11 @@ public class ServiceREST {
 			policyResources.put("path", policyResource);
 
 			newHdfsPolicy.setResources(policyResources);
-			newHdfsPolicy.setService(hdfsServiceName);
+			newHdfsPolicy.setService(hdfsService.getName());
 		}
 
 		newHdfsPolicy.setName(generateHdfsPolicyName(matchHivePolicy));
-		newHdfsPolicy.setDescription("auto sync by service=" + hiveServiceName
-				+ "->policyid=" + matchHivePolicy.getId());
+		newHdfsPolicy.setDescription("auto sync by " + matchHivePolicy.getName());
 		newHdfsPolicy.setIsAuditEnabled(true);
 		newHdfsPolicy.setCreatedBy(matchHivePolicy.getCreatedBy());
 
@@ -1477,9 +1829,117 @@ public class ServiceREST {
 		return newHdfsPolicy;
 	}
 
+	private RangerPolicyItem convertHivePolicy2HdfsPolicyItem(RangerPolicyItem hivePolicyItem) {
+		RangerPolicyItem hdfsPolicyItem = new RangerPolicyItem();
+
+		// user and group
+		hdfsPolicyItem.setUsers(hivePolicyItem.getUsers());
+		hdfsPolicyItem.setDelegateAdmin(hivePolicyItem.getDelegateAdmin());
+
+		// access permissions
+		RangerPolicyItemAccess readPolicyItemAccess = new RangerPolicyItemAccess("read", Boolean.TRUE);
+		RangerPolicyItemAccess writePolicyItemAccess = new RangerPolicyItemAccess("write", Boolean.TRUE);
+		RangerPolicyItemAccess executePolicyItemAccess = new RangerPolicyItemAccess("execute", Boolean.TRUE);
+
+		// hdfs access type
+		Map<String, RangerPolicyItemAccess> mapRangerPolicyItemAccess = new HashMap<>();
+		List<RangerPolicyItemAccess> hdfsPolicyItemAccessList = new ArrayList<RangerPolicyItemAccess>();
+		List<RangerPolicyItemAccess> hivePolicyItemAccessList = hivePolicyItem.getAccesses();
+		for(RangerPolicyItemAccess hivePolicyItemAccess : hivePolicyItemAccessList) {
+			if (StringUtils.equalsIgnoreCase(hivePolicyItemAccess.getType(), HiveAccessType.SELECT.name())) {
+				mapRangerPolicyItemAccess.put("read", readPolicyItemAccess);
+				mapRangerPolicyItemAccess.put("execute", executePolicyItemAccess);
+			} else if (StringUtils.equalsIgnoreCase(hivePolicyItemAccess.getType(), HiveAccessType.UPDATE.name())
+					|| StringUtils.equalsIgnoreCase(hivePolicyItemAccess.getType(), HiveAccessType.ALTER.name())
+					|| StringUtils.equalsIgnoreCase(hivePolicyItemAccess.getType(), HiveAccessType.CREATE.name())
+					|| StringUtils.equalsIgnoreCase(hivePolicyItemAccess.getType(), HiveAccessType.DROP.name())) {
+				mapRangerPolicyItemAccess.put("write", writePolicyItemAccess);
+				mapRangerPolicyItemAccess.put("execute", executePolicyItemAccess);
+			} else if (StringUtils.equalsIgnoreCase(hivePolicyItemAccess.getType(), HiveAccessType.ALL.name())) {
+				mapRangerPolicyItemAccess.put("read", readPolicyItemAccess);
+				mapRangerPolicyItemAccess.put("write", writePolicyItemAccess);
+				mapRangerPolicyItemAccess.put("execute", executePolicyItemAccess);
+				break;
+			}
+		}
+		for(Map.Entry<String, RangerPolicyItemAccess> accessEntry : mapRangerPolicyItemAccess.entrySet()) {
+			hdfsPolicyItemAccessList.add(accessEntry.getValue());
+		}
+		hdfsPolicyItem.setAccesses(hdfsPolicyItemAccessList);
+
+		return hdfsPolicyItem;
+	}
+
+	private void hdfsPolicyAddHiveUserPermissiom(RangerPolicy hdfsPolicy, RangerPolicy matchHivePolicy)
+			throws Exception {
+		String hiveServiceName = matchHivePolicy.getService();
+		RangerService service = getServiceByName(hiveServiceName);
+		if (null == service) {
+			throw new Exception("service does not exist - name = " + hiveServiceName);
+		}
+
+		// access permissions
+		List<RangerPolicyItem> hdfsPolicyItems = hdfsPolicy.getPolicyItems();
+		for (RangerPolicyItem hivePolicyItem : matchHivePolicy.getPolicyItems()) {
+			RangerPolicyItem hdfsPolicyItem = convertHivePolicy2HdfsPolicyItem(hivePolicyItem);
+			hdfsPolicyItems.add(hdfsPolicyItem);
+		}
+		hdfsPolicy.setPolicyItems(hdfsPolicyItems);
+	}
+
+	// HDFS-Policy minus Hive-Policy all user permission
+	private boolean hdfsPolicyMinusHiveUserPermissiom(RangerPolicy hdfsPolicy, RangerPolicy matchHivePolicy)
+			throws Exception {
+
+		String hiveServiceName = matchHivePolicy.getService();
+		RangerService service = getServiceByName(hiveServiceName);
+		if (null == service) {
+			throw new Exception("service does not exist - name = " + hiveServiceName);
+		}
+
+		// conert hive to hdfs policy item
+		List<RangerPolicyItem> convert2HdfsPolicyItems = new ArrayList<>();
+		for (RangerPolicyItem hivePolicyItem : matchHivePolicy.getPolicyItems()) {
+			RangerPolicyItem hdfsPolicyItem = convertHivePolicy2HdfsPolicyItem(hivePolicyItem);
+			convert2HdfsPolicyItems.add(hdfsPolicyItem);
+		}
+
+		// minus hive user permissions
+		for (RangerPolicyItem hdfsPolicyItem : hdfsPolicy.getPolicyItems()) {
+			for (RangerPolicyItem convertPolicyItem : convert2HdfsPolicyItems) {
+				if (policyItemEquals(hdfsPolicyItem, convertPolicyItem)) {
+					hdfsPolicy.getPolicyItems().remove(hdfsPolicyItem);
+				}
+			}
+		}
+
+		if (hdfsPolicy.getPolicyItems().size() == 0) {
+			return true;
+		}
+
+		return false;
+	}
+
+	private boolean policyItemEquals(RangerPolicyItem hdfsPolicyItem1, RangerPolicyItem hdfsPolicyItem2) {
+		if (false == hdfsPolicyItem1.getUsers().containsAll(hdfsPolicyItem2.getUsers())) {
+			return false;
+		}
+
+		if (false == hdfsPolicyItem1.getGroups().containsAll(hdfsPolicyItem2.getGroups())) {
+			return false;
+		}
+
+		if (false == hdfsPolicyItem1.getAccesses().containsAll(hdfsPolicyItem2.getAccesses())) {
+			return false;
+		}
+
+		return true;
+	}
+
+
 	private String generateHdfsPolicyName(RangerPolicy hivePolicy) {
 		// service name and policy id will not change
-		return "sync-" + hivePolicy.getService() + "-" + hivePolicy.getId();
+		return "sync-" + hivePolicy.getName();
 	}
 
 	@POST
@@ -1520,8 +1980,28 @@ public class ServiceREST {
 
 			ensureAdminAccess(policy.getService(), policy.getResources());
 
+			// update hive description
+			XXService xxService = daoManager.getXXService().findByName(policy.getService());
+			RangerService rangerService = svcService.getPopulatedViewObject(xxService);
+			if (null == rangerService) {
+				LOG.error("servicedef does not exist - name=" + policy.getService());
+			} else {
+				if (rangerService.getType().equalsIgnoreCase("hive")) {
+					updateHivePolicyDescByTableName(rangerService.getId(), policy);
+				}
+			}
+
 			ret = svcStore.createPolicy(policy);
 
+			// last synchronize hdfs policy
+			if (null == rangerService) {
+				LOG.error("servicedef does not exist - name=" + policy.getService());
+			} else {
+				if (rangerService.getType().equalsIgnoreCase("hive")) {
+					String location = getPolicyDesc(policy, POLICY_DESC_TABLE_LOCATION);
+					adjustHdfsPolicyByLocation(rangerService.getId(), location, null, null);
+				}
+			}
 		} catch(WebApplicationException excp) {
 			throw excp;
 		} catch(Throwable excp) {
@@ -1560,28 +2040,19 @@ public class ServiceREST {
 
 			ensureAdminAccess(policy.getService(), policy.getResources());
 
-			// only update auto synchronize hdfs policy
+			ret = svcStore.updatePolicy(policy);
+
+			// last synchronize hdfs policy
 			XXService xxService = daoManager.getXXService().findByName(policy.getService());
 			RangerService rangerService = svcService.getPopulatedViewObject(xxService);
 			if (null == rangerService) {
 				LOG.error("servicedef does not exist - name=" + policy.getService());
 			} else {
 				if (rangerService.getType().equalsIgnoreCase("hive")) {
-					RangerPolicy existHdfsPolicy = searchHdfsPolicy(policy);
-					if (null != existHdfsPolicy) {
-						RangerPolicy latestHdfsPolicy = generateHdfsPolicy(policy, "");
-						latestHdfsPolicy.setId(existHdfsPolicy.getId());
-						latestHdfsPolicy.setName(existHdfsPolicy.getName());
-						latestHdfsPolicy.setDescription(existHdfsPolicy.getDescription());
-						latestHdfsPolicy.setService(existHdfsPolicy.getService());
-						latestHdfsPolicy.setResources(existHdfsPolicy.getResources());
-						svcStore.updatePolicy(latestHdfsPolicy);
-					}
+					String location = getPolicyDesc(policy, POLICY_DESC_TABLE_LOCATION);
+					adjustHdfsPolicyByLocation(rangerService.getId(), location, null, null);
 				}
 			}
-
-			ret = svcStore.updatePolicy(policy);
-			
 		} catch(WebApplicationException excp) {
 			throw excp;
 		} catch(Throwable excp) {
@@ -1621,22 +2092,19 @@ public class ServiceREST {
 
 			ensureAdminAccess(policy.getService(), policy.getResources());
 
-			// also delete auto synchronize hdfs policy
+			svcStore.deletePolicy(id);
+
+			// last synchronize hdfs policy
 			XXService xxService = daoManager.getXXService().findByName(policy.getService());
 			RangerService rangerService = svcService.getPopulatedViewObject(xxService);
 			if (null == rangerService) {
 				LOG.error("servicedef does not exist - name=" + policy.getService());
 			} else {
 				if (rangerService.getType().equalsIgnoreCase("hive")) {
-					RangerPolicy existHdfsPolicy = searchHdfsPolicy(policy);
-					if (null != existHdfsPolicy) {
-						svcStore.deletePolicy(existHdfsPolicy.getId());
-					}
+					String location = getPolicyDesc(policy, POLICY_DESC_TABLE_LOCATION);
+					adjustHdfsPolicyByLocation(rangerService.getId(), location, null, null);
 				}
 			}
-
-			svcStore.deletePolicy(id);
-
 		} catch(WebApplicationException excp) {
 			throw excp;
 		} catch(Throwable excp) {

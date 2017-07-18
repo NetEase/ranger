@@ -27,6 +27,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.collections.Predicate;
@@ -84,6 +86,7 @@ public class AbstractPredicateUtil {
 		addPredicateForServiceName(filter.getParam(SearchFilter.SERVICE_NAME), predicates);
 		addPredicateForPolicyName(filter.getParam(SearchFilter.POLICY_NAME), predicates);
 		addPredicateForPolicyId(filter.getParam(SearchFilter.POLICY_ID), predicates);
+		addPredicateForPolicyDesc(filter.getParamsWithPrefix(SearchFilter.POLICY_DESC_PREFIX, true), predicates);
 		addPredicateForIsEnabled(filter.getParam(SearchFilter.IS_ENABLED), predicates);
 		addPredicateForIsRecursive(filter.getParam(SearchFilter.IS_RECURSIVE), predicates);
 		addPredicateForUserName(filter.getParam(SearchFilter.USER), predicates);
@@ -382,6 +385,47 @@ public class AbstractPredicateUtil {
 		if(predicates != null) {
 			predicates.add(ret);
 		}
+		return ret;
+	}
+
+	private Predicate addPredicateForPolicyDesc(final Map<String, String> description, List<Predicate> predicates) {
+		if(MapUtils.isEmpty(description)) {
+			return null;
+		}
+
+		Predicate ret = new Predicate() {
+			@Override
+			public boolean evaluate(Object object) {
+				if(object == null) {
+					return false;
+				}
+
+				if(object instanceof RangerPolicy) {
+					RangerPolicy policy = (RangerPolicy)object;
+
+					String strDesc = policy.getDescription();
+					Gson gson = new Gson();
+					HashMap<String, String> mapDesc = gson.fromJson(strDesc, new TypeToken<HashMap<String, String>>() {}.getType());
+
+					if(! MapUtils.isEmpty(mapDesc)) {
+						for(String name : description.keySet()) {
+							String val = description.get(name);
+							String mapDescValue = mapDesc.get(name);
+							if(null != val && !val.isEmpty() && null != mapDescValue && !mapDescValue.isEmpty() && val.equals(mapDescValue)) {
+								return true;
+							}
+						}
+					}
+				}
+
+				return false;
+			}
+		};
+
+		if(predicates != null) {
+			predicates.add(ret);
+		}
+
 		return ret;
 	}
 
