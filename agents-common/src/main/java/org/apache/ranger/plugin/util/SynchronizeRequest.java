@@ -33,20 +33,24 @@ import java.util.*;
 @XmlRootElement
 @XmlAccessorType(XmlAccessType.FIELD)
 public class SynchronizeRequest extends GrantRevokeRequest{
+  private String              tableType                  = null;
   private String              location                   = null;
   private String              newLocation                = null;
   private Map<String, String> newResource                = null;
 
   public SynchronizeRequest() {
-    this(null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+    this(null, null, null, null, null,
+        null, null, null, null, null,
+        null, null, null, null, null,
+        null, null);
   }
 
   public SynchronizeRequest(String grantor, Map<String, String> resource, Set<String> users,
                             Set<String> groups, Set<String> accessTypes, Boolean delegateAdmin,
                             Boolean enableAudit, Boolean replaceExistingPermissions, Boolean isRecursive,
                             String clientIPAddress, String clientType, String requestData,
-                            String sessionId, String location, String newLocation,
-                            Map<String, String> newResource) {
+                            String sessionId, String tableType, String location,
+                            String newLocation, Map<String, String> newResource) {
     setGrantor(grantor);
     setResource(resource);
     setUsers(users);
@@ -60,9 +64,24 @@ public class SynchronizeRequest extends GrantRevokeRequest{
     setClientType(clientType);
     setRequestData(requestData);
     setSessionId(sessionId);
+    setTableType(tableType);
     setLocation(location);
     setNewLocation(newLocation);
     setNewResource(newResource);
+  }
+
+  /**
+   * @return the newLocation
+   */
+  public String getTableType() {
+    return tableType;
+  }
+
+  /**
+   * @param tableType the location to set
+   */
+  public void setTableType(String tableType) {
+    this.tableType = tableType == null ? "" : tableType;
   }
 
   /**

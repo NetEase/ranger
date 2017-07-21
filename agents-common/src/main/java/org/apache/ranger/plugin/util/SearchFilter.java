@@ -34,6 +34,7 @@ public class SearchFilter {
 	public static final String SERVICE_ID      = "serviceId";     // search, sort
 	public static final String POLICY_NAME     = "policyName";    // search, sort
 	public static final String POLICY_ID       = "policyId";      // search, sort
+	public static final String POLICY_DESC_PREFIX = "description:";      // search
 	public static final String IS_ENABLED      = "isEnabled";     // search
 	public static final String IS_RECURSIVE    = "isRecursive";   // search
 	public static final String USER            = "user";          // search
