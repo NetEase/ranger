@@ -117,6 +117,7 @@ public class RangerBasePlugin {
 		policyEngineOptions.cacheAuditResults       = RangerConfiguration.getInstance().getBoolean(propertyPrefix + ".policyengine.option.cache.audit.results", true);
 		policyEngineOptions.disableContextEnrichers = RangerConfiguration.getInstance().getBoolean(propertyPrefix + ".policyengine.option.disable.context.enrichers", false);
 		policyEngineOptions.disableCustomConditions = RangerConfiguration.getInstance().getBoolean(propertyPrefix + ".policyengine.option.disable.custom.conditions", false);
+		//policyEngineOptions.disableTrieLookupPrefilter = RangerConfiguration.getInstance().getBoolean(propertyPrefix + ".policyengine.option.disable.trie.lookup.prefilter", false);
 		long policyReorderIntervalMs = RangerConfiguration.getInstance().getLong(propertyPrefix + ".policy.policyReorderInterval", 60 * 1000);
 		if (policyReorderIntervalMs >= 0 && policyReorderIntervalMs < 15 * 1000) {
 			policyReorderIntervalMs = 15 * 1000;

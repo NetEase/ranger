@@ -19,11 +19,7 @@
 
 package org.apache.ranger.rest;
 
-import java.lang.reflect.Type;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.util.*;
-
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.DELETE;
@@ -36,11 +32,9 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Context;
-
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.collections.ListUtils;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.collections.map.HashedMap;
 import org.apache.commons.httpclient.URI;
@@ -2897,6 +2891,7 @@ public class ServiceREST {
 		options.disableContextEnrichers = RangerConfiguration.getInstance().getBoolean(propertyPrefix + ".policyengine.option.disable.context.enrichers", true);
 		options.disableCustomConditions = RangerConfiguration.getInstance().getBoolean(propertyPrefix + ".policyengine.option.disable.custom.conditions", true);
 		options.evaluateDelegateAdminOnly = false;
+		options.disableTrieLookupPrefilter = RangerConfiguration.getInstance().getBoolean(propertyPrefix + ".policyengine.option.disable.trie.lookup.prefilter", false);
 
 		ServicePolicies policies = svcStore.getServicePoliciesIfUpdated(serviceName, -1L);
 
