@@ -214,12 +214,12 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
       lock.acquire(3, TimeUnit.SECONDS);
       lockLocal.set(lock);
 
-      // delete expired data 3 days ago
+      // delete expired data 2 days ago
       GetChildrenBuilder childrenBuilder = zkClient.getChildren();
       List<String> children = childrenBuilder.forPath(zkPath_);
       Calendar calendar = Calendar.getInstance();
       calendar.setTime(new Date());
-      calendar.set(Calendar.DATE, calendar.get(Calendar.DATE) - 7);
+      calendar.set(Calendar.DATE, calendar.get(Calendar.DATE) - 2);
       if(calendar.getTime().getMinutes()%10 == 0) {
         // execute once every ten minutes
         for (String child : children) {

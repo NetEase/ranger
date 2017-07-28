@@ -1267,25 +1267,6 @@ public class ServiceREST {
 		return macthHivePolicies;
 	}
 
-	/*
-	private List<RangerPolicy> searchHivePolicyByHdfsPolicyId(Long hiveServiceId, Long hdfsPolicyId) throws Exception {
-		if(LOG.isDebugEnabled()) {
-			LOG.debug("==> ServiceREST.searchHivePolicyByHdfsPolicyName(" + hiveServiceId + ", " + hdfsPolicyId + ") ");
-		}
-
-		SearchFilter hiveFilter = new SearchFilter();
-		hiveFilter.setParam(SearchFilter.SERVICE_ID, hiveServiceId.toString());
-		hiveFilter.setParam(SearchFilter.SERVICE_TYPE, "hive");
-		hiveFilter.setParam(SearchFilter.POLICY_DESC_PREFIX+POLICY_DESC_HDFS_POLICY_ID, hdfsPolicyId.toString());
-		List<RangerPolicy> macthHivePolicies = getPolicies(hiveFilter);
-
-		if(LOG.isDebugEnabled()) {
-			LOG.debug("<== ServiceREST.searchHivePolicyByHdfsPolicyName(" + hiveServiceId + ", " + hdfsPolicyId + ") ");
-		}
-
-		return macthHivePolicies;
-	}*/
-
 	private RangerPolicy searchHdfsPolicy(RangerPolicy hivePolicy) throws Exception {
 		if(LOG.isDebugEnabled()) {
 			LOG.debug("==> ServiceREST.searchHdfsPolicy(" + hivePolicy.getName() + ") ");
@@ -1416,63 +1397,11 @@ public class ServiceREST {
 				String newLocation = syncRequest.getNewLocation();
 				if (false == location.equalsIgnoreCase(newLocation)) {
 					adjustHdfsPolicyByLocation(service.getId(), location, null, matchHivePolicy);
-					/*
-					List<RangerPolicy> oldHivePolicies = new ArrayList<>();
-					RangerPolicy oldHdfsPolicy = searchHdfsPolicyByLocation(hdfsService.getId(), location);
-					if (null != oldHdfsPolicy) {
-						oldHivePolicies = searchHivePolicyByLocation(service.getId(), location);
-
-						// MOVE matchHivePolicy FROM oldHivePolicies -> newHivePolicies
-						if (null != oldHivePolicies) {
-							RangerPolicy policyContains = policiesContains(oldHivePolicies, matchHivePolicy.getId());
-							if (null != policyContains) {
-								oldHivePolicies.remove(policyContains);
-							}
-						}
-
-						// update old hdfs-policy
-						if (oldHivePolicies.size() == 0) {
-							svcStore.deletePolicy(oldHdfsPolicy.getId());
-						} else {
-							RangerPolicy calcOldHdfsPolicy = generateHdfsPolicy(oldHivePolicies, location);
-							if (calcOldHdfsPolicy.getPolicyItems().size() == 0) {
-								svcStore.deletePolicy(oldHdfsPolicy.getId());
-							} else {
-								// only modify policy item
-								oldHdfsPolicy.getPolicyItems().clear();
-								oldHdfsPolicy.getPolicyItems().addAll(calcOldHdfsPolicy.getPolicyItems());
-
-								svcStore.updatePolicy(oldHdfsPolicy);
-							}
-						}
-					}*/
 
 					// newHdfsPolicy may exist or may not exist
 					adjustHdfsPolicyByLocation(service.getId(), newLocation, matchHivePolicy, null);
-					/*
-					List<RangerPolicy> newHivePolicies = new ArrayList<>();
-					RangerPolicy newHdfsPolicy = searchHdfsPolicyByLocation(hdfsService.getId(), newLocation);
-					if (null != newHdfsPolicy) {
-						newHivePolicies = searchHivePolicyByLocation(service.getId(), newLocation);
-						RangerPolicy policyContains = policiesContains(newHivePolicies, matchHivePolicy.getId());
-						if (null == policyContains) {
-							newHivePolicies.add(matchHivePolicy);
-						}
 
-						// update new hdfs-policy
-						RangerPolicy calcNewHdfsPolicy = generateHdfsPolicy(newHivePolicies, newLocation);
-						// only modify policy item
-						newHdfsPolicy.getPolicyItems().clear();
-						newHdfsPolicy.getPolicyItems().addAll(calcNewHdfsPolicy.getPolicyItems());
-						svcStore.updatePolicy(newHdfsPolicy);
-					} else {
-						newHivePolicies.add(matchHivePolicy);
-						RangerPolicy calcNewHdfsPolicy = generateHdfsPolicy(newHivePolicies, newLocation);
-						svcStore.createPolicy(calcNewHdfsPolicy);
-					}
-					*/
-
-					// update hive-policy Description(hdfs-policy-id, location)
+					// TODO:update all hive-policy Description(hdfs-policy-id, location)
 					URI uri = new URI(newLocation);
 					String hdfsPath = uri.getPath();
 					setPolicyDesc(matchHivePolicy, POLICY_DESC_TABLE_LOCATION, hdfsPath);
@@ -1596,10 +1525,10 @@ public class ServiceREST {
 	}
 
 	private RangerService getRelatedHdfsService(Long hiveServiceId) throws Exception {
-		String hdfsServiceName = "", hdfsPath = "";
+		String hdfsServiceName = "";
 
 		XXServiceConfigMap hdfsServiceConfig
-				= daoManager.getXXServiceConfigMap().findByServiceAndConfigKey(hiveServiceId, "HdfsService");
+				= daoManager.getXXServiceConfigMap().findByServiceAndConfigKey(hiveServiceId, "ranger.hdfs.service");
 		if (null == hdfsServiceConfig) {
 			throw new Exception("getRelatedHdfsService(" + hiveServiceId + ") is null");
 		}
