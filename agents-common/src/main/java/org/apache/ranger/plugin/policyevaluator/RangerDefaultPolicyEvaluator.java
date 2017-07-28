@@ -19,15 +19,6 @@
 
 package org.apache.ranger.plugin.policyevaluator;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
@@ -45,7 +36,17 @@ import org.apache.ranger.plugin.policyengine.RangerPolicyEngineOptions;
 import org.apache.ranger.plugin.policyengine.RangerResourceAccessInfo;
 import org.apache.ranger.plugin.policyresourcematcher.RangerDefaultPolicyResourceMatcher;
 import org.apache.ranger.plugin.policyresourcematcher.RangerPolicyResourceMatcher;
+import org.apache.ranger.plugin.resourcematcher.RangerResourceMatcher;
 import org.apache.ranger.plugin.util.RangerPerfTracer;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 
 public class RangerDefaultPolicyEvaluator extends RangerAbstractPolicyEvaluator {
@@ -62,6 +63,14 @@ public class RangerDefaultPolicyEvaluator extends RangerAbstractPolicyEvaluator 
 	@Override
 	public int getCustomConditionsCount() {
 		return customConditionsCount;
+	}
+
+	@Override
+	public RangerPolicyResourceMatcher getPolicyResourceMatcher() { return resourceMatcher; }
+
+	@Override
+	public RangerResourceMatcher getResourceMatcher(String resourceName) {
+		return  resourceMatcher != null ? resourceMatcher.getResourceMatcher(resourceName) : null;
 	}
 
 	@Override
@@ -145,6 +154,7 @@ public class RangerDefaultPolicyEvaluator extends RangerAbstractPolicyEvaluator 
                     // We are done for determining if audit is needed for this policy
                     if (isAuditEnabled()) {
                         result.setIsAudited(true);
+						result.setAuditPolicyId(getPolicy().getId());
                     }
                 }
             }

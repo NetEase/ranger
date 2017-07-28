@@ -19,20 +19,19 @@
 
 package org.apache.ranger.plugin.model;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.HashMap;
-import java.util.Map;
+import org.apache.commons.collections.CollectionUtils;
+import org.codehaus.jackson.annotate.JsonAutoDetect;
+import org.codehaus.jackson.annotate.JsonAutoDetect.Visibility;
+import org.codehaus.jackson.annotate.JsonIgnoreProperties;
+import org.codehaus.jackson.map.annotate.JsonSerialize;
 
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlRootElement;
-
-import org.apache.commons.collections.CollectionUtils;
-import org.codehaus.jackson.annotate.JsonAutoDetect;
-import org.codehaus.jackson.annotate.JsonIgnoreProperties;
-import org.codehaus.jackson.annotate.JsonAutoDetect.Visibility;
-import org.codehaus.jackson.map.annotate.JsonSerialize;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 
 @JsonAutoDetect(getterVisibility=Visibility.NONE, setterVisibility=Visibility.NONE, fieldVisibility=Visibility.ANY)
@@ -47,7 +46,7 @@ public class RangerPolicy extends RangerBaseModelObject implements java.io.Seria
 	private String                            name           	= null;
 	private Integer                           policyType     	= null;
 	private String                            description    	= null;
-	private String							            resourceSignature = null;
+	private String							  resourceSignature = null;
 	private Boolean                           isAuditEnabled 	= null;
 	private Map<String, RangerPolicyResource> resources      	= null;
 	private List<RangerPolicyItem>            policyItems    	= null;
@@ -459,7 +458,7 @@ public class RangerPolicy extends RangerBaseModelObject implements java.io.Seria
 		private List<RangerPolicyItemAccess>    accesses      = null;
 		private List<String>                    users         = null;
 		private List<String>                    userPasswds   = null;
-		private Map<String, List<String>>  			groupMember   = null;
+		private Map<String, List<String>>  		groupMember   = null;
 		private List<String>                    groups        = null;
 		private List<RangerPolicyItemCondition> conditions    = null;
 		private Boolean                         delegateAdmin = null;

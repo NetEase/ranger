@@ -19,16 +19,16 @@
 
 package org.apache.ranger.plugin.resourcematcher;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.ranger.plugin.model.RangerPolicy.RangerPolicyResource;
 import org.apache.ranger.plugin.model.RangerServiceDef.RangerResourceDef;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 
 public abstract class RangerAbstractResourceMatcher implements RangerResourceMatcher {
@@ -57,6 +57,8 @@ public abstract class RangerAbstractResourceMatcher implements RangerResourceMat
 		this.resourceDef = resourceDef;
 		this.options     = resourceDef != null ? resourceDef.getMatcherOptions() : null;
 	}
+
+
 
 	@Override
 	public void setPolicyResource(RangerPolicyResource policyResource) {
@@ -97,6 +99,10 @@ public abstract class RangerAbstractResourceMatcher implements RangerResourceMat
 			LOG.debug("<== RangerAbstractResourceMatcher.init()");
 		}
 	}
+
+
+	@Override
+	public boolean isMatchAny() { return isMatchAny; }
 
 	@Override
 	public boolean isSingleAndExactMatch(String resource) {

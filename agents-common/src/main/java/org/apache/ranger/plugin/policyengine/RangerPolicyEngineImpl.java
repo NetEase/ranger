@@ -20,20 +20,23 @@
 package org.apache.ranger.plugin.policyengine;
 
 import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.ranger.authorization.hadoop.config.RangerConfiguration;
 import org.apache.ranger.plugin.contextenricher.RangerContextEnricher;
 import org.apache.ranger.plugin.model.RangerPolicy;
-import org.apache.ranger.plugin.model.RangerServiceDef;
 import org.apache.ranger.plugin.model.RangerPolicy.RangerPolicyResource;
+import org.apache.ranger.plugin.model.RangerServiceDef;
 import org.apache.ranger.plugin.policyevaluator.RangerPolicyEvaluator;
 import org.apache.ranger.plugin.util.RangerPerfTracer;
 import org.apache.ranger.plugin.util.ServicePolicies;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -46,10 +49,14 @@ public class RangerPolicyEngineImpl implements RangerPolicyEngine {
 	private static final Log PERF_POLICYENGINE_REQUEST_LOG = RangerPerfTracer.getPerfLogger("policyengine.request");
 	private static final Log PERF_POLICYENGINE_AUDIT_LOG = RangerPerfTracer.getPerfLogger("policyengine.audit");
 	private static final Log PERF_CONTEXTENRICHER_REQUEST_LOG = RangerPerfTracer.getPerfLogger("contextenricher.request");
+	private static final Log PERF_POLICYENGINE_REBALANCE_LOG = RangerPerfTracer.getPerfLogger("policyengine.rebalance");
+	private static final Log PERF_POLICYENGINE_USAGE_LOG = RangerPerfTracer.getPerfLogger("policyengine.usage");
 
 	private static final int MAX_POLICIES_FOR_CACHE_TYPE_EVALUATOR = 100;
 
 	private final RangerPolicyRepository policyRepository;
+
+	private Map<Long, RangerPolicyEvaluator> policyEvaluatorsMap;
 
 
 	public RangerPolicyEngineImpl(ServicePolicies servicePolicies) {
@@ -94,6 +101,8 @@ public class RangerPolicyEngineImpl implements RangerPolicyEngine {
 
 		policyRepository = new RangerPolicyRepository(servicePolicies, options);
 
+		initializePolicyEvaluatorsMap();
+
 		RangerPerfTracer.log(perf);
 
 		if(LOG.isDebugEnabled()) {
@@ -114,6 +123,16 @@ public class RangerPolicyEngineImpl implements RangerPolicyEngine {
 	@Override
 	public long getPolicyVersion() {
 		return policyRepository.getPolicyVersion();
+	}
+
+
+	public RangerPolicyEvaluator getPolicyEvaluator(Long id) {
+		return policyEvaluatorsMap.get(id);
+	}
+
+	public RangerPolicy getPolicy(Long id) {
+		RangerPolicyEvaluator evaluator = getPolicyEvaluator(id);
+		return evaluator != null ? evaluator.getPolicy() : null;
 	}
 
 	@Override
@@ -195,6 +214,9 @@ public class RangerPolicyEngineImpl implements RangerPolicyEngine {
 
 		RangerAccessResult ret = isAccessAllowedNoAudit(request);
 
+		updatePolicyUsageCounts(request, ret);
+
+
 		if (resultProcessor != null) {
 
 			RangerPerfTracer perfAuditTracer = null;
@@ -227,10 +249,10 @@ public class RangerPolicyEngineImpl implements RangerPolicyEngine {
 		if(requests != null) {
 			for(RangerAccessRequest request : requests) {
 				RangerAccessResult result = isAccessAllowedNoAudit(request);
-
 				ret.add(result);
 			}
 		}
+
 
 		if(resultProcessor != null) {
 			resultProcessor.processResults(ret);
@@ -256,7 +278,7 @@ public class RangerPolicyEngineImpl implements RangerPolicyEngine {
 		}
 		boolean ret = false;
 
-		for(RangerPolicyEvaluator evaluator : policyRepository.getPolicyEvaluators()) {
+		for (RangerPolicyEvaluator evaluator : policyRepository.getPolicyEvaluators(resource)) {
 			ret = evaluator.isAccessAllowed(resource, user, userGroups, accessType);
 
 			if(ret) {
@@ -362,7 +384,7 @@ public class RangerPolicyEngineImpl implements RangerPolicyEngine {
 
 		RangerResourceAccessInfo ret = new RangerResourceAccessInfo(request);
 
-		for(RangerPolicyEvaluator evaluator : policyRepository.getPolicyEvaluators()) {
+		for(RangerPolicyEvaluator evaluator : policyRepository.getPolicyEvaluators(request.getResource())) {
 			evaluator.getResourceAccessInfo(request, ret);
 		}
 
@@ -373,6 +395,52 @@ public class RangerPolicyEngineImpl implements RangerPolicyEngine {
 		return ret;
 	}
 
+	@Override
+	public void reorderPolicyEvaluators() {
+		if (LOG.isDebugEnabled()) {
+			LOG.debug("==> reorderPolicyEvaluators()");
+		}
+		RangerPerfTracer perf = null;
+
+
+		if(RangerPerfTracer.isPerfTraceEnabled(PERF_POLICYENGINE_REBALANCE_LOG)) {
+			perf = RangerPerfTracer.getPerfTracer(PERF_POLICYENGINE_REBALANCE_LOG, "RangerPolicyEngine.rebalance()");
+		}
+
+		if (MapUtils.isNotEmpty(policyEvaluatorsMap)) {
+			for (Map.Entry<Long, RangerPolicyEvaluator> entry : policyEvaluatorsMap.entrySet()) {
+				entry.getValue().setUsageCountMutable(false);
+			}
+		}
+
+		if (policyRepository != null) {
+			policyRepository.reorderPolicyEvaluators();
+		}
+
+		if (MapUtils.isNotEmpty(policyEvaluatorsMap)) {
+			for (Map.Entry<Long, RangerPolicyEvaluator> entry : policyEvaluatorsMap.entrySet()) {
+				entry.getValue().setUsageCountMutable(true);
+			}
+		}
+
+		RangerPerfTracer.log(perf);
+
+		if (LOG.isDebugEnabled()) {
+			LOG.debug("<== reorderPolicyEvaluators()");
+		}
+
+	}
+
+	@Override
+	public boolean preCleanup() {
+		return true;
+	}
+
+	@Override
+	public void cleanup() {
+		preCleanup();
+	}
+
 	protected RangerAccessResult isAccessAllowedNoAudit(RangerAccessRequest request) {
 		if(LOG.isDebugEnabled()) {
 			LOG.debug("==> RangerPolicyEngineImpl.isAccessAllowedNoAudit(" + request + ")");
@@ -381,12 +449,13 @@ public class RangerPolicyEngineImpl implements RangerPolicyEngine {
 		RangerAccessResult ret = createAccessResult(request);
 
 		if(ret != null && request != null) {
-			List<RangerPolicyEvaluator> evaluators = policyRepository.getPolicyEvaluators();
+			List<RangerPolicyEvaluator> evaluators = policyRepository.getPolicyEvaluators(request.getResource());
 
 			if(evaluators != null) {
 				boolean foundInCache = policyRepository.setAuditEnabledFromCache(request, ret);
 
 				for(RangerPolicyEvaluator evaluator : evaluators) {
+					ret.incrementEvaluatedPoliciesCount();
 					evaluator.evaluate(request, ret);
 
 					// stop once allowed==true && auditedDetermined==true
@@ -409,6 +478,8 @@ public class RangerPolicyEngineImpl implements RangerPolicyEngine {
 		return ret;
 	}
 
+
+
 	private void setResourceServiceDef(RangerAccessRequest request) {
 		RangerAccessResource resource = request.getResource();
 
@@ -417,10 +488,73 @@ public class RangerPolicyEngineImpl implements RangerPolicyEngine {
 				RangerMutableResource mutable = (RangerMutableResource) resource;
 				mutable.setServiceDef(getServiceDef());
 			} else {
-				LOG.debug("RangerPolicyEngineImpl.setResourceServiceDef(): Cannot set ServiceDef in RangerResource.");
+				LOG.debug("RangerPolicyEngineImpl.setResourceServiceDef(): Cannot set ServiceDef in RangerTagResourceMap.");
 			}
 		}
 	}
+
+	private boolean hasResourcePolicies() {
+		return policyRepository != null && CollectionUtils.isNotEmpty(policyRepository.getPolicies());
+	}
+
+	private void initializePolicyEvaluatorsMap() {
+		Map<Long, RangerPolicyEvaluator> tmpPolicyEvaluatorMap = new HashMap<Long, RangerPolicyEvaluator>();
+
+
+		for (RangerPolicyEvaluator evaluator : policyRepository.getPolicyEvaluators()) {
+			tmpPolicyEvaluatorMap.put(evaluator.getPolicy().getId(), evaluator);
+		}
+
+		this.policyEvaluatorsMap = Collections.unmodifiableMap(tmpPolicyEvaluatorMap);
+	}
+
+	private void updatePolicyUsageCounts(RangerAccessRequest accessRequest, RangerAccessResult accessResult) {
+
+		boolean auditCountUpdated = false;
+
+		if (accessResult.getIsAccessDetermined()) {
+			RangerPolicyEvaluator accessPolicy = getPolicyEvaluator(accessResult.getPolicyId());
+
+			if (accessPolicy != null) {
+
+				if (accessPolicy.getPolicy().getIsAuditEnabled()) {
+					updateUsageCount(accessPolicy, 2);
+					accessResult.setAuditPolicyId(accessResult.getPolicyId());
+
+					auditCountUpdated = true;
+				} else {
+					updateUsageCount(accessPolicy, 1);
+				}
+
+			}
+		}
+
+		if (!auditCountUpdated && accessResult.getIsAuditedDetermined()) {
+			long auditPolicyId = accessResult.getAuditPolicyId();
+			RangerPolicyEvaluator auditPolicy = auditPolicyId == -1 ? null : getPolicyEvaluator(auditPolicyId);
+
+			updateUsageCount(auditPolicy, 1);
+		}
+
+		if(RangerPerfTracer.isPerfTraceEnabled(PERF_POLICYENGINE_USAGE_LOG)) {
+			RangerAccessRequestImpl rangerAccessRequest = (RangerAccessRequestImpl) accessRequest;
+			RangerPerfTracer perf = RangerPerfTracer.getPerfTracer(PERF_POLICYENGINE_USAGE_LOG,
+					"RangerPolicyEngine.usage(accessingUser=" + rangerAccessRequest.getUser()
+							+ ",accessedResource=" + rangerAccessRequest.getResource().getAsString()
+							+ ",accessType=" + rangerAccessRequest.getAccessType()
+							+ ",evaluatedPoliciesCount=" + accessResult.getEvaluatedPoliciesCount() + ")");
+			RangerPerfTracer.logAlways(perf);
+		}
+
+
+	}
+
+	private void updateUsageCount(RangerPolicyEvaluator evaluator, int number) {
+		if (evaluator != null && evaluator.getUsageCountMutable()) {
+			evaluator.incrementUsageCount(number);
+		}
+	}
+
 
 	@Override
 	public String toString( ) {
@@ -441,4 +575,5 @@ public class RangerPolicyEngineImpl implements RangerPolicyEngine {
 
 		return sb;
 	}
+
 }

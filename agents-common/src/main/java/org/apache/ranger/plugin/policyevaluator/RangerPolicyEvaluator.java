@@ -20,17 +20,19 @@
 package org.apache.ranger.plugin.policyevaluator;
 
 
-import java.util.Map;
-import java.util.Set;
-
 import org.apache.ranger.plugin.model.RangerPolicy;
 import org.apache.ranger.plugin.model.RangerPolicy.RangerPolicyResource;
 import org.apache.ranger.plugin.model.RangerServiceDef;
 import org.apache.ranger.plugin.policyengine.RangerAccessRequest;
-import org.apache.ranger.plugin.policyengine.RangerAccessResult;
 import org.apache.ranger.plugin.policyengine.RangerAccessResource;
+import org.apache.ranger.plugin.policyengine.RangerAccessResult;
 import org.apache.ranger.plugin.policyengine.RangerPolicyEngineOptions;
 import org.apache.ranger.plugin.policyengine.RangerResourceAccessInfo;
+import org.apache.ranger.plugin.policyresourcematcher.RangerPolicyResourceMatcher;
+import org.apache.ranger.plugin.resourcematcher.RangerResourceMatcher;
+
+import java.util.Map;
+import java.util.Set;
 
 
 public interface RangerPolicyEvaluator extends Comparable<RangerPolicyEvaluator> {
@@ -50,6 +52,10 @@ public interface RangerPolicyEvaluator extends Comparable<RangerPolicyEvaluator>
 
 	boolean isAuditEnabled();
 
+	RangerPolicyResourceMatcher getPolicyResourceMatcher();
+
+	RangerResourceMatcher getResourceMatcher(String resourceName);
+
 	void evaluate(RangerAccessRequest request, RangerAccessResult result);
 
 	boolean isMatch(RangerAccessResource resource);
@@ -61,4 +67,12 @@ public interface RangerPolicyEvaluator extends Comparable<RangerPolicyEvaluator>
 	boolean isAccessAllowed(Map<String, RangerPolicyResource> resources, String user, Set<String> userGroups, String accessType);
 
 	void getResourceAccessInfo(RangerAccessRequest request, RangerResourceAccessInfo result);
+
+	long getUsageCount();
+
+	void incrementUsageCount(int number);
+
+	void setUsageCountMutable(boolean mutable);
+
+	boolean getUsageCountMutable();
 }
