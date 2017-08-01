@@ -86,6 +86,7 @@ public class RangerHadoopConstants {
 	public static final String RANGER_ZK_QUORUM                   = "ranger.zookeeper.quorum";
 	public static final String RANGER_ZK_RETRYCNT                 = "ranger.zookeeper.retry.count";
 	public static final String RANGER_ZK_TIMEOUT                  = "ranger.zookeeper.timeoutMs";
+	public static final String RANGER_ZK_MS_CHANGELOG_AUTO_CLEAR_TIME = "ranger.zookeeper.metastore.changelog.auto.clear.time";
 	public static final String RANGER_ZK_MS_CHANGELOG_PATH        = "ranger.zookeeper.metastore.changelog.path";
 
 	public static final String CHECK_PRIVILEGE_URI_ACCESS_ALLOW   = "check.privilege.uri.access.allow";

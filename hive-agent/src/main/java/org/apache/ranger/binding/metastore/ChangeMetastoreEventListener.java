@@ -94,6 +94,7 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
   private Long curretnTUpdateDeltaId_ = 0L;
   private String hostName_ = "";
   private int asyncInterval_ = 3000;
+  private int autoClearTime_ = 1;
 
   public ChangeMetastoreEventListener(Configuration config) {
     super(config);
@@ -107,6 +108,7 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
     Preconditions.checkNotNull(RangerConfiguration.getInstance().get(RangerHadoopConstants.RANGER_ZK_MS_CHANGELOG_PATH),
         RangerHadoopConstants.RANGER_ZK_MS_CHANGELOG_PATH + " not config");
     zkPath_ = RangerConfiguration.getInstance().get(RangerHadoopConstants.RANGER_ZK_MS_CHANGELOG_PATH);
+    autoClearTime_ = RangerConfiguration.getInstance().getInt(RangerHadoopConstants.RANGER_ZK_MS_CHANGELOG_AUTO_CLEAR_TIME, 1);
 
     try {
       InetAddress inetAddress = InetAddress.getLocalHost();
@@ -219,8 +221,8 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
       List<String> children = childrenBuilder.forPath(zkPath_);
       Calendar calendar = Calendar.getInstance();
       calendar.setTime(new Date());
-      calendar.set(Calendar.DATE, calendar.get(Calendar.DATE) - 2);
-      if(calendar.getTime().getMinutes()%10 == 0) {
+      calendar.set(Calendar.HOUR, -autoClearTime_);
+      if(calendar.getTime().getMinutes()%5 == 0) {
         // execute once every ten minutes
         for (String child : children) {
           child = "/" + child;
