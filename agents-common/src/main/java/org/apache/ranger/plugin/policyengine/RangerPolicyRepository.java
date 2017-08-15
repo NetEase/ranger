@@ -158,6 +158,8 @@ public class RangerPolicyRepository {
     }
 
     List<RangerPolicyEvaluator> getPolicyEvaluators(RangerAccessResource resource) {
+        if(resource != null && resource.getKeys()==null)
+            return getPolicyEvaluators();
         return disableTrieLookupPrefilter ? getPolicyEvaluators() : getPolicyEvaluators(policyResourceTrie, resource);
     }
 
