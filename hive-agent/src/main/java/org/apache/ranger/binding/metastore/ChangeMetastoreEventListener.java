@@ -56,6 +56,7 @@ import org.datanucleus.util.StringUtils;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
 
@@ -90,11 +91,13 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
   private final static String LOCK_RELATIVE_PATH = "/lock";
 
   private final MetaStoreUpdateServiceVersion MetaStore_Update_Service_Version = MetaStoreUpdateServiceVersion.V1;
-  private ConcurrentLinkedQueue<TUpdateDelta> tUpdateDeltaQueue_ = new ConcurrentLinkedQueue<TUpdateDelta>();;
+  private ConcurrentLinkedQueue<TUpdateDelta> tUpdateDeltaQueue_ = new ConcurrentLinkedQueue<>();
+  private Map<String, TUpdateDelta> mapPartitionUpdate= new ConcurrentHashMap();
   private Long curretnTUpdateDeltaId_ = 0L;
   private String hostName_ = "";
   private int asyncInterval_ = 3000;
   private int autoClearTime_ = 1;
+  private int writeZkBatchSize_ = 200;
 
   public ChangeMetastoreEventListener(Configuration config) {
     super(config);
@@ -109,6 +112,7 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
         RangerHadoopConstants.RANGER_ZK_MS_CHANGELOG_PATH + " not config");
     zkPath_ = RangerConfiguration.getInstance().get(RangerHadoopConstants.RANGER_ZK_MS_CHANGELOG_PATH);
     autoClearTime_ = RangerConfiguration.getInstance().getInt(RangerHadoopConstants.RANGER_ZK_MS_CHANGELOG_AUTO_CLEAR_TIME, 1);
+    writeZkBatchSize_ = RangerConfiguration.getInstance().getInt(RangerHadoopConstants.RANGER_ZK_MS_CHANGELOG_WRITE_BATCH_SIZE, 200);
 
     try {
       InetAddress inetAddress = InetAddress.getLocalHost();
@@ -169,7 +173,7 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
                   .aclProvider(zooKeeperAclProvider)
                   .retryPolicy(
                       new RetryNTimes(RangerConfiguration.getInstance().getInt(RangerHadoopConstants.RANGER_ZK_RETRYCNT, 3),
-                      RangerConfiguration.getInstance().getInt(RangerHadoopConstants.RANGER_ZK_TIMEOUT, 3000)))
+                          RangerConfiguration.getInstance().getInt(RangerHadoopConstants.RANGER_ZK_TIMEOUT, 3000)))
                   .build();
           listener = new zkListener();
           zkClient.getConnectionStateListenable().addListener(listener);
@@ -213,7 +217,10 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
 
     try {
       InterProcessMutex lock = new InterProcessMutex(zkClient, zkPath_ + LOCK_RELATIVE_PATH);
-      lock.acquire(3, TimeUnit.SECONDS);
+      if (!lock.acquire(10, TimeUnit.SECONDS)) {
+        LOGGER.warn("writeZNodeData() could not acquire the lock");
+        return;
+      }
       lockLocal.set(lock);
 
       // delete expired data 2 days ago
@@ -284,7 +291,9 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
     } finally {
       try {
         InterProcessMutex lock = lockLocal.get();
-        lock.release();
+        if (lock.isAcquiredInThisProcess()) {
+          lock.release();
+        }
       } catch (Exception e) {
         e.printStackTrace();
         LOGGER.error(e.getMessage());
@@ -310,12 +319,37 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
       while (true) {
         try {
           TUpdateDelta tUpdateDelta;
-          List<TUpdateDelta> tUpdateDeltaList = new ArrayList<TUpdateDelta>();
+          List<TUpdateDelta> tUpdateDeltaList = new ArrayList<>();
+
+          int limit1 = writeZkBatchSize_;
           while ((tUpdateDelta = queue.poll()) != null) {
+            if (limit1-- < 0) {
+              LOGGER.warn("tUpdateDeltaQueue_.size = " + queue.size() + " > " + writeZkBatchSize_);
+              break;
+            }
+
             tUpdateDeltaList.add(tUpdateDelta);
           }
+
+          int limit2 = writeZkBatchSize_;
+          Iterator<Map.Entry<String, TUpdateDelta>> iterator = mapPartitionUpdate.entrySet().iterator();
+          while (iterator.hasNext()){
+            if (limit2-- < 0) {
+              LOGGER.warn("mapPartitionUpdate.size = " + mapPartitionUpdate.size() + " > " + writeZkBatchSize_);
+              break;
+            }
+
+            Map.Entry<String, TUpdateDelta> entry = iterator.next();
+            tUpdateDeltaList.add(entry.getValue());
+
+            iterator.remove();
+          }
+
           writeZNodeData(tUpdateDeltaList);
-          Thread.currentThread().sleep(asyncInterval_);
+
+          if (limit1 > 0 && limit2 > 0) {
+            Thread.currentThread().sleep(asyncInterval_);
+          }
         } catch (Exception ex) {
           ex.printStackTrace();
         }
@@ -442,38 +476,20 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
       return;
     }
 
-    List<String> partCols = new ArrayList<>();
-    List<List<String>> partValsList = new ArrayList<>();
-    if (partitionEvent != null && partitionEvent.getTable().getPartitionKeysIterator() != null) {
-      Iterator<FieldSchema> iter = partitionEvent.getTable().getPartitionKeysIterator();
-      while (iter.hasNext()) {
-        FieldSchema fieldSchema = iter.next();
-        String partName = fieldSchema.getName();
-        partCols.add(partName);
-      }
-    }
+    // the DROP TABLE or TRUNCATE TABLE operation triggers a large number of partition events
+    String dbName = partitionEvent.getTable().getDbName();
+    String tableName = partitionEvent.getTable().getTableName();
+    TUpdateDelta tUpdateDelta = new TUpdateDelta();
+    tUpdateDelta.setId(curretnTUpdateDeltaId_++);
+    tUpdateDelta.setDatabase(dbName);
+    tUpdateDelta.setTable(tableName);
+    tUpdateDelta.setPartition("");
+    tUpdateDelta.setNew_name(tableName);
+    tUpdateDelta.setOperation(TOperation.ALTER_TABLE);
 
-    if (partitionEvent != null && partitionEvent.getPartitionIterator() != null) {
-      Iterator<Partition> it = partitionEvent.getPartitionIterator();
-      while (it.hasNext()) {
-        Partition part = it.next();
-        partValsList.add(part.getValues());
-      }
-    }
-
-    for (List<String> partVals : partValsList) {
-      String dbName = partitionEvent.getTable().getDbName();
-      String tableName = partitionEvent.getTable().getTableName();
-      String partName = FileUtils.makePartName(partCols, partVals);
-      TUpdateDelta tUpdateDelta = new TUpdateDelta();
-      tUpdateDelta.setId(curretnTUpdateDeltaId_++);
-      tUpdateDelta.setDatabase(dbName);
-      tUpdateDelta.setTable(tableName);
-      tUpdateDelta.setPartition(partName);
-      tUpdateDelta.setOperation(TOperation.ADD_PARTITION);
-      tUpdateDeltaQueue_.add(tUpdateDelta);
-
-      LOGGER.info("onAddPartition()" + tUpdateDelta.toString());
+    String key = dbName + "--1234567890--" + tableName;
+    if (false == mapPartitionUpdate.containsKey(key)) {
+      mapPartitionUpdate.put(key, tUpdateDelta);
     }
   }
 
@@ -485,37 +501,21 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
       return;
     }
 
-    List<String> partCols = new ArrayList<>();
-    String newPartName = "", oldPartName = "";
-    if (partitionEvent != null && partitionEvent.getTable().getPartitionKeysIterator() != null) {
-      Iterator<FieldSchema> iter = partitionEvent.getTable().getPartitionKeysIterator();
-      while (iter.hasNext()) {
-        FieldSchema fieldSchema = iter.next();
-        String partName = fieldSchema.getName();
-        partCols.add(partName);
-      }
-    }
-
-    if (partitionEvent != null && partitionEvent.getNewPartition() != null) {
-      List<String> partVals = partitionEvent.getNewPartition().getValues();
-      newPartName = FileUtils.makePartName(partCols, partVals);
-    }
-
-    if (partitionEvent != null && partitionEvent.getOldPartition() != null) {
-      List<String> partVals = partitionEvent.getOldPartition().getValues();
-      oldPartName = FileUtils.makePartName(partCols, partVals);
-    }
-
+    // the DROP TABLE or TRUNCATE TABLE operation triggers a large number of partition events
     String dbName = partitionEvent.getTable().getDbName();
     String tableName = partitionEvent.getTable().getTableName();
     TUpdateDelta tUpdateDelta = new TUpdateDelta();
     tUpdateDelta.setId(curretnTUpdateDeltaId_++);
     tUpdateDelta.setDatabase(dbName);
     tUpdateDelta.setTable(tableName);
-    tUpdateDelta.setPartition(oldPartName);
-    tUpdateDelta.setNew_name(newPartName);
-    tUpdateDelta.setOperation(TOperation.ALTER_PARTITION);
-    tUpdateDeltaQueue_.add(tUpdateDelta);
+    tUpdateDelta.setPartition("");
+    tUpdateDelta.setNew_name(tableName);
+    tUpdateDelta.setOperation(TOperation.ALTER_TABLE);
+
+    String key = dbName + "--1234567890--" + tableName;
+    if (false == mapPartitionUpdate.containsKey(key)) {
+      mapPartitionUpdate.put(key, tUpdateDelta);
+    }
 
     LOGGER.info("onAlterPartition()" + tUpdateDelta.toString());
   }
@@ -528,56 +528,20 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
       return;
     }
 
-    List<String> partCols = new ArrayList<>();
-    List<List<String>> partValsList = new ArrayList<>();
-    if (partitionEvent != null && partitionEvent.getTable().getPartitionKeysIterator() != null) {
-      Iterator<FieldSchema> iter = partitionEvent.getTable().getPartitionKeysIterator();
-      while (iter.hasNext()) {
-        FieldSchema fieldSchema = iter.next();
-        String partName = fieldSchema.getName();
-        partCols.add(partName);
-      }
+    // the DROP TABLE or TRUNCATE TABLE operation triggers a large number of partition events
+    String dbName = partitionEvent.getTable().getDbName();
+    String tableName = partitionEvent.getTable().getTableName();
+    TUpdateDelta tUpdateDelta = new TUpdateDelta();
+    tUpdateDelta.setId(curretnTUpdateDeltaId_++);
+    tUpdateDelta.setDatabase(dbName);
+    tUpdateDelta.setTable(tableName);
+    tUpdateDelta.setPartition("");
+    tUpdateDelta.setNew_name(tableName);
+    tUpdateDelta.setOperation(TOperation.ALTER_TABLE);
+
+    String key = dbName + "--1234567890--" + tableName;
+    if (false == mapPartitionUpdate.containsKey(key)) {
+      mapPartitionUpdate.put(key, tUpdateDelta);
     }
-
-    if (partitionEvent != null && partitionEvent.getPartitionIterator() != null) {
-      Iterator<Partition> it = partitionEvent.getPartitionIterator();
-      while (it.hasNext()) {
-        Partition part = it.next();
-        partValsList.add(part.getValues());
-      }
-    }
-
-    for (List<String> partVals : partValsList) {
-      String dbName = partitionEvent.getTable().getDbName();
-      String tableName = partitionEvent.getTable().getTableName();
-      String partName = FileUtils.makePartName(partCols, partVals);
-      TUpdateDelta tUpdateDelta = new TUpdateDelta();
-      tUpdateDelta.setId(curretnTUpdateDeltaId_++);
-      tUpdateDelta.setDatabase(dbName);
-      tUpdateDelta.setTable(tableName);
-      tUpdateDelta.setPartition(partName);
-      tUpdateDelta.setOperation(TOperation.DROP_PARTITION);
-      tUpdateDeltaQueue_.add(tUpdateDelta);
-
-      LOGGER.info("onDropPartition()" + tUpdateDelta.toString());
-    }
-  }
-
-  @Override
-  public void onLoadPartitionDone(LoadPartitionDoneEvent partSetDoneEvent) throws MetaException {
-    if (!partSetDoneEvent.getStatus()) {
-      LOGGER.debug("Skip notify onLoadPartitionDone event, since the operation failed.");
-      return;
-    }
-
-  }
-
-  @Override
-  public void onInsert(InsertEvent insertEvent) throws MetaException {
-    if (!insertEvent.getStatus()) {
-      LOGGER.debug("Skip notify onInsert event, since the operation failed.");
-      return;
-    }
-
   }
 }
