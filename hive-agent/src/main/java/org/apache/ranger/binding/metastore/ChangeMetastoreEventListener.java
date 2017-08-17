@@ -95,9 +95,11 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
   private Map<String, TUpdateDelta> mapPartitionUpdate= new ConcurrentHashMap();
   private Long curretnTUpdateDeltaId_ = 0L;
   private String hostName_ = "";
-  private int asyncInterval_ = 3000;
-  private int autoClearTime_ = 1;
+  private int asyncInterval_ = 5000;
+  private int autoClearTime_ = 5;
   private int writeZkBatchSize_ = 200;
+  private int zkReconnectInterval_ = 30; // minute
+  private Date zkReconnectTime = new Date();
 
   public ChangeMetastoreEventListener(Configuration config) {
     super(config);
@@ -111,8 +113,9 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
     Preconditions.checkNotNull(RangerConfiguration.getInstance().get(RangerHadoopConstants.RANGER_ZK_MS_CHANGELOG_PATH),
         RangerHadoopConstants.RANGER_ZK_MS_CHANGELOG_PATH + " not config");
     zkPath_ = RangerConfiguration.getInstance().get(RangerHadoopConstants.RANGER_ZK_MS_CHANGELOG_PATH);
-    autoClearTime_ = RangerConfiguration.getInstance().getInt(RangerHadoopConstants.RANGER_ZK_MS_CHANGELOG_AUTO_CLEAR_TIME, 1);
+    autoClearTime_ = RangerConfiguration.getInstance().getInt(RangerHadoopConstants.RANGER_ZK_MS_CHANGELOG_AUTO_CLEAR_TIME, 5);
     writeZkBatchSize_ = RangerConfiguration.getInstance().getInt(RangerHadoopConstants.RANGER_ZK_MS_CHANGELOG_WRITE_BATCH_SIZE, 200);
+    zkReconnectInterval_ = RangerConfiguration.getInstance().getInt(RangerHadoopConstants.RANGER_ZK_MS_RECONNECT_INTERVAL, 30);
 
     try {
       InetAddress inetAddress = InetAddress.getLocalHost();
@@ -163,25 +166,36 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
   };
 
   private void getSingletonClient() throws Exception {
-    if (zkClient == null) {
-      synchronized (ChangeMetastoreEventListener.class) {
-        if (zkClient == null) {
-          zkClient =
-              CuratorFrameworkFactory
-                  .builder()
-                  .connectString(RangerConfiguration.getInstance().get(RangerHadoopConstants.RANGER_ZK_QUORUM))
-                  .aclProvider(zooKeeperAclProvider)
-                  .retryPolicy(
-                      new RetryNTimes(RangerConfiguration.getInstance().getInt(RangerHadoopConstants.RANGER_ZK_RETRYCNT, 3),
-                          RangerConfiguration.getInstance().getInt(RangerHadoopConstants.RANGER_ZK_TIMEOUT, 3000)))
-                  .build();
-          listener = new zkListener();
-          zkClient.getConnectionStateListenable().addListener(listener);
-          zkClient.start();
-          Stat stat = zkClient.checkExists().forPath(zkPath_);
-          if (null == stat) {
-            zkClient.create().creatingParentsIfNeeded().withMode(CreateMode.PERSISTENT).forPath(zkPath_, new byte[0]);
-          }
+    synchronized (ChangeMetastoreEventListener.class) {
+      listener = new zkListener();
+
+      Date now = new Date();
+      long zkRunMinute = (now.getTime() - zkReconnectTime.getTime())/60000;
+      if ((zkRunMinute >= zkReconnectInterval_) && (zkClient != null)) {
+        LOGGER.info("zkClient need reconnect zookeeper server");
+        zkClient.getConnectionStateListenable().removeListener(listener);
+        zkClient.close();
+        zkClient = null;
+      }
+
+      if (zkClient == null) {
+        LOGGER.info("zkClient connect zookeeper server ...");
+
+        zkClient = CuratorFrameworkFactory.builder()
+            .connectString(RangerConfiguration.getInstance().get(RangerHadoopConstants.RANGER_ZK_QUORUM))
+            .aclProvider(zooKeeperAclProvider)
+            .retryPolicy(
+                new RetryNTimes(RangerConfiguration.getInstance().getInt(RangerHadoopConstants.RANGER_ZK_RETRYCNT, 10),
+                    RangerConfiguration.getInstance().getInt(RangerHadoopConstants.RANGER_ZK_TIMEOUT, 5000)))
+            .build();
+
+        zkClient.getConnectionStateListenable().addListener(listener);
+        zkClient.start();
+        zkReconnectTime = new Date();
+
+        Stat stat = zkClient.checkExists().forPath(zkPath_);
+        if (null == stat) {
+          zkClient.create().creatingParentsIfNeeded().withMode(CreateMode.PERSISTENT).forPath(zkPath_, new byte[0]);
         }
       }
     }
@@ -213,7 +227,13 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
     if (tUpdateDeltas.size() == 0)
       return;
 
-    LOGGER.info("==> writeZNodeData()");
+    LOGGER.info("==> writeZNodeData(" + tUpdateDeltas.size() + ")");
+
+    try {
+      getSingletonClient();
+    } catch (Exception ex) {
+      ex.printStackTrace();
+    }
 
     try {
       InterProcessMutex lock = new InterProcessMutex(zkClient, zkPath_ + LOCK_RELATIVE_PATH);
@@ -226,10 +246,9 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
       // delete expired data 2 days ago
       GetChildrenBuilder childrenBuilder = zkClient.getChildren();
       List<String> children = childrenBuilder.forPath(zkPath_);
-      Calendar calendar = Calendar.getInstance();
-      calendar.setTime(new Date());
-      calendar.set(Calendar.HOUR, -autoClearTime_);
-      if(calendar.getTime().getMinutes()%5 == 0) {
+
+      Date now = new Date();
+      if(now.getMinutes()%5 == 0) {
         // execute once every ten minutes
         for (String child : children) {
           child = "/" + child;
@@ -240,7 +259,8 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
           }
           String childPath = zkPath_ + child;
           Stat stat = zkClient.checkExists().forPath(childPath);
-          if (null != stat && (stat.getCtime() - calendar.getTimeInMillis()) < 0) {
+          if (null != stat && (now.getTime() - stat.getCtime()) >= autoClearTime_*60*1000) {
+            LOGGER.info("zkClient delete expired node : " + childPath);
             zkClient.delete().forPath(childPath);
           }
         }
@@ -313,7 +333,7 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
 
     public void run() {
       if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("==> NofityMetaStoreRunnable.run()");
+        LOGGER.debug("==> SaveMetaStoreChangeRunnable.run()");
       }
 
       while (true) {
