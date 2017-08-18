@@ -41,9 +41,11 @@ import org.apache.ranger.plugin.service.RangerBasePlugin;
 import org.apache.ranger.plugin.util.*;
 import org.apache.ranger.plugin.util.HiveOperationType;
 
+import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class SyncMetastoreEventListener extends MetaStoreEventListener {
   private static final Log LOGGER = LogFactory.getLog(SyncMetastoreEventListener.class);
@@ -54,6 +56,8 @@ public class SyncMetastoreEventListener extends MetaStoreEventListener {
   private String                    serviceType  = "hive";
   private String                    appId        = "metastore";
   private String                    serviceName  = null;
+
+  private ConcurrentLinkedQueue<SyncRequestStruct> syncRequestQueue = new ConcurrentLinkedQueue<>();
 
   public SyncMetastoreEventListener(Configuration config) {
     super(config);
@@ -70,6 +74,14 @@ public class SyncMetastoreEventListener extends MetaStoreEventListener {
     String propertyPrefix = "ranger.plugin." + serviceType;
 
     serviceName = RangerConfiguration.getInstance().get(propertyPrefix + ".service.name");
+
+    Thread syncRequestThread = null;
+    try {
+      syncRequestThread = new Thread(new SyncPoliciesRunnable(syncRequestQueue));
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+    syncRequestThread.start();
   }
 
   @Override
@@ -265,15 +277,45 @@ public class SyncMetastoreEventListener extends MetaStoreEventListener {
       SynchronizeRequest request  = createSyncPolicyRequest(resource, newResource, hivePrincipals,
           hivePrivileges, grantorPrincipal, tableType, location, newLocation);
 
-      if(LOGGER.isDebugEnabled()) {
-        LOGGER.debug("synchronizePolicy(): " + request.toString());
-      }
-
-      rangerPlugin.getRangerAdminClient().syncPolicys(request, hiveOperationType);
+      LOGGER.info("add queue > " + request.toString() + ", " + hiveOperationType);
+      syncRequestQueue.add(new SyncRequestStruct(request, hiveOperationType));
     } catch(Exception excp) {
       throw new MetaException(excp.getMessage());
     } finally {
 
+    }
+  }
+
+  private class SyncRequestStruct {
+    SynchronizeRequest syncRequest;
+    HiveOperationType hiveOperationType;
+
+    public SyncRequestStruct(SynchronizeRequest syncRequest, HiveOperationType hiveOperationType) {
+      this.syncRequest = syncRequest;
+      this.hiveOperationType = hiveOperationType;
+    }
+  }
+
+  // the consumer TUpdateDelta from the queue
+  class SyncPoliciesRunnable implements Runnable {
+    ConcurrentLinkedQueue<SyncRequestStruct> queue;
+
+    SyncPoliciesRunnable(ConcurrentLinkedQueue<SyncRequestStruct> queue) throws IOException {
+      this.queue = queue;
+    }
+
+    public void run() {
+      while (true) {
+        try {
+          SyncRequestStruct syncRequestStruct = null;
+          while ((syncRequestStruct = queue.poll()) != null) {
+            LOGGER.info("SyncPoliciesRunnable " + syncRequestStruct.syncRequest.toString() + ", " + syncRequestStruct.hiveOperationType);
+            rangerPlugin.getRangerAdminClient().syncPolicys(syncRequestStruct.syncRequest, syncRequestStruct.hiveOperationType);
+          }
+        } catch (Exception ex) {
+          ex.printStackTrace();
+        }
+      }
     }
   }
 
