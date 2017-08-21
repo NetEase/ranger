@@ -41,9 +41,11 @@ import org.apache.ranger.plugin.service.RangerBasePlugin;
 import org.apache.ranger.plugin.util.*;
 import org.apache.ranger.plugin.util.HiveOperationType;
 
+import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class SyncMetastoreEventListener extends MetaStoreEventListener {
   private static final Log LOGGER = LogFactory.getLog(SyncMetastoreEventListener.class);
@@ -54,6 +56,8 @@ public class SyncMetastoreEventListener extends MetaStoreEventListener {
   private String                    serviceType  = "hive";
   private String                    appId        = "metastore";
   private String                    serviceName  = null;
+
+  private ConcurrentLinkedQueue<SyncRequestStruct> syncRequestQueue = new ConcurrentLinkedQueue<>();
 
   public SyncMetastoreEventListener(Configuration config) {
     super(config);
@@ -70,6 +74,50 @@ public class SyncMetastoreEventListener extends MetaStoreEventListener {
     String propertyPrefix = "ranger.plugin." + serviceType;
 
     serviceName = RangerConfiguration.getInstance().get(propertyPrefix + ".service.name");
+
+    Thread syncRequestThread = null;
+    try {
+      syncRequestThread = new Thread(new SyncPoliciesRunnable(syncRequestQueue));
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+    syncRequestThread.start();
+  }
+
+  @Override
+  public void onCreateDatabase(CreateDatabaseEvent dbEvent)
+      throws MetaException {
+
+    // don't sync paths/privileges if the operation has failed
+    if (!dbEvent.getStatus()) {
+      LOGGER.debug("Skip syncing paths/privileges with Ranger server for onCreateDatabase event," +
+          " since the operation failed. \n");
+      return;
+    }
+
+    // drop the privileges on the database, in case anything left behind during
+    // last drop db
+    if (!rangerConfigureIsTrue(RangerHadoopConstants.SYNC_CREATE_WITH_POLICY_STORE)) {
+      return;
+    }
+
+    synchronizePolicy(dbEvent, HiveOperationType.CREATEDATABASE);
+  }
+
+  @Override
+  public void onDropDatabase(DropDatabaseEvent dbEvent) throws MetaException {
+    // don't sync paths/privileges if the operation has failed
+    if (!dbEvent.getStatus()) {
+      LOGGER.debug("Skip syncing paths/privileges with Ranger server for onDropDatabase event," +
+          " since the operation failed. \n");
+      return;
+    }
+
+    if (!rangerConfigureIsTrue(RangerHadoopConstants.SYNC_DROP_WITH_POLICY_STORE)) {
+      return;
+    }
+
+    synchronizePolicy(dbEvent, HiveOperationType.DROPDATABASE);
   }
 
   @Override
@@ -156,6 +204,24 @@ public class SyncMetastoreEventListener extends MetaStoreEventListener {
     String newLocation = "";
     HiveAccessType hiveAccessType = HiveAccessType.NONE;
     switch (hiveOperationType) {
+      case CREATEDATABASE:
+        hivePrivilegeObjectType = HivePrivilegeObject.HivePrivilegeObjectType.DATABASE;
+        hiveAccessType = HiveAccessType.CREATE;
+        Database createDb = ((CreateDatabaseEvent)tableEvent).getDatabase();
+        dbName = createDb.getName();
+        if (createDb.getLocationUri() != null) {
+          location = createDb.getLocationUri();
+        }
+        break;
+      case DROPDATABASE:
+        hivePrivilegeObjectType = HivePrivilegeObject.HivePrivilegeObjectType.DATABASE;
+        hiveAccessType = HiveAccessType.DROP;
+        Database dropDb = ((DropDatabaseEvent)tableEvent).getDatabase();
+        dbName = dropDb.getName();
+        if (dropDb.getLocationUri() != null) {
+          location = dropDb.getLocationUri();
+        }
+        break;
       case CREATETABLE:
         hivePrivilegeObjectType = HivePrivilegeObject.HivePrivilegeObjectType.TABLE_OR_VIEW;
         hiveAccessType = HiveAccessType.CREATE;
@@ -211,15 +277,45 @@ public class SyncMetastoreEventListener extends MetaStoreEventListener {
       SynchronizeRequest request  = createSyncPolicyRequest(resource, newResource, hivePrincipals,
           hivePrivileges, grantorPrincipal, tableType, location, newLocation);
 
-      if(LOGGER.isDebugEnabled()) {
-        LOGGER.debug("synchronizePolicy(): " + request.toString());
-      }
-
-      rangerPlugin.getRangerAdminClient().syncPolicys(request, hiveOperationType);
+      LOGGER.info("add queue > " + request.toString() + ", " + hiveOperationType);
+      syncRequestQueue.add(new SyncRequestStruct(request, hiveOperationType));
     } catch(Exception excp) {
       throw new MetaException(excp.getMessage());
     } finally {
 
+    }
+  }
+
+  private class SyncRequestStruct {
+    SynchronizeRequest syncRequest;
+    HiveOperationType hiveOperationType;
+
+    public SyncRequestStruct(SynchronizeRequest syncRequest, HiveOperationType hiveOperationType) {
+      this.syncRequest = syncRequest;
+      this.hiveOperationType = hiveOperationType;
+    }
+  }
+
+  // the consumer TUpdateDelta from the queue
+  class SyncPoliciesRunnable implements Runnable {
+    ConcurrentLinkedQueue<SyncRequestStruct> queue;
+
+    SyncPoliciesRunnable(ConcurrentLinkedQueue<SyncRequestStruct> queue) throws IOException {
+      this.queue = queue;
+    }
+
+    public void run() {
+      while (true) {
+        try {
+          SyncRequestStruct syncRequestStruct = null;
+          while ((syncRequestStruct = queue.poll()) != null) {
+            LOGGER.info("SyncPoliciesRunnable " + syncRequestStruct.syncRequest.toString() + ", " + syncRequestStruct.hiveOperationType);
+            rangerPlugin.getRangerAdminClient().syncPolicys(syncRequestStruct.syncRequest, syncRequestStruct.hiveOperationType);
+          }
+        } catch (Exception ex) {
+          ex.printStackTrace();
+        }
+      }
     }
   }
 

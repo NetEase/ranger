@@ -19,24 +19,23 @@
 
 package org.apache.ranger.plugin.policyresourcematcher;
 
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Set;
-
+import com.google.common.collect.Sets;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.ranger.plugin.model.RangerPolicy.RangerPolicyResource;
-import org.apache.ranger.plugin.model.RangerServiceDef.RangerResourceDef;
 import org.apache.ranger.plugin.model.RangerServiceDef;
+import org.apache.ranger.plugin.model.RangerServiceDef.RangerResourceDef;
 import org.apache.ranger.plugin.policyengine.RangerAccessResource;
 import org.apache.ranger.plugin.resourcematcher.RangerDefaultResourceMatcher;
 import org.apache.ranger.plugin.resourcematcher.RangerResourceMatcher;
 
-import com.google.common.collect.Sets;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Set;
 
 public class RangerDefaultPolicyResourceMatcher implements RangerPolicyResourceMatcher {
 	private static final Log LOG = LogFactory.getLog(RangerDefaultPolicyResourceMatcher.class);
@@ -85,6 +84,12 @@ public class RangerDefaultPolicyResourceMatcher implements RangerPolicyResourceM
 			LOG.debug("<== RangerDefaultPolicyResourceMatcher.init()");
 		}
 	}
+
+	@Override
+	public RangerResourceMatcher getResourceMatcher(String resourceName) {
+		return matchers != null ? matchers.get(resourceName) : null;
+	}
+
 
 	@Override
 	public boolean isMatch(RangerAccessResource resource) {

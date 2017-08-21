@@ -34,7 +34,8 @@ public abstract class RangerAbstractPolicyEvaluator implements RangerPolicyEvalu
 	private RangerPolicy     policy     = null;
 	private RangerServiceDef serviceDef = null;
 	private int              evalOrder  = 0;
-
+	protected long           usageCount = 0;
+	protected boolean        usageCountMutable = true;
 
 	@Override
 	public void init(RangerPolicy policy, RangerServiceDef serviceDef, RangerPolicyEngineOptions options) {
@@ -60,6 +61,12 @@ public abstract class RangerAbstractPolicyEvaluator implements RangerPolicyEvalu
 		return serviceDef;
 	}
 
+
+	@Override
+	public long getUsageCount() {
+		return usageCount;
+	}
+
 	@Override
 	public int getEvalOrder() {
 		return evalOrder;
@@ -76,11 +83,19 @@ public abstract class RangerAbstractPolicyEvaluator implements RangerPolicyEvalu
 		LOG.debug("==> RangerAbstractPolicyEvaluator.compareTo()");
 		}
 
-		int result = Integer.compare(this.getEvalOrder(), other.getEvalOrder());
+		int result;
+
+		result = Long.compare(other.getUsageCount(), this.usageCount);
+
 
 		if (result == 0) {
-			result = Integer.compare(getCustomConditionsCount(), other.getCustomConditionsCount());
+			result = Integer.compare(this.evalOrder, other.getEvalOrder());
 		}
+
+
+//		if (result == 0) {
+//			result = Integer.compare(getCustomConditionsCount(), other.getCustomConditionsCount());
+//		}
 
 		if(LOG.isDebugEnabled()) {
 			LOG.debug("<== RangerAbstractPolicyEvaluator.compareTo(), result:" + result);
@@ -93,6 +108,27 @@ public abstract class RangerAbstractPolicyEvaluator implements RangerPolicyEvalu
 		this.evalOrder = evalOrder;
 	}
 
+
+	@Override
+	public void incrementUsageCount(int number) {
+		if (usageCountMutable) usageCount += number;
+	}
+
+
+	@Override
+	public boolean getUsageCountMutable() { return usageCountMutable;}
+
+	@Override
+	public void setUsageCountMutable(boolean mutable) {
+		this.usageCountMutable = mutable;
+		if (usageCountMutable) {
+			usageCount = 0;
+		}
+	}
+
+
+
+
 	@Override
 	public String toString( ) {
 		StringBuilder sb = new StringBuilder();
@@ -101,6 +137,8 @@ public abstract class RangerAbstractPolicyEvaluator implements RangerPolicyEvalu
 
 		return sb.toString();
 	}
+
+
 
 	public StringBuilder toString(StringBuilder sb) {
 		sb.append("RangerAbstractPolicyEvaluator={");
@@ -112,4 +150,7 @@ public abstract class RangerAbstractPolicyEvaluator implements RangerPolicyEvalu
 
 		return sb;
 	}
+
+
+
 }

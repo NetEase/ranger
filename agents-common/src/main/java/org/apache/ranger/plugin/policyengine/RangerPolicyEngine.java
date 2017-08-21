@@ -19,14 +19,14 @@
 
 package org.apache.ranger.plugin.policyengine;
 
+import org.apache.ranger.plugin.model.RangerPolicy;
+import org.apache.ranger.plugin.model.RangerPolicy.RangerPolicyResource;
+import org.apache.ranger.plugin.model.RangerServiceDef;
+
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
-import org.apache.ranger.plugin.model.RangerPolicy;
-import org.apache.ranger.plugin.model.RangerServiceDef;
-import org.apache.ranger.plugin.model.RangerPolicy.RangerPolicyResource;
 
 public interface RangerPolicyEngine {
 	public static final String GROUP_PUBLIC   = "public";
@@ -60,4 +60,11 @@ public interface RangerPolicyEngine {
 	List<RangerPolicy> getAllowedPolicies(String user, Set<String> userGroups, String accessType);
 
 	RangerResourceAccessInfo getResourceAccessInfo(RangerAccessRequest request);
+
+	void reorderPolicyEvaluators();
+
+	boolean preCleanup();
+
+	void cleanup();
+
 }

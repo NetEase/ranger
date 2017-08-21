@@ -23,7 +23,7 @@
   </parent>
   <groupId>org.apache.ranger</groupId>
   <artifactId>ranger</artifactId>
-  <version>0.5.4-0.2.1</version>
+    <version>0.5.4-4.9.5</version>
   <description>Security for Enforcing Enterprise Policies</description>
   <packaging>pom</packaging>
   <name>ranger</name>
@@ -196,7 +196,8 @@
 		<asm.all.version>3.2</asm.all.version>
 		<mortbay.jetty.version>6.1.26</mortbay.jetty.version>
 		<metrics.core.version>3.0.2</metrics.core.version>
-	      	<curator.test.version>2.7.0</curator.test.version>
+        <curator.version>2.12.0</curator.version>
+        <curator.test.version>2.12.0</curator.test.version>
 		<servlet.api.version>2.5</servlet.api.version>
 		<httpcomponents.httpclient.version>4.2.5</httpcomponents.httpclient.version>
 		<xz.version>1.0</xz.version>
