@@ -544,17 +544,16 @@ public class PublicAPIsv2 {
 				List<RangerPolicyItem> policyItems = oldPolicy.getPolicyItems();
 				for (RangerPolicyItem policyItem : policyItems) {
 					List<String> groups = policyItem.getGroups();
-					if (groups == null || groups.isEmpty()) {
-						Log.info("### no group exists in current policyItem " + policyItem.toString());
-						continue;
-					}
 					
 					// 老的policy中组是否存在新的policy：若存在，以新的policy中为准；不存在，叠加老的policy
 					boolean groupExist = false;
-					for (RangerPolicyItem newPolicyItem : newPolicyItems) {
-						if (newPolicyItem.getGroups().contains(groups.get(0))) {
-							groupExist = true;
-							break;
+					// 需要支持只有user的policyitem
+					if (!groups.isEmpty()) {
+						for (RangerPolicyItem newPolicyItem : newPolicyItems) {
+							if (newPolicyItem.getGroups().contains(groups.get(0))) {
+								groupExist = true;
+								break;
+							}
 						}
 					}
 					

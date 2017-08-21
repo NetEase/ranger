@@ -30,6 +30,8 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.ranger.plugin.util.ServicePolicies;
 
+import com.netease.bdms.service.params.ranger.RangerPolicyItem;
+
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
@@ -304,22 +306,29 @@ public class RangerServicePoliciesCache {
 					LOG.debug("loading servicePolicies from db ... cachedServicePoliciesVersion=" + (servicePolicies != null ? servicePolicies.getPolicyVersion() : null) + ", servicePolicyVersionInDb=" + servicePolicyVersionInDb);
 				}
 				
-				// TODO
 				if (action.equals("create")) {
 					servicePolicies.getPolicies().add(policy);
 				} else {
-					for (int i = 0; i < servicePolicies.getPolicies().size(); ++i) {
-						RangerPolicy oldPolicy = servicePolicies.getPolicies().get(i);
+					
+					boolean shouldAddPolicy = false;
+					Iterator<RangerPolicy> iter = servicePolicies.getPolicies().iterator();
+					
+					while (iter.hasNext()) {
+						RangerPolicy oldPolicy = iter.next();
 						if (oldPolicy.getId().equals(policy.getId())) {
 							if (action.equals("update")) {
-								servicePolicies.getPolicies().remove(i);
-								servicePolicies.getPolicies().add(policy);
+								iter.remove();
+								shouldAddPolicy = true;
 							} else if (action.equals("delete")) {
-								servicePolicies.getPolicies().remove(i);
+								iter.remove();
 							}
 							
 							break;
 						}
+					}
+					
+					if (shouldAddPolicy) {
+						servicePolicies.getPolicies().add(policy);
 					}
 				}
 				
