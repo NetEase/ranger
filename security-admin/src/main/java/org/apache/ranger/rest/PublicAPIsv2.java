@@ -43,6 +43,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 
+import jline.internal.Log;
+
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.*;
@@ -456,7 +458,7 @@ public class PublicAPIsv2 {
 	}
 	
 	/**
-	 * 此接口每个policy会作为一次事务提交，将失败的policy返回给猛犸
+	 * 此接口每个policy会作为多个事务更新policy，将失败的policy返回给猛犸
 	 * @param params
 	 * @return
 	 * @throws Exception
@@ -541,13 +543,17 @@ public class PublicAPIsv2 {
 				
 				List<RangerPolicyItem> policyItems = oldPolicy.getPolicyItems();
 				for (RangerPolicyItem policyItem : policyItems) {
+					List<String> groups = policyItem.getGroups();
 					
 					// 老的policy中组是否存在新的policy：若存在，以新的policy中为准；不存在，叠加老的policy
 					boolean groupExist = false;
-					for (RangerPolicyItem newPolicyItem : newPolicyItems) {
-						if (newPolicyItem.getGroups().contains(policyItem.getGroups().get(0))) {
-							groupExist = true;
-							break;
+					// 需要支持只有user的policyitem
+					if (!groups.isEmpty()) {
+						for (RangerPolicyItem newPolicyItem : newPolicyItems) {
+							if (newPolicyItem.getGroups().contains(groups.get(0))) {
+								groupExist = true;
+								break;
+							}
 						}
 					}
 					
