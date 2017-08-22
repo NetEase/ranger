@@ -192,13 +192,25 @@ public class RangerRestUtil {
 										List<String> groupList  = policyItem.getGroups();
 										Map<String, List<String>> memberList = policyItem.getGroupMember();
 
-										if(null == groupList || groupList.isEmpty()){
-											groupList = new ArrayList<>();
-											String groupName = "group"+"-"+roleName + UUID.randomUUID();
-											groupList.add(groupName);
-											memberList = new HashMap<>();
-											memberList.put(groupName,policyItem.getUsers());
+										if(policyItem.getUsers()!=null && !policyItem.getUsers().isEmpty()){
+											String groupName = "group" + "-" + roleName + "-" + UUID.randomUUID();
+
+											if(groupList != null){
+												groupList.add(groupName);
+											}else{
+												groupList = new ArrayList<>();
+												groupList.add(groupName);
+											}
+											if(memberList != null){
+												memberList.put(groupName,policyItem.getUsers());
+											}else{
+												memberList = new HashMap<>();
+												memberList.put(groupName,policyItem.getUsers());
+											}
+
+
 										}
+
 
 										for (int groupIndex = 0; groupIndex < groupList.size(); groupIndex ++) {
 											groupRoles.put(groupList.get(groupIndex), roleName);
