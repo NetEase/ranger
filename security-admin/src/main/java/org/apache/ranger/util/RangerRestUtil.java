@@ -19,22 +19,14 @@
 
  package org.apache.ranger.util;
 
-import java.util.*;
-
 import com.google.common.collect.HashMultimap;
-import com.sun.jersey.api.client.ClientResponse;
-import com.sun.jersey.api.client.WebResource;
 import org.apache.log4j.Logger;
-import org.apache.ranger.admin.client.datatype.RESTResponse;
-import org.apache.ranger.authorization.hadoop.config.RangerConfiguration;
 import org.apache.ranger.common.MessageEnums;
 import org.apache.ranger.common.RESTErrorUtil;
 import org.apache.ranger.common.RangerConfigUtil;
 import org.apache.ranger.common.StringUtil;
 import org.apache.ranger.entity.XXPortalUser;
 import org.apache.ranger.plugin.model.RangerPolicy;
-import org.apache.ranger.plugin.util.RangerRESTClient;
-import org.apache.ranger.plugin.util.RangerRESTUtils;
 import org.apache.ranger.plugin.util.ServicePolicies;
 import org.apache.ranger.view.VXMessage;
 import org.apache.ranger.view.VXPortalUser;
@@ -42,6 +34,14 @@ import org.apache.ranger.view.VXResponse;
 import org.apache.shiro.config.Ini;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 @Component
 public class RangerRestUtil {
@@ -189,8 +189,16 @@ public class RangerRestUtil {
 									for (RangerPolicy.RangerPolicyItem policyItem : policyItemList) {
 										ArrayList<String> providerList = generateProvider(serviceName, database, table, column, policyItem.getAccesses());
 										String roleName = "policy" + policy.getId() + "-" + policyItemIndex++;
-										List<String> groupList = groupList = policyItem.getGroups();
+										List<String> groupList  = policyItem.getGroups();
 										Map<String, List<String>> memberList = policyItem.getGroupMember();
+
+										if(null == groupList || groupList.isEmpty()){
+											groupList = new ArrayList<>();
+											String groupName = "group"+"-"+roleName + UUID.randomUUID();
+											groupList.add(groupName);
+											memberList = new HashMap<>();
+											memberList.put(groupName,policyItem.getUsers());
+										}
 
 										for (int groupIndex = 0; groupIndex < groupList.size(); groupIndex ++) {
 											groupRoles.put(groupList.get(groupIndex), roleName);
