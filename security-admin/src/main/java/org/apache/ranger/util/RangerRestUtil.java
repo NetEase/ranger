@@ -41,7 +41,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 @Component
 public class RangerRestUtil {
@@ -192,25 +191,26 @@ public class RangerRestUtil {
 										List<String> groupList  = policyItem.getGroups();
 										Map<String, List<String>> memberList = policyItem.getGroupMember();
 
-										if(policyItem.getUsers()!=null && !policyItem.getUsers().isEmpty()){
-											String groupName = "group" + "-" + roleName + "-" + UUID.randomUUID();
+										if (policyItem.getUsers() != null && !policyItem.getUsers().isEmpty()) {
+											String groupName = "group" + "-" + roleName;
 
-											if(groupList != null){
-												groupList.add(groupName);
-											}else{
+											if (groupList != null) {
+												List<String> newGroupList = new ArrayList<>(groupList);
+												newGroupList.add(groupName);
+												groupList = newGroupList;
+											} else {
 												groupList = new ArrayList<>();
 												groupList.add(groupName);
 											}
-											if(memberList != null){
-												memberList.put(groupName,policyItem.getUsers());
-											}else{
+											if (memberList != null) {
+												Map<String,List<String>> newMemberList = new HashMap<>(memberList);
+												newMemberList.put(groupName,policyItem.getUsers());
+												memberList = newMemberList;
+											} else {
 												memberList = new HashMap<>();
 												memberList.put(groupName,policyItem.getUsers());
 											}
-
-
 										}
-
 
 										for (int groupIndex = 0; groupIndex < groupList.size(); groupIndex ++) {
 											groupRoles.put(groupList.get(groupIndex), roleName);
