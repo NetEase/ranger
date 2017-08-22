@@ -1715,8 +1715,8 @@ public class ServiceREST {
 				List<RangerPolicyItemAccess> hdfsPolicyItemAccessList = new ArrayList<>();
 				List<RangerPolicyItemAccess> hivePolicyItemAccessList = hivePolicyItem.getAccesses();
 				for(RangerPolicyItemAccess hivePolicyItemAccess : hivePolicyItemAccessList) {
-					if (StringUtils.equalsIgnoreCase(hivePolicyItemAccess.getType(), HiveAccessType.SELECT.name())
-							|| tableType.equalsIgnoreCase(ServiceREST.EXTERNAL_TABLE_TYPE)) {
+					if (StringUtils.equalsIgnoreCase(hivePolicyItemAccess.getType(), HiveAccessType.SELECT.name()) ||
+							(tableType != null && tableType.equalsIgnoreCase(ServiceREST.EXTERNAL_TABLE_TYPE))) {
 						// EXTERNAL TABLE, hdfs only read
 						mapRangerPolicyItemAccess.put("read", readPolicyItemAccess);
 						mapRangerPolicyItemAccess.put("execute", executePolicyItemAccess);
