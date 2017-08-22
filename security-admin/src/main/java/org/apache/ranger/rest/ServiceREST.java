@@ -19,19 +19,6 @@
 
 package org.apache.ranger.rest;
 
-import java.util.*;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.ws.rs.DELETE;
-import javax.ws.rs.GET;
-import javax.ws.rs.POST;
-import javax.ws.rs.PUT;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
-import javax.ws.rs.WebApplicationException;
-import javax.ws.rs.core.Context;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import org.apache.commons.collections.CollectionUtils;
@@ -48,9 +35,23 @@ import org.apache.ranger.biz.RangerBizUtil;
 import org.apache.ranger.biz.ServiceDBStore;
 import org.apache.ranger.biz.ServiceMgr;
 import org.apache.ranger.biz.XUserMgr;
-import org.apache.ranger.common.*;
+import org.apache.ranger.common.DateUtil;
+import org.apache.ranger.common.GUIDUtil;
+import org.apache.ranger.common.MessageEnums;
+import org.apache.ranger.common.RESTErrorUtil;
+import org.apache.ranger.common.RangerCommonEnums;
+import org.apache.ranger.common.RangerConfigUtil;
+import org.apache.ranger.common.RangerSearchUtil;
+import org.apache.ranger.common.RangerValidatorFactory;
+import org.apache.ranger.common.ServiceUtil;
+import org.apache.ranger.common.UserSessionBase;
 import org.apache.ranger.db.RangerDaoManager;
-import org.apache.ranger.entity.*;
+import org.apache.ranger.entity.XXAuthSession;
+import org.apache.ranger.entity.XXPolicyExportAudit;
+import org.apache.ranger.entity.XXPortalUser;
+import org.apache.ranger.entity.XXService;
+import org.apache.ranger.entity.XXServiceConfigMap;
+import org.apache.ranger.entity.XXServiceDef;
 import org.apache.ranger.plugin.model.RangerPolicy;
 import org.apache.ranger.plugin.model.RangerPolicy.RangerPolicyItem;
 import org.apache.ranger.plugin.model.RangerPolicy.RangerPolicyItemAccess;
@@ -61,11 +62,21 @@ import org.apache.ranger.plugin.model.validation.RangerPolicyValidator;
 import org.apache.ranger.plugin.model.validation.RangerServiceDefValidator;
 import org.apache.ranger.plugin.model.validation.RangerServiceValidator;
 import org.apache.ranger.plugin.model.validation.RangerValidator.Action;
-import org.apache.ranger.plugin.policyengine.*;
+import org.apache.ranger.plugin.policyengine.RangerAccessResource;
+import org.apache.ranger.plugin.policyengine.RangerAccessResourceImpl;
+import org.apache.ranger.plugin.policyengine.RangerPolicyEngine;
+import org.apache.ranger.plugin.policyengine.RangerPolicyEngineCache;
+import org.apache.ranger.plugin.policyengine.RangerPolicyEngineImpl;
+import org.apache.ranger.plugin.policyengine.RangerPolicyEngineOptions;
 import org.apache.ranger.plugin.policyevaluator.RangerPolicyEvaluator;
 import org.apache.ranger.plugin.service.ResourceLookupContext;
 import org.apache.ranger.plugin.store.EmbeddedServiceDefsUtil;
-import org.apache.ranger.plugin.util.*;
+import org.apache.ranger.plugin.util.GrantRevokeRequest;
+import org.apache.ranger.plugin.util.HiveOperationType;
+import org.apache.ranger.plugin.util.RangerPerfTracer;
+import org.apache.ranger.plugin.util.SearchFilter;
+import org.apache.ranger.plugin.util.ServicePolicies;
+import org.apache.ranger.plugin.util.SynchronizeRequest;
 import org.apache.ranger.security.context.RangerAPIList;
 import org.apache.ranger.security.context.RangerContextHolder;
 import org.apache.ranger.security.context.RangerSecurityContext;
@@ -84,6 +95,26 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import javax.ws.rs.DELETE;
+import javax.ws.rs.GET;
+import javax.ws.rs.POST;
+import javax.ws.rs.PUT;
+import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
+import javax.ws.rs.WebApplicationException;
+import javax.ws.rs.core.Context;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 @Path("plugins")
 @Component
@@ -1109,32 +1140,31 @@ public class ServiceREST {
 			perf = RangerPerfTracer.getPerfTracer(PERF_LOG, "ServiceREST.synchronizePolicy(serviceName=" + serviceName + ")");
 		}
 
-		if (serviceUtil.isValidateHttpsAuthentication(serviceName, request)) {
-			try {
-				String               userName   = syncRequest.getGrantor();
-				Set<String>          userGroups = userMgr.getGroupsForUser(userName);
-				RangerAccessResource resource   = new RangerAccessResourceImpl(syncRequest.getResource());
-				syncRequest.setGroups(null); // Generate user rights only
 
-				boolean isAdmin = hasAdminAccess(serviceName, userName, userGroups, resource);
-				if(!isAdmin) {
-					LOG.warn("hasAdminAccess(" + serviceName + ", " + userName + ", " + userGroups + ", "
-							+ syncRequest + ") unauthorized or not delegateadmin!");
-				} else {
-					mockSession(request, userName);
-					syncCatlog(serviceName, hiveOperationType, syncRequest);
-				}
-			} catch(WebApplicationException excp) {
-				throw excp;
-			} catch(Throwable excp) {
-				LOG.error("consistentRules(" + serviceName + ", " + syncRequest + ") failed", excp);
-				throw restErrorUtil.createRESTException(excp.getMessage());
-			} finally {
-				RangerPerfTracer.log(perf);
+		try {
+			String userName = syncRequest.getGrantor();
+			Set<String> userGroups = userMgr.getGroupsForUser(userName);
+			RangerAccessResource resource = new RangerAccessResourceImpl(syncRequest.getResource());
+			syncRequest.setGroups(null); // Generate user rights only
+			boolean isAdmin = hasAdminAccess(serviceName, userName, userGroups, resource);
+			if (!isAdmin) {
+				LOG.warn("hasAdminAccess(" + serviceName + ", " + userName + ", " + userGroups + ", "
+						+ syncRequest + ") unauthorized or not delegateadmin!");
+			} else {
+				mockSession(request, userName);
+				syncCatlog(serviceName, hiveOperationType, syncRequest);
 			}
-
-			ret.setStatusCode(RESTResponse.STATUS_SUCCESS);
+		} catch (WebApplicationException excp) {
+			throw excp;
+		} catch (Throwable excp) {
+			LOG.error("consistentRules(" + serviceName + ", " + syncRequest + ") failed", excp);
+			throw restErrorUtil.createRESTException(excp.getMessage());
+		} finally {
+			RangerPerfTracer.log(perf);
 		}
+
+		ret.setStatusCode(RESTResponse.STATUS_SUCCESS);
+
 
 		if(LOG.isDebugEnabled()) {
 			LOG.debug("<== ServiceREST.synchronizePolicy(" + serviceName + ", " + syncRequest + "): " + ret);
