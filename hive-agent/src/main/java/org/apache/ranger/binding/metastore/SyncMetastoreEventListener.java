@@ -85,43 +85,6 @@ public class SyncMetastoreEventListener extends MetaStoreEventListener {
   }
 
   @Override
-  public void onCreateDatabase(CreateDatabaseEvent dbEvent)
-      throws MetaException {
-
-    // don't sync paths/privileges if the operation has failed
-    if (!dbEvent.getStatus()) {
-      LOGGER.debug("Skip syncing paths/privileges with Ranger server for onCreateDatabase event," +
-          " since the operation failed. \n");
-      return;
-    }
-
-    // drop the privileges on the database, in case anything left behind during
-    // last drop db
-    if (!rangerConfigureIsTrue(RangerHadoopConstants.SYNC_CREATE_WITH_POLICY_STORE)) {
-      return;
-    }
-
-    // mammut create database's hive\hdfs policy
-    // synchronizePolicy(dbEvent, HiveOperationType.CREATEDATABASE);
-  }
-
-  @Override
-  public void onDropDatabase(DropDatabaseEvent dbEvent) throws MetaException {
-    // don't sync paths/privileges if the operation has failed
-    if (!dbEvent.getStatus()) {
-      LOGGER.debug("Skip syncing paths/privileges with Ranger server for onDropDatabase event," +
-          " since the operation failed. \n");
-      return;
-    }
-
-    if (!rangerConfigureIsTrue(RangerHadoopConstants.SYNC_DROP_WITH_POLICY_STORE)) {
-      return;
-    }
-
-    synchronizePolicy(dbEvent, HiveOperationType.DROPDATABASE);
-  }
-
-  @Override
   public void onCreateTable (CreateTableEvent tableEvent) throws MetaException {
     // don't sync paths/privileges if the operation has failed
     if (!tableEvent.getStatus()) {
