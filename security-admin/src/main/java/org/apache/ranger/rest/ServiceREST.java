@@ -1813,12 +1813,12 @@ public class ServiceREST {
 		return hdfsPolicyItem;
 	}
 
-	private void hdfsPolicyAddHivePolicyItem(RangerPolicy hdfsPolicy, RangerPolicy matchHivePolicy)
+	private void hdfsPolicyAddHivePolicyItem(RangerPolicy hdfsPolicy, RangerPolicy addHivePolicy)
 			throws Exception {
 
 		// access permissions
 		List<RangerPolicyItem> hdfsPolicyItems = hdfsPolicy.getPolicyItems();
-		for (RangerPolicyItem hivePolicyItem : matchHivePolicy.getPolicyItems()) {
+		for (RangerPolicyItem hivePolicyItem : addHivePolicy.getPolicyItems()) {
 			RangerPolicyItem hdfsPolicyItem = convertHivePolicy2HdfsPolicyItem(hivePolicyItem);
 			hdfsPolicyItems.add(hdfsPolicyItem);
 		}
@@ -1826,12 +1826,12 @@ public class ServiceREST {
 	}
 
 	// HDFS-Policy minus Hive-Policy all user permission
-	private boolean hdfsPolicyMinusHivePolicyItem(RangerPolicy hdfsPolicy, RangerPolicy matchHivePolicy)
+	private boolean hdfsPolicyMinusHivePolicyItem(RangerPolicy hdfsPolicy, RangerPolicy minusHivePolicy)
 			throws Exception {
 
 		// convert hive to hdfs policy item
 		List<RangerPolicyItem> convert2HdfsPolicyItems = new ArrayList<>();
-		for (RangerPolicyItem hivePolicyItem : matchHivePolicy.getPolicyItems()) {
+		for (RangerPolicyItem hivePolicyItem : minusHivePolicy.getPolicyItems()) {
 			RangerPolicyItem hdfsPolicyItem = convertHivePolicy2HdfsPolicyItem(hivePolicyItem);
 			convert2HdfsPolicyItems.add(hdfsPolicyItem);
 		}
@@ -1970,6 +1970,8 @@ public class ServiceREST {
 
 			ensureAdminAccess(policy.getService(), policy.getResources());
 
+			RangerPolicy oldPolicy = svcStore.getPolicy(policy.getId());
+
 			ret = svcStore.updatePolicy(policy);
 
 			// last synchronize hdfs policy
@@ -1980,7 +1982,7 @@ public class ServiceREST {
 			} else {
 				if (rangerService.getType().equalsIgnoreCase("hive")) {
 					String location = getPolicyDesc(policy, POLICY_DESC_LOCATION);
-					adjustHdfsPolicyByLocation(null, rangerService.getId(), location, null, null);
+					adjustHdfsPolicyByLocation(null, rangerService.getId(), location, policy, oldPolicy);
 				}
 			}
 		} catch(WebApplicationException excp) {
@@ -2032,7 +2034,7 @@ public class ServiceREST {
 			} else {
 				if (rangerService.getType().equalsIgnoreCase("hive")) {
 					String location = getPolicyDesc(policy, POLICY_DESC_LOCATION);
-					adjustHdfsPolicyByLocation(null, rangerService.getId(), location, null, null);
+					adjustHdfsPolicyByLocation(null, rangerService.getId(), location, null, policy);
 				}
 			}
 		} catch(WebApplicationException excp) {
