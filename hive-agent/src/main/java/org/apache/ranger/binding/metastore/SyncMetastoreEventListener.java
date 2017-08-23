@@ -101,7 +101,8 @@ public class SyncMetastoreEventListener extends MetaStoreEventListener {
       return;
     }
 
-    synchronizePolicy(dbEvent, HiveOperationType.CREATEDATABASE);
+    // mammut create database's hive\hdfs policy
+    // synchronizePolicy(dbEvent, HiveOperationType.CREATEDATABASE);
   }
 
   @Override
