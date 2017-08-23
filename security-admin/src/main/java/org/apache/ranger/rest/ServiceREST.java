@@ -125,8 +125,9 @@ public class ServiceREST {
 	private static final Log PERF_LOG = RangerPerfTracer.getPerfLogger("rest.ServiceREST");
 
 	private static final String EXTERNAL_TABLE_TYPE = "EXTERNAL_TABLE";
-	private static final String POLICY_DESC_TABLE_TYPE = "table_type";
+	private static final String POLICY_DESC_HDFS_RECURSIVE = "hdfs_recursive";
 	private static final String POLICY_DESC_LOCATION = "location";
+	private static final String POLICY_DESC_TABLE_TYPE = "table_type";
 
 	@Autowired
 	RESTErrorUtil restErrorUtil;
@@ -1698,29 +1699,21 @@ public class ServiceREST {
 
 		RangerService hdfsService = getRelatedHdfsService(service.getId());
 		RangerPolicy newHdfsPolicy = new RangerPolicy();
-		RangerPolicyResource policyResource = new RangerPolicyResource();
-		Map<String, RangerPolicyResource> policyResources = new HashMap<>();
-		URI uri = new URI(location);
-		String hdfsPath = uri.getPath();
-		policyResource.getValues().add(hdfsPath);
-		Boolean hiveIsRecursive = resourceIsRecursive(hivePolicies);
-		policyResource.setIsRecursive(hiveIsRecursive);
-		policyResources.put("path", policyResource);
-
-		newHdfsPolicy.setResources(policyResources);
-		newHdfsPolicy.setService(hdfsService.getName());
-		newHdfsPolicy.setName(generateHdfsPolicyName(hivePolicies.get(0)));
-		newHdfsPolicy.setIsAuditEnabled(true);
-		newHdfsPolicy.setCreatedBy(hivePolicies.get(0).getCreatedBy());
 
 		// access permissions
 		List<RangerPolicyItem> hdfsPolicyItems = new ArrayList<>();
 		RangerPolicyItemAccess readPolicyItemAccess = new RangerPolicyItemAccess("read", Boolean.TRUE);
 		RangerPolicyItemAccess writePolicyItemAccess = new RangerPolicyItemAccess("write", Boolean.TRUE);
 		RangerPolicyItemAccess executePolicyItemAccess = new RangerPolicyItemAccess("execute", Boolean.TRUE);
+
+		Boolean hdfsIsRecursive = Boolean.TRUE;
 		for (int i = 0; i < hivePolicies.size(); i ++) {
 			RangerPolicy hivePolicy = hivePolicies.get(i);
 			String tableType = getPolicyDesc(hivePolicy, POLICY_DESC_TABLE_TYPE);
+			String hdfsRecursive = getPolicyDesc(hivePolicy, POLICY_DESC_HDFS_RECURSIVE);
+			if (null != hdfsRecursive && hdfsRecursive.equalsIgnoreCase("false")) {
+				hdfsIsRecursive = Boolean.FALSE;
+			}
 
 			for (RangerPolicyItem hivePolicyItem : hivePolicy.getPolicyItems()) {
 				RangerPolicyItem hdfsPolicyItem = new RangerPolicyItem();
@@ -1761,6 +1754,20 @@ public class ServiceREST {
 			}
 			newHdfsPolicy.setPolicyItems(hdfsPolicyItems);
 		}
+
+		RangerPolicyResource policyResource = new RangerPolicyResource();
+		Map<String, RangerPolicyResource> policyResources = new HashMap<>();
+		URI uri = new URI(location);
+		String hdfsPath = uri.getPath();
+		policyResource.getValues().add(hdfsPath);
+		policyResource.setIsRecursive(hdfsIsRecursive);
+		policyResources.put("path", policyResource);
+
+		newHdfsPolicy.setResources(policyResources);
+		newHdfsPolicy.setService(hdfsService.getName());
+		newHdfsPolicy.setName(generateHdfsPolicyName(hivePolicies.get(0)));
+		newHdfsPolicy.setIsAuditEnabled(true);
+		newHdfsPolicy.setCreatedBy(hivePolicies.get(0).getCreatedBy());
 
 		return newHdfsPolicy;
 	}
