@@ -1140,7 +1140,6 @@ public class ServiceREST {
 			perf = RangerPerfTracer.getPerfTracer(PERF_LOG, "ServiceREST.synchronizePolicy(serviceName=" + serviceName + ")");
 		}
 
-
 		try {
 			String userName = syncRequest.getGrantor();
 			Set<String> userGroups = userMgr.getGroupsForUser(userName);
@@ -1164,7 +1163,6 @@ public class ServiceREST {
 		}
 
 		ret.setStatusCode(RESTResponse.STATUS_SUCCESS);
-
 
 		if(LOG.isDebugEnabled()) {
 			LOG.debug("<== ServiceREST.synchronizePolicy(" + serviceName + ", " + syncRequest + "): " + ret);
@@ -1483,7 +1481,7 @@ public class ServiceREST {
 	// Adjust the hdfs-policy by hive-policy
 	private void adjustHdfsPolicyByLocation(Long hdfsServiceId, Long hiveServiceId, String location,
 																				 RangerPolicy addHivePolicy, RangerPolicy minusHivePolicy) throws Exception {
-		if (location.isEmpty()) {
+		if (null == location || location.isEmpty()) {
 			LOG.warn("adjustHdfsPolicyByLocation() param location is empty!");
 			return;
 		}
@@ -1656,12 +1654,33 @@ public class ServiceREST {
 			// external table readonly
 			policyItem.getAccesses().add(new RangerPolicyItemAccess("SELECT", Boolean.TRUE));
 		} else {
+			policyItem.getAccesses().add(new RangerPolicyItemAccess("SELECT", Boolean.TRUE));
+			policyItem.getAccesses().add(new RangerPolicyItemAccess("UPDATE", Boolean.TRUE));
+			policyItem.getAccesses().add(new RangerPolicyItemAccess("CREATE", Boolean.TRUE));
+			policyItem.getAccesses().add(new RangerPolicyItemAccess("DROP", Boolean.TRUE));
+			policyItem.getAccesses().add(new RangerPolicyItemAccess("ALTER", Boolean.TRUE));
+			policyItem.getAccesses().add(new RangerPolicyItemAccess("INDEX", Boolean.TRUE));
+			policyItem.getAccesses().add(new RangerPolicyItemAccess("LOCK", Boolean.TRUE));
 			policyItem.getAccesses().add(new RangerPolicyItemAccess("ALL", Boolean.TRUE));
 		}
 		policyItem.setDelegateAdmin(syncRequest.getDelegateAdmin());
 		policy.getPolicyItems().add(policyItem);
 
 		return policy;
+	}
+
+	private Boolean resourceIsRecursive(List<RangerPolicy> hivePolicies) {
+		Boolean isRecursive = Boolean.FALSE;
+		for (RangerPolicy policy : hivePolicies) {
+			Boolean recursive = policy.getResources().get("database").getIsRecursive();
+			if (Boolean.FALSE == recursive) {
+				return Boolean.FALSE;
+			} else {
+				isRecursive = recursive;
+			}
+		}
+
+		return isRecursive;
 	}
 
 	// EXTERNAL_TABLE
@@ -1684,7 +1703,8 @@ public class ServiceREST {
 		URI uri = new URI(location);
 		String hdfsPath = uri.getPath();
 		policyResource.getValues().add(hdfsPath);
-		policyResource.setIsRecursive(Boolean.TRUE);
+		Boolean hiveIsRecursive = resourceIsRecursive(hivePolicies);
+		policyResource.setIsRecursive(hiveIsRecursive);
 		policyResources.put("path", policyResource);
 
 		newHdfsPolicy.setResources(policyResources);
@@ -1715,8 +1735,8 @@ public class ServiceREST {
 				List<RangerPolicyItemAccess> hdfsPolicyItemAccessList = new ArrayList<>();
 				List<RangerPolicyItemAccess> hivePolicyItemAccessList = hivePolicyItem.getAccesses();
 				for(RangerPolicyItemAccess hivePolicyItemAccess : hivePolicyItemAccessList) {
-					if (StringUtils.equalsIgnoreCase(hivePolicyItemAccess.getType(), HiveAccessType.SELECT.name()) ||
-							(tableType != null && tableType.equalsIgnoreCase(ServiceREST.EXTERNAL_TABLE_TYPE))) {
+					if (StringUtils.equalsIgnoreCase(hivePolicyItemAccess.getType(), HiveAccessType.SELECT.name())
+							|| (null != tableType && tableType.equalsIgnoreCase(ServiceREST.EXTERNAL_TABLE_TYPE))) {
 						// EXTERNAL TABLE, hdfs only read
 						mapRangerPolicyItemAccess.put("read", readPolicyItemAccess);
 						mapRangerPolicyItemAccess.put("execute", executePolicyItemAccess);
@@ -1741,80 +1761,6 @@ public class ServiceREST {
 			}
 			newHdfsPolicy.setPolicyItems(hdfsPolicyItems);
 		}
-
-		return newHdfsPolicy;
-	}
-
-	private RangerPolicy generateHdfsPolicy(RangerPolicy matchHivePolicy, String location)
-			throws Exception {
-		String hiveServiceName = matchHivePolicy.getService();
-		RangerService service = getServiceByName(hiveServiceName);
-		if (null == service) {
-			throw new Exception("service does not exist - name = " + hiveServiceName);
-		}
-
-		// create new hdfs policy
-		RangerPolicy newHdfsPolicy = new RangerPolicy();
-		if (!location.isEmpty()) {
-			RangerService hdfsService = getRelatedHdfsService(service.getId());
-			RangerPolicyResource policyResource = new RangerPolicyResource();
-			Map<String, RangerPolicyResource> policyResources = new HashMap<String, RangerPolicyResource>();
-			URI uri = new URI(location);
-			String hdfsPath = uri.getPath();
-			policyResource.getValues().add(hdfsPath);
-			policyResource.setIsRecursive(Boolean.TRUE);
-			policyResources.put("path", policyResource);
-
-			newHdfsPolicy.setResources(policyResources);
-			newHdfsPolicy.setService(hdfsService.getName());
-		}
-
-		newHdfsPolicy.setName(generateHdfsPolicyName(matchHivePolicy));
-		newHdfsPolicy.setDescription("auto sync by " + matchHivePolicy.getName());
-		newHdfsPolicy.setIsAuditEnabled(true);
-		newHdfsPolicy.setCreatedBy(matchHivePolicy.getCreatedBy());
-
-		// access permissions
-		List<RangerPolicyItem> hdfsPolicyItems = new ArrayList<RangerPolicyItem>();
-		RangerPolicyItemAccess readPolicyItemAccess = new RangerPolicyItemAccess("read", Boolean.TRUE);
-		RangerPolicyItemAccess writePolicyItemAccess = new RangerPolicyItemAccess("write", Boolean.TRUE);
-		RangerPolicyItemAccess executePolicyItemAccess = new RangerPolicyItemAccess("execute", Boolean.TRUE);
-		for (RangerPolicyItem hivePolicyItem : matchHivePolicy.getPolicyItems()) {
-			RangerPolicyItem hdfsPolicyItem = new RangerPolicyItem();
-
-			// user and group
-			hdfsPolicyItem.setUsers(hivePolicyItem.getUsers());
-			hdfsPolicyItem.setGroups(hivePolicyItem.getGroups());
-			hdfsPolicyItem.setDelegateAdmin(hivePolicyItem.getDelegateAdmin());
-
-			// hdfs access type
-			Map<String, RangerPolicyItemAccess> mapRangerPolicyItemAccess = new HashMap<>();
-			List<RangerPolicyItemAccess> hdfsPolicyItemAccessList = new ArrayList<RangerPolicyItemAccess>();
-			List<RangerPolicyItemAccess> hivePolicyItemAccessList = hivePolicyItem.getAccesses();
-			for(RangerPolicyItemAccess hivePolicyItemAccess : hivePolicyItemAccessList) {
-				if (StringUtils.equalsIgnoreCase(hivePolicyItemAccess.getType(), HiveAccessType.SELECT.name())) {
-					mapRangerPolicyItemAccess.put("read", readPolicyItemAccess);
-					mapRangerPolicyItemAccess.put("execute", executePolicyItemAccess);
-				} else if (StringUtils.equalsIgnoreCase(hivePolicyItemAccess.getType(), HiveAccessType.UPDATE.name())
-						|| StringUtils.equalsIgnoreCase(hivePolicyItemAccess.getType(), HiveAccessType.ALTER.name())
-						|| StringUtils.equalsIgnoreCase(hivePolicyItemAccess.getType(), HiveAccessType.CREATE.name())
-						|| StringUtils.equalsIgnoreCase(hivePolicyItemAccess.getType(), HiveAccessType.DROP.name())) {
-					mapRangerPolicyItemAccess.put("write", writePolicyItemAccess);
-					mapRangerPolicyItemAccess.put("execute", executePolicyItemAccess);
-				} else if (StringUtils.equalsIgnoreCase(hivePolicyItemAccess.getType(), HiveAccessType.ALL.name())) {
-					mapRangerPolicyItemAccess.put("read", readPolicyItemAccess);
-					mapRangerPolicyItemAccess.put("write", writePolicyItemAccess);
-					mapRangerPolicyItemAccess.put("execute", executePolicyItemAccess);
-					break;
-				}
-			}
-			for(Map.Entry<String, RangerPolicyItemAccess> accessEntry : mapRangerPolicyItemAccess.entrySet()) {
-				hdfsPolicyItemAccessList.add(accessEntry.getValue());
-			}
-			hdfsPolicyItem.setAccesses(hdfsPolicyItemAccessList);
-			hdfsPolicyItems.add(hdfsPolicyItem);
-		}
-		newHdfsPolicy.setPolicyItems(hdfsPolicyItems);
 
 		return newHdfsPolicy;
 	}
