@@ -1499,12 +1499,14 @@ public class ServiceREST {
 
 		RangerPolicy matchHdfsPolicy = searchHdfsPolicyByLocation(hdfsServiceId, location);
 		if (null != matchHdfsPolicy) {
-			if (null != addHivePolicy) {
-				hdfsPolicyAddHivePolicyItem(matchHdfsPolicy, addHivePolicy);
-			}
-
+			// 1. first minus hive policy
 			if (null != minusHivePolicy) {
 				hdfsPolicyMinusHivePolicyItem(matchHdfsPolicy, minusHivePolicy);
+			}
+
+			// 2. then add hive policy
+			if (null != addHivePolicy) {
+				hdfsPolicyAddHivePolicyItem(matchHdfsPolicy, addHivePolicy);
 			}
 
 			if (matchHdfsPolicy.getPolicyItems().size() == 0) {
@@ -1777,6 +1779,7 @@ public class ServiceREST {
 
 		// user and group
 		hdfsPolicyItem.setUsers(hivePolicyItem.getUsers());
+		hdfsPolicyItem.setGroups(hivePolicyItem.getGroups());
 		hdfsPolicyItem.setDelegateAdmin(hivePolicyItem.getDelegateAdmin());
 
 		// access permissions
@@ -1867,6 +1870,10 @@ public class ServiceREST {
 		}
 
 		if (false == hdfsPolicyItem1.getAccesses().containsAll(hdfsPolicyItem2.getAccesses())) {
+			return false;
+		}
+
+		if (hdfsPolicyItem1.getDelegateAdmin() != hdfsPolicyItem2.getDelegateAdmin()) {
 			return false;
 		}
 
