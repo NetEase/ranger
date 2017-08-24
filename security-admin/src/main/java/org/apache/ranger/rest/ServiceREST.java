@@ -1861,15 +1861,18 @@ public class ServiceREST {
 	}
 
 	private boolean policyItemEquals(RangerPolicyItem hdfsPolicyItem1, RangerPolicyItem hdfsPolicyItem2) {
-		if (false == hdfsPolicyItem1.getUsers().containsAll(hdfsPolicyItem2.getUsers())) {
+		if (false == hdfsPolicyItem1.getUsers().containsAll(hdfsPolicyItem2.getUsers())
+				|| false == hdfsPolicyItem2.getUsers().containsAll(hdfsPolicyItem1.getUsers())) {
 			return false;
 		}
 
-		if (false == hdfsPolicyItem1.getGroups().containsAll(hdfsPolicyItem2.getGroups())) {
+		if (false == hdfsPolicyItem1.getGroups().containsAll(hdfsPolicyItem2.getGroups())
+				|| false == hdfsPolicyItem2.getGroups().containsAll(hdfsPolicyItem1.getGroups())) {
 			return false;
 		}
 
-		if (false == hdfsPolicyItem1.getAccesses().containsAll(hdfsPolicyItem2.getAccesses())) {
+		if (false == hdfsPolicyItem1.getAccesses().containsAll(hdfsPolicyItem2.getAccesses())
+				|| false == hdfsPolicyItem2.getAccesses().containsAll(hdfsPolicyItem1.getAccesses())) {
 			return false;
 		}
 
