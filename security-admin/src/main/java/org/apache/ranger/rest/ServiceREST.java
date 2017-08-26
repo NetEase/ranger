@@ -1840,8 +1840,8 @@ public class ServiceREST {
 		}
 
 		// minus hive user permissions
-		Iterator<RangerPolicyItem> iter = hdfsPolicy.getPolicyItems().iterator();
 		for (RangerPolicyItem convertPolicyItem : convert2HdfsPolicyItems) {
+			Iterator<RangerPolicyItem> iter = hdfsPolicy.getPolicyItems().iterator();
 			while (iter.hasNext()) {
 				RangerPolicyItem hdfsPolicyItem = iter.next();
 				if (policyItemEquals(hdfsPolicyItem, convertPolicyItem) && hdfsPolicyItem.getDelegateAdmin()) {
