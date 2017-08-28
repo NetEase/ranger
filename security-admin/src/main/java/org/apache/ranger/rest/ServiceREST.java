@@ -20,6 +20,7 @@
 package org.apache.ranger.rest;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonSyntaxException;
 import com.google.gson.reflect.TypeToken;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.MapUtils;
@@ -1536,15 +1537,20 @@ public class ServiceREST {
 
 	public void setPolicyDesc(RangerPolicy policy, String key, String value) {
 		String desc = policy.getDescription();
-		Gson gson = new Gson();
-		HashMap<String, String> mapDesc = null;
-		mapDesc = gson.fromJson(desc, new TypeToken<HashMap<String, String>>() {
-		}.getType());
-		if (null == mapDesc) {
-			mapDesc = new HashMap();
+		try {
+			Gson gson = new Gson();
+			HashMap<String, String> mapDesc = null;
+			mapDesc = gson.fromJson(desc, new TypeToken<HashMap<String, String>>() {
+			}.getType());
+			if (null == mapDesc) {
+				mapDesc = new HashMap();
+			}
+			mapDesc.put(key, value);
+			desc = gson.toJson(mapDesc);
+		} catch (JsonSyntaxException e) {
+			// do nothing, just catch the exception
 		}
-		mapDesc.put(key, value);
-		desc = gson.toJson(mapDesc);
+		
 		policy.setDescription(desc);
 	}
 
@@ -1552,12 +1558,18 @@ public class ServiceREST {
 		String desc = policy.getDescription();
 
 		Gson gson = new Gson();
-		HashMap<String, String> mapDesc = gson.fromJson(desc, new TypeToken<HashMap<String, String>>() {
-		}.getType());
-		if (null == mapDesc) {
+		try {
+			HashMap<String, String> mapDesc = gson.fromJson(desc, new TypeToken<HashMap<String, String>>() {
+			}.getType());
+			
+			if (null == mapDesc) {
+				return "";
+			}
+			
+			return mapDesc.get(key);
+		} catch (JsonSyntaxException e) {
 			return "";
-		}
-		return mapDesc.get(key);
+		}		
 	}
 
 	public enum HiveAccessType {
