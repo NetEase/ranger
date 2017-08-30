@@ -30,6 +30,8 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.ranger.plugin.util.ServicePolicies;
 
+import com.jcraft.jsch.Logger;
+
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
@@ -193,12 +195,14 @@ public class RangerServicePoliciesCache {
 			try {
 				ret = lock.tryLock(waitTimeInSeconds, TimeUnit.SECONDS);
 				if (ret) {
+					LOG.info(Thread.currentThread().getName() + " obtain lock here ...");
 					getLatest(serviceName, serviceStore);
 				}
 			} catch (InterruptedException exception) {
 				LOG.error("getLatestOrCached:lock got interrupted..", exception);
 			} finally {
 				if (ret) {
+					LOG.info(Thread.currentThread().getName() + " release lock here ...");
 					lock.unlock();
 				}
 			}
@@ -240,7 +244,8 @@ public class RangerServicePoliciesCache {
 						servicePoliciesFromDb.setPolicyVersion(0L);
 					}
 					servicePolicies = servicePoliciesFromDb;
-					pruneUnusedAttributes();
+					// do not use this function any more, return description etc.
+					// pruneUnusedAttributes();
 				}
 			}
 

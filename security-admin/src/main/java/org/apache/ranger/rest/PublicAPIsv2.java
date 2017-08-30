@@ -51,6 +51,7 @@ import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -487,10 +488,10 @@ public class PublicAPIsv2 {
 		long startTime = System.currentTimeMillis();
 		List<RangerPolicy> failedPolicies = new ArrayList();
 		for (int index = 0; index < objs.size(); ++index) {
-			RangerPolicy policy = objs.getObject(index, RangerPolicy.class);
-			logger.info("### modify policy values is = " + policy.toString());
+			RangerPolicy newPolicy = objs.getObject(index, RangerPolicy.class);
+			logger.info("### modify policy values is = " + newPolicy.toString());
 			
-			Map<String, RangerPolicyResource> resources = policy.getResources();
+			Map<String, RangerPolicyResource> resources = newPolicy.getResources();
 			if (resources.get("database").getValues().size() > 1 ||
 				resources.get("table").getValues().size() > 1 ||
 				resources.get("column").getValues().size() > 1) {
@@ -507,8 +508,6 @@ public class PublicAPIsv2 {
 			filter.setParam("resource:table", table);
 			filter.setParam("resource:column", column);
 			filter.setParam(SearchFilter.SERVICE_NAME, serviceName);
-			
-			List<RangerPolicyItem> newPolicyItems = policy.getPolicyItems();
 				
 			// 资源对应的policy是否已经存在，不存在则需要createPolicy
 			boolean resourceUsed = false;
@@ -538,44 +537,49 @@ public class PublicAPIsv2 {
 				resourceUsed = true;
 				
 				// policy with resource <db,table,column> has already exist, merge
-				Long policyId = oldPolicy.getId();
-				logger.info("### resource existed in policy " + policyId);
+				logger.info("### resource existed in policy " + oldPolicy.getId());
 				
-				List<RangerPolicyItem> policyItems = oldPolicy.getPolicyItems();
-				for (RangerPolicyItem policyItem : policyItems) {
-					List<String> groups = policyItem.getGroups();
+				List<RangerPolicyItem> newPolicyItems = newPolicy.getPolicyItems();
+				List<RangerPolicyItem> oldPolicyItems = oldPolicy.getPolicyItems();
+				
+				for (RangerPolicyItem newPolicyItem : newPolicyItems) {
+
+					List<String> newGroups = newPolicyItem.getGroups();
+					if (newGroups.isEmpty()) {
+						logger.error("this kind of policyitem not supported , item is " + newPolicyItem.toString());
+						continue;
+					}
 					
-					// 老的policy中组是否存在新的policy：若存在，以新的policy中为准；不存在，叠加老的policy
-					boolean groupExist = false;
-					// 需要支持只有user的policyitem
-					if (!groups.isEmpty()) {
-						for (RangerPolicyItem newPolicyItem : newPolicyItems) {
-							if (newPolicyItem.getGroups().contains(groups.get(0))) {
-								groupExist = true;
+					// 新的policyItem是否存在老的policy：若存在，以新的policyItem中为准；不存在，叠加新的policyItem
+					Iterator<RangerPolicyItem> iter = oldPolicyItems.iterator();
+					while (iter.hasNext()) {
+						RangerPolicyItem oldPoicyItem = iter.next();
+						List<String> oldGroups = oldPoicyItem.getGroups();
+						// 需要支持只有user的policyitem, 批量授权只到组
+						if (!oldGroups.isEmpty()) {
+							if (newGroups.contains(oldGroups.get(0))) {
+								// policyItem存在于老的policy，删除老的policyItem，用新的policyItem覆盖
+								logger.info("policyItem replace here, olditem is " + oldPoicyItem.toString() + 
+										" , newitem is " + newPolicyItem.toString());
+								iter.remove();
 								break;
 							}
 						}
 					}
 					
-					// 老policy的组不存在于新的policy
-					if (!groupExist) {
-						newPolicyItems.add(policyItem);
-					} else {
-						// 老的组存在于新的policy，用新的policy覆盖
-						logger.info("### group permission replace by new policy");
-					}
-				}
+					// 新的policyItem添加到老的policy中
+					oldPolicyItems.add(newPolicyItem);					
+				}				
 				
-				policy.setId(policyId);
 				try {
 					long updateStartTime = System.currentTimeMillis();
-					serviceREST.updatePolicy(policy);
+					serviceREST.updatePolicy(oldPolicy);
 					logger.info("### update policy cost time = " + 
 							(System.currentTimeMillis() - updateStartTime));
 				} catch (Exception e) {
-					logger.error("### error happened when update policy " + policy.toString());
+					logger.error("### error happened when update policy " + oldPolicy.toString());
 					logger.error(e.getMessage(), e);
-					failedPolicies.add(policy);
+					failedPolicies.add(oldPolicy);
 				}
 			
 				// 资源对应的policy只有一条，找到对应的之后，后面的policy肯定不会完全匹配，没必要再遍历
@@ -586,13 +590,13 @@ public class PublicAPIsv2 {
 			if (!resourceUsed) {
 				try {
 					long createStartTime = System.currentTimeMillis();
-					serviceREST.createPolicy(policy);
+					serviceREST.createPolicy(newPolicy);
 					logger.info("### create policy cost time = " + 
 							(System.currentTimeMillis() - createStartTime));
 				} catch (Exception e) {
-					logger.error("### error happened when create policy " + policy.toString());
+					logger.error("### error happened when create policy " + newPolicy.toString());
 					logger.error(e.getMessage(), e);
-					failedPolicies.add(policy);
+					failedPolicies.add(newPolicy);
 				}
 			}			
 		}	
