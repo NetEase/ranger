@@ -1428,6 +1428,7 @@ public class ServiceREST {
 					break;
 				}
 
+				/* temporary deletion
 				String newLocation = syncRequest.getNewLocation();
 				if (false == location.equalsIgnoreCase(newLocation)) {
 					// change hdfs location
@@ -1441,6 +1442,7 @@ public class ServiceREST {
 					String hdfsPath = uri.getPath();
 					setPolicyDesc(matchHivePolicy, POLICY_DESC_LOCATION, hdfsPath);
 				}
+				*/
 
 				if (false == tabName.equalsIgnoreCase(newTabName) || false == dbName.equalsIgnoreCase(newDbName)){
 					// update hive-policy db and table name
