@@ -84,7 +84,6 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
 
   protected static CuratorFramework zkClient;
   private static zkListener listener = null;
-  private static ThreadLocal<InterProcessMutex> lockLocal = new ThreadLocal<InterProcessMutex>();
 
   private static String zkPath_ = "/hive-metastore-changelog";
   private final static String MAX_ID_FILE_NAME = "/maxid";
@@ -95,10 +94,10 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
   private Map<String, TUpdateDelta> mapPartitionUpdate= new ConcurrentHashMap();
   private Long curretnTUpdateDeltaId_ = 0L;
   private String hostName_ = "";
-  private int asyncInterval_ = 5000;
+  private int asyncInterval_ = 3000;
   private int autoClearTime_ = 5;
-  private int writeZkBatchSize_ = 200;
-  private int zkReconnectInterval_ = 30; // minute
+  private int writeZkBatchSize_ = 100;
+  private int zkReconnectInterval_ = 15; // minute
   private Date zkReconnectTime = new Date();
 
   public ChangeMetastoreEventListener(Configuration config) {
@@ -114,8 +113,8 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
         RangerHadoopConstants.RANGER_ZK_MS_CHANGELOG_PATH + " not config");
     zkPath_ = RangerConfiguration.getInstance().get(RangerHadoopConstants.RANGER_ZK_MS_CHANGELOG_PATH);
     autoClearTime_ = RangerConfiguration.getInstance().getInt(RangerHadoopConstants.RANGER_ZK_MS_CHANGELOG_AUTO_CLEAR_TIME, 5);
-    writeZkBatchSize_ = RangerConfiguration.getInstance().getInt(RangerHadoopConstants.RANGER_ZK_MS_CHANGELOG_WRITE_BATCH_SIZE, 200);
-    zkReconnectInterval_ = RangerConfiguration.getInstance().getInt(RangerHadoopConstants.RANGER_ZK_MS_RECONNECT_INTERVAL, 30);
+    writeZkBatchSize_ = RangerConfiguration.getInstance().getInt(RangerHadoopConstants.RANGER_ZK_MS_CHANGELOG_WRITE_BATCH_SIZE, 100);
+    zkReconnectInterval_ = RangerConfiguration.getInstance().getInt(RangerHadoopConstants.RANGER_ZK_MS_RECONNECT_INTERVAL, 15);
 
     try {
       InetAddress inetAddress = InetAddress.getLocalHost();
@@ -165,6 +164,12 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
     }
   };
 
+  private void closeZkClient() {
+    zkClient.getConnectionStateListenable().removeListener(listener);
+    zkClient.close();
+    zkClient = null;
+  }
+
   private void getSingletonClient() throws Exception {
     synchronized (ChangeMetastoreEventListener.class) {
       listener = new zkListener();
@@ -173,9 +178,7 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
       long zkRunMinute = (now.getTime() - zkReconnectTime.getTime())/60000;
       if ((zkRunMinute >= zkReconnectInterval_) && (zkClient != null)) {
         LOGGER.info("zkClient need reconnect zookeeper server");
-        zkClient.getConnectionStateListenable().removeListener(listener);
-        zkClient.close();
-        zkClient = null;
+        closeZkClient();
       }
 
       if (zkClient == null) {
@@ -233,17 +236,11 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
       getSingletonClient();
     } catch (Exception ex) {
       ex.printStackTrace();
+      return;
     }
 
     try {
-      InterProcessMutex lock = new InterProcessMutex(zkClient, zkPath_ + LOCK_RELATIVE_PATH);
-      if (!lock.acquire(10, TimeUnit.SECONDS)) {
-        LOGGER.warn("writeZNodeData() could not acquire the lock");
-        return;
-      }
-      lockLocal.set(lock);
-
-      // delete expired data 2 days ago
+      // delete expired data
       GetChildrenBuilder childrenBuilder = zkClient.getChildren();
       List<String> children = childrenBuilder.forPath(zkPath_);
 
@@ -259,7 +256,7 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
           }
           String childPath = zkPath_ + child;
           Stat stat = zkClient.checkExists().forPath(childPath);
-          if (null != stat && (now.getTime() - stat.getCtime()) >= autoClearTime_*60*1000) {
+          if (null != stat && ((now.getTime() - stat.getCtime()) >= autoClearTime_*60*1000)) {
             LOGGER.info("zkClient delete expired node : " + childPath);
             zkClient.delete().forPath(childPath);
           }
@@ -285,42 +282,44 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
       TMemoryBuffer memoryBuffer = new TMemoryBuffer(8);
       TProtocol protocol = new org.apache.thrift.protocol.TJSONProtocol(memoryBuffer);
       tUpdateMetadataRequest.write(protocol);
-      byte[] updateMetadataBytes = memoryBuffer.getArray();
 
-      Stat statMaxId = zkClient.checkExists().forPath(zkPath_+MAX_ID_FILE_NAME);
-      Stat statNewMaxFileId = zkClient.checkExists().forPath(zkPath_ + "/" + newMaxFileId);
-      CuratorTransaction transaction = zkClient.inTransaction();
-      CuratorTransactionFinal transactionFinal = null;
-      if (null == statMaxId) {
-        transactionFinal = transaction.create().withMode(CreateMode.PERSISTENT)
-            .forPath(zkPath_+MAX_ID_FILE_NAME, String.valueOf(newMaxFileId).getBytes()).and();
+      // bytesUpdateMetadata[] need trim 0x0,0x0,0x0,0x0,...
+      byte[] bytesUpdateMetadata = memoryBuffer.getArray();
+      String strUpdateMetadata = new String(bytesUpdateMetadata);
+      strUpdateMetadata = strUpdateMetadata.trim();
+      LOGGER.info("strUpdateMetadata = " + strUpdateMetadata);
+
+      int updateMetadataLen = strUpdateMetadata.length();
+      if (updateMetadataLen >= 0xfffff) {
+        LOGGER.error("updateMetadataBytes.length > zookeeper BinaryInputArchive.maxBuffer(0xfffff)");
       } else {
-        transactionFinal = transaction.setData()
-            .forPath(zkPath_+MAX_ID_FILE_NAME, String.valueOf(newMaxFileId).getBytes()).and();
-      }
-      if (null == statNewMaxFileId) {
-        transactionFinal.create().withMode(CreateMode.PERSISTENT)
-            .forPath(zkPath_+"/"+newMaxFileId, updateMetadataBytes).and().commit();
-      } else {
-        transactionFinal.setData()
-            .forPath(zkPath_+"/"+newMaxFileId, updateMetadataBytes).and().commit();
+        LOGGER.info("updateMetadataBytes.length = " + updateMetadataLen);
+
+        Stat statMaxId = zkClient.checkExists().forPath(zkPath_ + MAX_ID_FILE_NAME);
+        Stat statNewMaxFileId = zkClient.checkExists().forPath(zkPath_ + "/" + newMaxFileId);
+        if (null == statMaxId) {
+          LOGGER.info("create : " + zkPath_ + MAX_ID_FILE_NAME);
+          zkClient.create().withMode(CreateMode.PERSISTENT).forPath(zkPath_ + MAX_ID_FILE_NAME, String.valueOf(newMaxFileId).getBytes());
+        } else {
+          LOGGER.info("update : " + zkPath_ + MAX_ID_FILE_NAME);
+          zkClient.setData().forPath(zkPath_ + MAX_ID_FILE_NAME, String.valueOf(newMaxFileId).getBytes());
+        }
+        if (null == statNewMaxFileId) {
+          LOGGER.info("update : " + zkPath_ + "/" + newMaxFileId);
+          zkClient.create().withMode(CreateMode.PERSISTENT).forPath(zkPath_ + "/" + newMaxFileId, strUpdateMetadata.getBytes());
+        } else {
+          LOGGER.info("update : " + zkPath_ + "/" + newMaxFileId);
+          zkClient.setData().forPath(zkPath_ + "/" + newMaxFileId, strUpdateMetadata.getBytes());
+        }
       }
     } catch (Exception e) {
       e.printStackTrace();
       LOGGER.error(e.getMessage());
+      closeZkClient();
     } finally {
-      try {
-        InterProcessMutex lock = lockLocal.get();
-        if (lock.isAcquiredInThisProcess()) {
-          lock.release();
-        }
-      } catch (Exception e) {
-        e.printStackTrace();
-        LOGGER.error(e.getMessage());
-      }
     }
 
-    LOGGER.info("<== writeZNodeData() : " + tUpdateDeltas.toString());
+    LOGGER.info("<== writeZNodeData()");
   }
 
   // the consumer TUpdateDelta from the queue
