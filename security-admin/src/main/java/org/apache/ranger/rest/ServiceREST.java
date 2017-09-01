@@ -1954,8 +1954,7 @@ public class ServiceREST {
 			if (null == rangerService) {
 				LOG.error("servicedef does not exist - name=" + policy.getService());
 			} else {
-				if (rangerService.getType().equalsIgnoreCase("hive")
-						&& needSyncHivePolicy(policy)) {
+				if (rangerService.getType().equalsIgnoreCase("hive")) {
 					updateHivePolicyDescByTableName(rangerService.getId(), policy);
 
 					String location = getPolicyDesc(policy, POLICY_DESC_LOCATION);
@@ -2012,8 +2011,7 @@ public class ServiceREST {
 			if (null == rangerService) {
 				LOG.error("servicedef does not exist - name=" + policy.getService());
 			} else {
-				if (rangerService.getType().equalsIgnoreCase("hive")
-						&& needSyncHivePolicy(policy)) {
+				if (rangerService.getType().equalsIgnoreCase("hive")) {
 					String location = getPolicyDesc(policy, POLICY_DESC_LOCATION);
 					adjustHdfsPolicyByLocation(null, rangerService.getId(), location, policy, oldPolicy);
 				}
@@ -2065,8 +2063,7 @@ public class ServiceREST {
 			if (null == rangerService) {
 				LOG.error("servicedef does not exist - name=" + policy.getService());
 			} else {
-				if (rangerService.getType().equalsIgnoreCase("hive")
-						&& needSyncHivePolicy(policy)) {
+				if (rangerService.getType().equalsIgnoreCase("hive")) {
 					String location = getPolicyDesc(policy, POLICY_DESC_LOCATION);
 					adjustHdfsPolicyByLocation(null, rangerService.getId(), location, null, policy);
 				}
