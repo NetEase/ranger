@@ -1369,7 +1369,6 @@ public class ServiceREST {
 		final String newTabName = syncRequest.getNewResource().get("table");
 
 		switch (hiveOperationType) {
-			case CREATEDATABASE:
 			case CREATETABLE: {
 				List<RangerPolicy> relatedHivePolicies = new ArrayList<>();
 
@@ -1400,7 +1399,6 @@ public class ServiceREST {
 				svcStore.createPolicy(matchHivePolicy);
 			}
 				break;
-			case DROPDATABASE:
 			case DROPTABLE: {
 				// delete match hive policy
 				RangerPolicy matchHivePolicy = searchHivePolicy(hiveServiceId, dbName, tabName);
@@ -1429,7 +1427,7 @@ public class ServiceREST {
 					break;
 				}
 
-				/* temporary deletion
+				//temporary deletion
 				String newLocation = syncRequest.getNewLocation();
 				if (false == location.equalsIgnoreCase(newLocation)) {
 					// change hdfs location
@@ -1443,7 +1441,7 @@ public class ServiceREST {
 					String hdfsPath = uri.getPath();
 					setPolicyDesc(matchHivePolicy, POLICY_DESC_LOCATION, hdfsPath);
 				}
-				*/
+
 
 				if (false == tabName.equalsIgnoreCase(newTabName) || false == dbName.equalsIgnoreCase(newDbName)){
 					// update hive-policy db and table name
@@ -1628,6 +1626,27 @@ public class ServiceREST {
 		hivePolicy.setResources(policyResources);
 
 		return hivePolicy;
+	}
+
+	// only synchronize have db & table name hive-policy
+	private boolean needSyncHivePolicy(RangerPolicy hivePolicy) {
+		RangerPolicyResource dbResource = hivePolicy.getResources().get("database");
+		RangerPolicyResource tabResource = hivePolicy.getResources().get("table");
+
+		if (null == dbResource || dbResource.getValues().size() != 1
+				|| null != tabResource || tabResource.getValues().size() != 1) {
+			return false;
+		}
+
+		String dbName = dbResource.getValues().get(0).trim();
+		String tabName = tabResource.getValues().get(0).trim();
+
+		if ((null != dbName && false == dbName.equalsIgnoreCase("*"))
+			&& (null != tabName && false == tabName.equalsIgnoreCase("*"))) {
+			return true;
+		}
+
+		return false;
 	}
 
 	// auto create hive policy
