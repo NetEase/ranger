@@ -53,7 +53,9 @@ import org.apache.zookeeper.data.ACL;
 import org.apache.zookeeper.data.Stat;
 import org.datanucleus.util.StringUtils;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.InetAddress;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -99,6 +101,7 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
   private int writeZkBatchSize_ = 100;
   private int zkReconnectInterval_ = 15; // minute
   private Date zkReconnectTime = new Date();
+  private String zookeeperShellPath = "";
 
   public ChangeMetastoreEventListener(Configuration config) {
     super(config);
@@ -115,6 +118,7 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
     autoClearTime_ = RangerConfiguration.getInstance().getInt(RangerHadoopConstants.RANGER_ZK_MS_CHANGELOG_AUTO_CLEAR_TIME, 5);
     writeZkBatchSize_ = RangerConfiguration.getInstance().getInt(RangerHadoopConstants.RANGER_ZK_MS_CHANGELOG_WRITE_BATCH_SIZE, 100);
     zkReconnectInterval_ = RangerConfiguration.getInstance().getInt(RangerHadoopConstants.RANGER_ZK_MS_RECONNECT_INTERVAL, 15);
+    zookeeperShellPath = RangerConfiguration.getInstance().get(RangerHadoopConstants.RANGER_ZK_MS_WRITE_SHELL_PATH, "");
 
     try {
       InetAddress inetAddress = InetAddress.getLocalHost();
@@ -258,7 +262,11 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
           Stat stat = zkClient.checkExists().forPath(childPath);
           if (null != stat && ((now.getTime() - stat.getCtime()) >= autoClearTime_*60*1000)) {
             LOGGER.info("zkClient delete expired node : " + childPath);
-            zkClient.delete().forPath(childPath);
+            if (zookeeperShellPath.isEmpty()) {
+              zkClient.delete().forPath(childPath);
+            } else {
+              callZkShell("delete", childPath, "");
+            }
           }
         }
       }
@@ -297,19 +305,37 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
 
         Stat statMaxId = zkClient.checkExists().forPath(zkPath_ + MAX_ID_FILE_NAME);
         Stat statNewMaxFileId = zkClient.checkExists().forPath(zkPath_ + "/" + newMaxFileId);
-        if (null == statMaxId) {
-          LOGGER.info("create : " + zkPath_ + MAX_ID_FILE_NAME);
-          zkClient.create().withMode(CreateMode.PERSISTENT).forPath(zkPath_ + MAX_ID_FILE_NAME, String.valueOf(newMaxFileId).getBytes());
+
+        if (zookeeperShellPath.isEmpty()) {
+          if (null == statMaxId) {
+            LOGGER.info("create : " + zkPath_ + MAX_ID_FILE_NAME);
+            zkClient.create().withMode(CreateMode.PERSISTENT).forPath(zkPath_ + MAX_ID_FILE_NAME, String.valueOf(newMaxFileId).getBytes());
+          } else {
+            LOGGER.info("update : " + zkPath_ + MAX_ID_FILE_NAME);
+            zkClient.setData().forPath(zkPath_ + MAX_ID_FILE_NAME, String.valueOf(newMaxFileId).getBytes());
+          }
+          if (null == statNewMaxFileId) {
+            LOGGER.info("create : " + zkPath_ + "/" + newMaxFileId);
+            zkClient.create().withMode(CreateMode.PERSISTENT).forPath(zkPath_ + "/" + String.valueOf(newMaxFileId), strUpdateMetadata.getBytes());
+          } else {
+            LOGGER.info("update : " + zkPath_ + "/" + newMaxFileId);
+            zkClient.setData().forPath(zkPath_ + "/" + String.valueOf(newMaxFileId), strUpdateMetadata.getBytes());
+          }
         } else {
-          LOGGER.info("update : " + zkPath_ + MAX_ID_FILE_NAME);
-          zkClient.setData().forPath(zkPath_ + MAX_ID_FILE_NAME, String.valueOf(newMaxFileId).getBytes());
-        }
-        if (null == statNewMaxFileId) {
-          LOGGER.info("update : " + zkPath_ + "/" + newMaxFileId);
-          zkClient.create().withMode(CreateMode.PERSISTENT).forPath(zkPath_ + "/" + newMaxFileId, strUpdateMetadata.getBytes());
-        } else {
-          LOGGER.info("update : " + zkPath_ + "/" + newMaxFileId);
-          zkClient.setData().forPath(zkPath_ + "/" + newMaxFileId, strUpdateMetadata.getBytes());
+          if (null == statMaxId) {
+            LOGGER.info("create : " + zkPath_ + MAX_ID_FILE_NAME);
+            callZkShell("create",zkPath_ + MAX_ID_FILE_NAME, String.valueOf(newMaxFileId));
+          } else {
+            LOGGER.info("update : " + zkPath_ + MAX_ID_FILE_NAME);
+            callZkShell("set",zkPath_ + MAX_ID_FILE_NAME, String.valueOf(newMaxFileId));
+          }
+          if (null == statNewMaxFileId) {
+            LOGGER.info("create : " + zkPath_ + "/" + String.valueOf(newMaxFileId));
+            callZkShell("create",zkPath_ + "/" + String.valueOf(newMaxFileId), strUpdateMetadata);
+          } else {
+            LOGGER.info("update : " + zkPath_ + "/" + String.valueOf(newMaxFileId));
+            callZkShell("set",zkPath_ + "/" + String.valueOf(newMaxFileId), strUpdateMetadata);
+          }
         }
       }
     } catch (Exception e) {
@@ -320,6 +346,53 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
     }
 
     LOGGER.info("<== writeZNodeData()");
+  }
+
+  boolean callZkShell(String cmd, String znodePath, String params) {
+    boolean runResult = false;
+
+    if (zookeeperShellPath.isEmpty()) {
+      LOGGER.error("writeZkShell() zkWiteShellPath is empty!");
+      return false;
+    }
+    LOGGER.info("writeZkShell() zkWiteShellPath = " + zookeeperShellPath);
+
+    try {
+      String command = " " + cmd + " " + znodePath + " " + params;
+      Process process = Runtime.getRuntime().exec(zookeeperShellPath + command);
+      LOGGER.info("writeZkShell = " + zookeeperShellPath + command);
+
+      process.waitFor();
+
+      //读取标准输出流
+      BufferedReader bufferedReader =new BufferedReader(new InputStreamReader(process.getInputStream()));
+      String line;
+      while ((line = bufferedReader.readLine()) != null) {
+        LOGGER.debug(line);
+      }
+
+      //读取标准错误流
+      BufferedReader brError = new BufferedReader(new InputStreamReader(process.getErrorStream()));
+      String errline = null;
+      while ((errline = brError.readLine()) != null) {
+        LOGGER.error(errline);
+      }
+
+      //waitFor() 判断Process进程是否终止，通过返回值判断是否正常终止。0 代表正常终止
+      int result = process.waitFor();
+      if(result != 0){
+        LOGGER.error("writeZkShell() faild, " + znodePath + "， " + params);
+        runResult = false;
+      } else {
+        runResult = true;
+      }
+    }
+    catch (Exception e) {
+      e.printStackTrace();
+      runResult = false;
+    }
+
+    return runResult;
   }
 
   // the consumer TUpdateDelta from the queue

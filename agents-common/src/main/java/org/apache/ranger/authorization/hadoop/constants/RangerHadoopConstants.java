@@ -90,6 +90,7 @@ public class RangerHadoopConstants {
 	public static final String RANGER_ZK_MS_CHANGELOG_WRITE_BATCH_SIZE = "ranger.zookeeper.metastore.changelog.write.batch.size";
 	public static final String RANGER_ZK_MS_RECONNECT_INTERVAL	  = "ranger.zookeeper.metastore.reconnect.interval";
 	public static final String RANGER_ZK_MS_CHANGELOG_PATH        = "ranger.zookeeper.metastore.changelog.path";
+	public static final String RANGER_ZK_MS_WRITE_SHELL_PATH 		  = "ranger.zookeeper.metastore.write.shell.path";
 
 	public static final String CHECK_PRIVILEGE_URI_ACCESS_ALLOW   = "check.privilege.uri.access.allow";
 	public static final String CHECK_PRIVILEGE_DFS_COMMAND        = "check.privilege.dfs.command";
