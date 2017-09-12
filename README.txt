@@ -5,7 +5,7 @@ Build Process
 
 2. On the root folder, please execute the following Maven command:
 
-	$ mvn clean compile package install assembly:assembly -Dmaven.test.skip=true
+	$ mvn clean compile package assembly:assembly -Dmaven.test.skip=true
     $ mvn eclipse:eclipse
 
 3. After the above build command execution, you should see the following TAR files in the target folder:

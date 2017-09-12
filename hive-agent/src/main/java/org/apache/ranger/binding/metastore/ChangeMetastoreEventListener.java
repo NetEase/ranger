@@ -98,10 +98,12 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
   private String hostName_ = "";
   private int asyncInterval_ = 3000;
   private int autoClearTime_ = 5;
-  private int writeZkBatchSize_ = 100;
-  private int zkReconnectInterval_ = 15; // minute
+  private int writeZkBatchSize_ = 10;
+  private int zkReconnectInterval_ = 30; // minute
   private Date zkReconnectTime = new Date();
-  private String zookeeperShellPath = "";
+  private String zookeeperShellPath_ = "";
+  private String zookeeperQuorum_ = "";
+  private int callZookeeperShellTimeoutMS_ = 10*1000;
 
   public ChangeMetastoreEventListener(Configuration config) {
     super(config);
@@ -116,9 +118,10 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
         RangerHadoopConstants.RANGER_ZK_MS_CHANGELOG_PATH + " not config");
     zkPath_ = RangerConfiguration.getInstance().get(RangerHadoopConstants.RANGER_ZK_MS_CHANGELOG_PATH);
     autoClearTime_ = RangerConfiguration.getInstance().getInt(RangerHadoopConstants.RANGER_ZK_MS_CHANGELOG_AUTO_CLEAR_TIME, 5);
-    writeZkBatchSize_ = RangerConfiguration.getInstance().getInt(RangerHadoopConstants.RANGER_ZK_MS_CHANGELOG_WRITE_BATCH_SIZE, 100);
-    zkReconnectInterval_ = RangerConfiguration.getInstance().getInt(RangerHadoopConstants.RANGER_ZK_MS_RECONNECT_INTERVAL, 15);
-    zookeeperShellPath = RangerConfiguration.getInstance().get(RangerHadoopConstants.RANGER_ZK_MS_WRITE_SHELL_PATH, "");
+    writeZkBatchSize_ = RangerConfiguration.getInstance().getInt(RangerHadoopConstants.RANGER_ZK_MS_CHANGELOG_WRITE_BATCH_SIZE, 10);
+    zkReconnectInterval_ = RangerConfiguration.getInstance().getInt(RangerHadoopConstants.RANGER_ZK_MS_RECONNECT_INTERVAL, 30);
+    zookeeperShellPath_ = RangerConfiguration.getInstance().get(RangerHadoopConstants.RANGER_ZK_MS_WRITE_SHELL_PATH, "");
+    zookeeperQuorum_ = RangerConfiguration.getInstance().get(RangerHadoopConstants.RANGER_ZK_QUORUM, "");
 
     try {
       InetAddress inetAddress = InetAddress.getLocalHost();
@@ -189,7 +192,7 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
         LOGGER.info("zkClient connect zookeeper server ...");
 
         zkClient = CuratorFrameworkFactory.builder()
-            .connectString(RangerConfiguration.getInstance().get(RangerHadoopConstants.RANGER_ZK_QUORUM))
+            .connectString(zookeeperQuorum_)
             .aclProvider(zooKeeperAclProvider)
             .retryPolicy(
                 new RetryNTimes(RangerConfiguration.getInstance().getInt(RangerHadoopConstants.RANGER_ZK_RETRYCNT, 10),
@@ -262,10 +265,10 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
           Stat stat = zkClient.checkExists().forPath(childPath);
           if (null != stat && ((now.getTime() - stat.getCtime()) >= autoClearTime_*60*1000)) {
             LOGGER.info("zkClient delete expired node : " + childPath);
-            if (zookeeperShellPath.isEmpty()) {
+            if (zookeeperShellPath_.isEmpty()) {
               zkClient.delete().forPath(childPath);
             } else {
-              callZkShell("delete", childPath, "");
+              callZookeeperShell("delete", childPath, "");
             }
           }
         }
@@ -297,7 +300,7 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
       strUpdateMetadata = strUpdateMetadata.trim();
       LOGGER.info("strUpdateMetadata = " + strUpdateMetadata);
 
-      int updateMetadataLen = strUpdateMetadata.length();
+      int updateMetadataLen = strUpdateMetadata.getBytes("UTF-8").length;
       if (updateMetadataLen >= 0xfffff) {
         LOGGER.error("updateMetadataBytes.length > zookeeper BinaryInputArchive.maxBuffer(0xfffff)");
       } else {
@@ -306,7 +309,7 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
         Stat statMaxId = zkClient.checkExists().forPath(zkPath_ + MAX_ID_FILE_NAME);
         Stat statNewMaxFileId = zkClient.checkExists().forPath(zkPath_ + "/" + newMaxFileId);
 
-        if (zookeeperShellPath.isEmpty()) {
+        if (zookeeperShellPath_.isEmpty()) {
           if (null == statMaxId) {
             LOGGER.info("create : " + zkPath_ + MAX_ID_FILE_NAME);
             zkClient.create().withMode(CreateMode.PERSISTENT).forPath(zkPath_ + MAX_ID_FILE_NAME, String.valueOf(newMaxFileId).getBytes());
@@ -324,17 +327,17 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
         } else {
           if (null == statMaxId) {
             LOGGER.info("create : " + zkPath_ + MAX_ID_FILE_NAME);
-            callZkShell("create",zkPath_ + MAX_ID_FILE_NAME, String.valueOf(newMaxFileId));
+            callZookeeperShell("create",zkPath_ + MAX_ID_FILE_NAME, String.valueOf(newMaxFileId));
           } else {
             LOGGER.info("update : " + zkPath_ + MAX_ID_FILE_NAME);
-            callZkShell("set",zkPath_ + MAX_ID_FILE_NAME, String.valueOf(newMaxFileId));
+            callZookeeperShell("set",zkPath_ + MAX_ID_FILE_NAME, String.valueOf(newMaxFileId));
           }
           if (null == statNewMaxFileId) {
             LOGGER.info("create : " + zkPath_ + "/" + String.valueOf(newMaxFileId));
-            callZkShell("create",zkPath_ + "/" + String.valueOf(newMaxFileId), strUpdateMetadata);
+            callZookeeperShell("create",zkPath_ + "/" + String.valueOf(newMaxFileId), strUpdateMetadata);
           } else {
             LOGGER.info("update : " + zkPath_ + "/" + String.valueOf(newMaxFileId));
-            callZkShell("set",zkPath_ + "/" + String.valueOf(newMaxFileId), strUpdateMetadata);
+            callZookeeperShell("set",zkPath_ + "/" + String.valueOf(newMaxFileId), strUpdateMetadata);
           }
         }
       }
@@ -348,37 +351,38 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
     LOGGER.info("<== writeZNodeData()");
   }
 
-  boolean callZkShell(String cmd, String znodePath, String params) {
+  boolean callZookeeperShell(String cmd, String znodePath, String params) {
     boolean runResult = false;
 
-    if (zookeeperShellPath.isEmpty()) {
+    if (zookeeperShellPath_.isEmpty()) {
       LOGGER.error("writeZkShell() zkWiteShellPath is empty!");
       return false;
     }
-    LOGGER.info("writeZkShell() zkWiteShellPath = " + zookeeperShellPath);
+    LOGGER.info("writeZkShell() zkWiteShellPath = " + zookeeperShellPath_);
 
+    Process process = null;
     try {
-      String command = " " + cmd + " " + znodePath + " " + params;
-      Process process = Runtime.getRuntime().exec(zookeeperShellPath + command);
-      LOGGER.info("writeZkShell = " + zookeeperShellPath + command);
+      String command = " " + zookeeperQuorum_ + " " + cmd + " " + znodePath + " " + params;
+      process = Runtime.getRuntime().exec(zookeeperShellPath_ + command);
+      LOGGER.info("writeZkShell = " + zookeeperShellPath_ + command);
 
       process.waitFor();
 
-      //读取标准输出流
-      BufferedReader bufferedReader =new BufferedReader(new InputStreamReader(process.getInputStream()));
-      String line;
+      // 读取标准输出流
+      BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(process.getInputStream()));
+      String line = null;
       while ((line = bufferedReader.readLine()) != null) {
         LOGGER.debug(line);
       }
 
-      //读取标准错误流
+      // 读取标准错误流
       BufferedReader brError = new BufferedReader(new InputStreamReader(process.getErrorStream()));
       String errline = null;
       while ((errline = brError.readLine()) != null) {
         LOGGER.error(errline);
       }
 
-      //waitFor() 判断Process进程是否终止，通过返回值判断是否正常终止。0 代表正常终止
+      // waitFor() 判断Process进程是否终止，通过返回值判断是否正常终止。0 代表正常终止
       int result = process.waitFor();
       if(result != 0){
         LOGGER.error("writeZkShell() faild, " + znodePath + "， " + params);
@@ -386,10 +390,13 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
       } else {
         runResult = true;
       }
-    }
-    catch (Exception e) {
+    } catch (Exception e) {
       e.printStackTrace();
       runResult = false;
+    } finally {
+      if (process != null) {
+        process.destroy();
+      }
     }
 
     return runResult;
