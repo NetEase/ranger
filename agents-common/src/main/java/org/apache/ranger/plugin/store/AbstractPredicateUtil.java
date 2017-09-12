@@ -28,7 +28,10 @@ import java.util.List;
 import java.util.Map;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonSyntaxException;
 import com.google.gson.reflect.TypeToken;
+import com.jcraft.jsch.Logger;
+
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.collections.Predicate;
@@ -405,16 +408,22 @@ public class AbstractPredicateUtil {
 
 					String strDesc = policy.getDescription();
 					Gson gson = new Gson();
-					HashMap<String, String> mapDesc = gson.fromJson(strDesc, new TypeToken<HashMap<String, String>>() {}.getType());
-
-					if(! MapUtils.isEmpty(mapDesc)) {
-						for(String name : description.keySet()) {
-							String val = description.get(name);
-							String mapDescValue = mapDesc.get(name);
-							if(null != val && !val.isEmpty() && null != mapDescValue && !mapDescValue.isEmpty() && val.equals(mapDescValue)) {
-								return true;
+					
+					try {
+						HashMap<String, String> mapDesc = gson.fromJson(strDesc, new TypeToken<HashMap<String, String>>() {}.getType());
+	
+						if(! MapUtils.isEmpty(mapDesc)) {
+							for(String name : description.keySet()) {
+								String val = description.get(name);
+								String mapDescValue = mapDesc.get(name);
+								if(null != val && !val.isEmpty() && null != mapDescValue && !mapDescValue.isEmpty() && val.equals(mapDescValue)) {
+									return true;
+								}
 							}
 						}
+					} catch (JsonSyntaxException e) {
+						// description is not json
+						return false;
 					}
 				}
 
