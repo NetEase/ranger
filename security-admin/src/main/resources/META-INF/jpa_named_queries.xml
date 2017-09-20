@@ -204,13 +204,13 @@
 
 
 	<named-query name="XXGroupUser.findGroupIdList">
-		<query>SELECT gu.id from XXGroupUser obj,XXGroup gu,XXUser uc WHERE gu.id=obj.p_group_id AND uc.id = obj.user_id ORDER BY gu.id
+		<query>SELECT gu.id from XXGroupUser obj,XXGroup gu,XXUser uc WHERE gu.id=obj.parentGroupId AND uc.id = obj.userId ORDER BY gu.id
 		</query>
 	</named-query>
 
 
 	<named-query name="XXGroupUser.findUserNameList">
-		<query>SELECT uc.user_name from XXGroupUser obj,XXGroup gu,XXUser uc WHERE gu.id=obj.p_group_id AND uc.id = obj.user_id ORDER BY gu.id
+		<query>SELECT uc.name from XXGroupUser obj,XXGroup gu,XXUser uc WHERE gu.id=obj.parentGroupId AND uc.id = obj.userId ORDER BY gu.id
 		</query>
 	</named-query>
 
