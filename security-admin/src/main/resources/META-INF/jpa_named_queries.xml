@@ -202,6 +202,19 @@
 		</query>
 	</named-query>
 
+
+	<named-query name="XXGroupUser.findGroupIdList">
+		<query>SELECT gu.id from XXGroupUser obj,XXGroup gu,XXUser uc WHERE gu.id=obj.p_group_id AND uc.id = obj.user_id ORDER BY gu.id
+		</query>
+	</named-query>
+
+
+	<named-query name="XXGroupUser.findUserNameList">
+		<query>SELECT uc.user_name from XXGroupUser obj,XXGroup gu,XXUser uc WHERE gu.id=obj.p_group_id AND uc.id = obj.user_id ORDER BY gu.id
+		</query>
+	</named-query>
+
+
 	<named-query name="XXGroupUser.findGroupNamesByUserName">
 		<query>SELECT obj.name FROM XXGroup obj
 		        WHERE obj.id IN (SELECT gu.parentGroupId FROM XXGroupUser gu, XXUser u

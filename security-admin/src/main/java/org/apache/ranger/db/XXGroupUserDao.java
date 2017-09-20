@@ -124,6 +124,32 @@ public class XXGroupUserDao extends BaseDao<XXGroupUser> {
 		return null;
 	}
 
+
+	public List<Integer> findGroupIdList(){
+
+		try {
+			return getEntityManager().createNamedQuery("XXGroupUser.findGroupIdList",Integer.class).getResultList();
+		} catch (NoResultException e) {
+			logger.debug(e.getMessage());
+		}
+		return null;
+	}
+
+
+	public List<String> findUserNameList(){
+
+		try {
+			return getEntityManager().createNamedQuery("XXGroupUser.findUserNameList",String.class).getResultList();
+		} catch (NoResultException e) {
+			logger.debug(e.getMessage());
+		}
+		return null;
+	}
+
+
+
+
+
 	public Set<String> findGroupNamesByUserName(String userName) {
 		List<String> groupList = null;
 

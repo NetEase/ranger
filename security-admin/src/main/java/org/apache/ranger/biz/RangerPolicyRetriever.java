@@ -19,8 +19,6 @@
 
 package org.apache.ranger.biz;
 
-import java.util.*;
-
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -46,8 +44,13 @@ import org.apache.ranger.plugin.model.RangerPolicy.RangerPolicyItem;
 import org.apache.ranger.plugin.model.RangerPolicy.RangerPolicyItemAccess;
 import org.apache.ranger.plugin.model.RangerPolicy.RangerPolicyItemCondition;
 import org.apache.ranger.plugin.model.RangerPolicy.RangerPolicyResource;
-import org.apache.ranger.plugin.policyevaluator.RangerPolicyItemEvaluator;
 import org.apache.ranger.plugin.util.RangerPerfTracer;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.Map;
 
 
 public class RangerPolicyRetriever {
@@ -568,8 +571,39 @@ public class RangerPolicyRetriever {
 			}
 		}
 
+
+		private Map<Integer,List<String>> getGroupMember(List<Integer> groupId,List<String> userName){
+			Map<Integer,List<String>> groupMember = new HashMap<>();
+			if(groupId.size() != userName.size()) {
+				LOG.error("the size is not same");
+				return groupMember;
+			}
+			Integer prev = 0;
+			for(int i = 0;i < groupId.size();++i) {
+				if(groupId.get(i) != prev) {
+					List<String> user = new ArrayList<>();
+					user.add(userName.get(i));
+					groupMember.put(groupId.get(i),user);
+					prev = groupId.get(i);
+				} else {
+					groupMember.get(groupId.get(i)).add(userName.get(i));
+				}
+			}
+
+			return groupMember;
+		}
+
+
 		private void getPolicyItems(RangerPolicy policy) {
+
 			List<XXPortalUser> xxPortalUserList = daoMgr.getXXPortalUser().findAllXPortalUser();
+			Map<Integer,List<String>> groupMember = null;
+
+			synchronized (this) {
+				List<Integer> groupId = daoMgr.getXXGroupUser().findGroupIdList();
+				List<String> users = daoMgr.getXXGroupUser().findUserNameList();
+				groupMember = getGroupMember(groupId,users);
+			}
 
 			while(iterPolicyItems.hasNext()) {
 				XXPolicyItem xPolicyItem = iterPolicyItems.next();
@@ -605,8 +639,10 @@ public class RangerPolicyRetriever {
 						if(xGroupPerm.getPolicyitemid().equals(xPolicyItem.getId())) {
 							policyItem.getGroups().add(lookupCache.getGroupName(xGroupPerm.getGroupid()));
 
-							// add contains user name
-							List<String> userGroups = daoMgr.getXXGroupUser().findUserNamesByGroupId(xGroupPerm.getGroupid());
+							List<String> userGroups = new ArrayList<>();
+
+							userGroups.addAll(groupMember.get(xGroupPerm.getGroupid()));
+
 							policyItem.getGroupMember().put(lookupCache.getGroupName(xGroupPerm.getGroupid()), userGroups);
 						} else {
 							if(iterGroupPerms.hasPrevious()) {
