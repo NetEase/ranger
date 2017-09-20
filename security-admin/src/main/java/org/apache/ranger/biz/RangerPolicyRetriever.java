@@ -51,6 +51,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 
 public class RangerPolicyRetriever {
@@ -573,7 +574,7 @@ public class RangerPolicyRetriever {
 
 
 		private Map<Integer,List<String>> getGroupMember(List<Integer> groupId,List<String> userName){
-			Map<Integer,List<String>> groupMember = new HashMap<>();
+			Map<Integer,List<String>> groupMember = new ConcurrentHashMap<>();
 			if(groupId.size() != userName.size()) {
 				LOG.error("the size is not same");
 				return groupMember;
