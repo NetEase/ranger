@@ -1442,7 +1442,6 @@ public class ServiceREST {
 					setPolicyDesc(matchHivePolicy, POLICY_DESC_LOCATION, hdfsPath);
 				}
 
-
 				if (false == tabName.equalsIgnoreCase(newTabName) || false == dbName.equalsIgnoreCase(newDbName)){
 					// update hive-policy db and table name
 					matchHivePolicy = alterHivePolicyResource(matchHivePolicy, syncRequest);
@@ -1690,13 +1689,6 @@ public class ServiceREST {
 			// external table readonly
 			policyItem.getAccesses().add(new RangerPolicyItemAccess("SELECT", Boolean.TRUE));
 		} else {
-			policyItem.getAccesses().add(new RangerPolicyItemAccess("SELECT", Boolean.TRUE));
-			policyItem.getAccesses().add(new RangerPolicyItemAccess("UPDATE", Boolean.TRUE));
-			policyItem.getAccesses().add(new RangerPolicyItemAccess("CREATE", Boolean.TRUE));
-			policyItem.getAccesses().add(new RangerPolicyItemAccess("DROP", Boolean.TRUE));
-			policyItem.getAccesses().add(new RangerPolicyItemAccess("ALTER", Boolean.TRUE));
-			policyItem.getAccesses().add(new RangerPolicyItemAccess("INDEX", Boolean.TRUE));
-			policyItem.getAccesses().add(new RangerPolicyItemAccess("LOCK", Boolean.TRUE));
 			policyItem.getAccesses().add(new RangerPolicyItemAccess("ALL", Boolean.TRUE));
 		}
 		policyItem.setDelegateAdmin(syncRequest.getDelegateAdmin());
@@ -1768,13 +1760,7 @@ public class ServiceREST {
 						// EXTERNAL TABLE, hdfs only read
 						mapRangerPolicyItemAccess.put("read", readPolicyItemAccess);
 						mapRangerPolicyItemAccess.put("execute", executePolicyItemAccess);
-					} else if (StringUtils.equalsIgnoreCase(hivePolicyItemAccess.getType(), HiveAccessType.UPDATE.name())
-							|| StringUtils.equalsIgnoreCase(hivePolicyItemAccess.getType(), HiveAccessType.ALTER.name())
-							|| StringUtils.equalsIgnoreCase(hivePolicyItemAccess.getType(), HiveAccessType.CREATE.name())
-							|| StringUtils.equalsIgnoreCase(hivePolicyItemAccess.getType(), HiveAccessType.DROP.name())) {
-						mapRangerPolicyItemAccess.put("write", writePolicyItemAccess);
-						mapRangerPolicyItemAccess.put("execute", executePolicyItemAccess);
-					} else if (StringUtils.equalsIgnoreCase(hivePolicyItemAccess.getType(), HiveAccessType.ALL.name())) {
+					} else {
 						mapRangerPolicyItemAccess.put("read", readPolicyItemAccess);
 						mapRangerPolicyItemAccess.put("write", writePolicyItemAccess);
 						mapRangerPolicyItemAccess.put("execute", executePolicyItemAccess);
