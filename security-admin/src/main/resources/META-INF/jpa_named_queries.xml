@@ -204,7 +204,7 @@
 
 
 	<named-query name="XXGroupUser.findGroupUsernameList">
-		<query>SELECT NEW org.apache.ranger.entity.XXGroupUsernameMap(gu.id,uc.name) from XXGroupUser obj,XXGroup gu,XXUser uc WHERE gu.id=obj.parentGroupId AND uc.id = obj.userId ORDER BY gu.id
+		<query>SELECT NEW org.apache.ranger.entity.XXGroupUsernameMap(group.id,user.name) from XXGroupUser grpusr,XXGroup group,XXUser user WHERE group.id=grpusr.parentGroupId AND user.id = grpusr.userId ORDER BY group.id
 		</query>
 	</named-query>
 

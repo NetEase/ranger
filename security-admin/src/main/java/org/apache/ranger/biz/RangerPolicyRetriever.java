@@ -576,13 +576,22 @@ public class RangerPolicyRetriever {
 
 		private Map<Long,List<String>> getGroupMember(List<XXGroupUsernameMap> usernameMaps) {
 			Map<Long,List<String>> groupMember = new ConcurrentHashMap<>();
-			long prev = 0;
+			//long prev = 0;
+//			for(int i = 0;i < usernameMaps.size();++i) {
+//				if(usernameMaps.get(i).getGroupId() != prev) {
+//					List<String> user = new ArrayList<>();
+//					user.add(usernameMaps.get(i).getUserName());
+//					groupMember.put(usernameMaps.get(i).getGroupId() ,user);
+//					prev = usernameMaps.get(i).getGroupId().longValue();
+//				} else {
+//					groupMember.get(usernameMaps.get(i).getGroupId()).add(usernameMaps.get(i).getUserName());
+//				}
+//			}
 			for(int i = 0;i < usernameMaps.size();++i) {
-				if(usernameMaps.get(i).getGroupId() != prev) {
+				if (!groupMember.containsKey(usernameMaps.get(i).getGroupId())) {
 					List<String> user = new ArrayList<>();
 					user.add(usernameMaps.get(i).getUserName());
 					groupMember.put(usernameMaps.get(i).getGroupId() ,user);
-					prev = usernameMaps.get(i).getGroupId().longValue();
 				} else {
 					groupMember.get(usernameMaps.get(i).getGroupId()).add(usernameMaps.get(i).getUserName());
 				}
