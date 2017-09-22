@@ -26,6 +26,7 @@ import org.apache.ranger.authorization.utils.StringUtil;
 import org.apache.ranger.db.RangerDaoManager;
 import org.apache.ranger.entity.XXAccessTypeDef;
 import org.apache.ranger.entity.XXGroup;
+import org.apache.ranger.entity.XXGroupUsernameMap;
 import org.apache.ranger.entity.XXPolicy;
 import org.apache.ranger.entity.XXPolicyConditionDef;
 import org.apache.ranger.entity.XXPolicyItem;
@@ -573,24 +574,19 @@ public class RangerPolicyRetriever {
 		}
 
 
-		private Map<Integer,List<String>> getGroupMember(List<Integer> groupId,List<String> userName){
-			Map<Integer,List<String>> groupMember = new ConcurrentHashMap<>();
-			if(groupId.size() != userName.size()) {
-				LOG.error("the size is not same");
-				return groupMember;
-			}
-			Integer prev = 0;
-			for(int i = 0;i < groupId.size();++i) {
-				if(groupId.get(i) != prev) {
+		private Map<Long,List<String>> getGroupMember(List<XXGroupUsernameMap> usernameMaps) {
+			Map<Long,List<String>> groupMember = new ConcurrentHashMap<>();
+			long prev = 0;
+			for(int i = 0;i < usernameMaps.size();++i) {
+				if(usernameMaps.get(i).getGroupId() != prev) {
 					List<String> user = new ArrayList<>();
-					user.add(userName.get(i));
-					groupMember.put(groupId.get(i),user);
-					prev = groupId.get(i);
+					user.add(usernameMaps.get(i).getUserName());
+					groupMember.put(usernameMaps.get(i).getGroupId() ,user);
+					prev = usernameMaps.get(i).getGroupId().longValue();
 				} else {
-					groupMember.get(groupId.get(i)).add(userName.get(i));
+					groupMember.get(usernameMaps.get(i).getGroupId()).add(usernameMaps.get(i).getUserName());
 				}
 			}
-
 			return groupMember;
 		}
 
@@ -598,13 +594,9 @@ public class RangerPolicyRetriever {
 		private void getPolicyItems(RangerPolicy policy) {
 
 			List<XXPortalUser> xxPortalUserList = daoMgr.getXXPortalUser().findAllXPortalUser();
-			Map<Integer,List<String>> groupMember = null;
-
-			synchronized (this) {
-				List<Integer> groupId = daoMgr.getXXGroupUser().findGroupIdList();
-				List<String> users = daoMgr.getXXGroupUser().findUserNameList();
-				groupMember = getGroupMember(groupId,users);
-			}
+			Map<Long,List<String>> groupMember = null;
+			List<XXGroupUsernameMap> groupUsernameMap = daoMgr.getXXGroupUser().findGroupUsernameList();
+			groupMember = getGroupMember(groupUsernameMap);
 
 			while(iterPolicyItems.hasNext()) {
 				XXPolicyItem xPolicyItem = iterPolicyItems.next();
@@ -642,7 +634,9 @@ public class RangerPolicyRetriever {
 
 							List<String> userGroups = new ArrayList<>();
 
-							userGroups.addAll(groupMember.get(xGroupPerm.getGroupid()));
+							if(groupMember.get(xGroupPerm.getGroupid()) != null) {
+								userGroups.addAll(groupMember.get(xGroupPerm.getGroupid()));
+							}
 
 							policyItem.getGroupMember().put(lookupCache.getGroupName(xGroupPerm.getGroupid()), userGroups);
 						} else {

@@ -203,14 +203,8 @@
 	</named-query>
 
 
-	<named-query name="XXGroupUser.findGroupIdList">
-		<query>SELECT gu.id from XXGroupUser obj,XXGroup gu,XXUser uc WHERE gu.id=obj.parentGroupId AND uc.id = obj.userId ORDER BY gu.id
-		</query>
-	</named-query>
-
-
-	<named-query name="XXGroupUser.findUserNameList">
-		<query>SELECT uc.name from XXGroupUser obj,XXGroup gu,XXUser uc WHERE gu.id=obj.parentGroupId AND uc.id = obj.userId ORDER BY gu.id
+	<named-query name="XXGroupUser.findGroupUsernameList">
+		<query>SELECT NEW org.apache.ranger.entity.XXGroupUsernameMap(gu.id,uc.name) from XXGroupUser obj,XXGroup gu,XXUser uc WHERE gu.id=obj.parentGroupId AND uc.id = obj.userId ORDER BY gu.id
 		</query>
 	</named-query>
 
@@ -302,7 +296,7 @@
 	</named-query>
 	
 	<named-query name="XXPolicy.findByResourceSignatureByPolicyStatus">
-		<query>select obj from XXPolicy obj, XXService xSvc where obj.service = xSvc.id 
+		<query>select obj from XXPolicy obj, XXService xSvc where obj.service = xSvc.id
 				and obj.resourceSignature = :resSignature and xSvc.name = :serviceName and obj.isEnabled = :isPolicyEnabled</query>
 	</named-query>
 	

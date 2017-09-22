@@ -31,6 +31,7 @@ import javax.persistence.Query;
 import org.apache.log4j.Logger;
 import org.apache.ranger.common.db.BaseDao;
 import org.apache.ranger.entity.XXGroupUser;
+import org.apache.ranger.entity.XXGroupUsernameMap;
 
 public class XXGroupUserDao extends BaseDao<XXGroupUser> {
 	static final Logger logger = Logger.getLogger(XXGroupUserDao.class);
@@ -125,29 +126,15 @@ public class XXGroupUserDao extends BaseDao<XXGroupUser> {
 	}
 
 
-	public List<Integer> findGroupIdList(){
 
+	public List<XXGroupUsernameMap> findGroupUsernameList() {
 		try {
-			return getEntityManager().createNamedQuery("XXGroupUser.findGroupIdList",Integer.class).getResultList();
+			return getEntityManager().createNamedQuery("XXGroupUser.findGroupUsernameList",XXGroupUsernameMap.class).getResultList();
 		} catch (NoResultException e) {
 			logger.debug(e.getMessage());
 		}
 		return null;
 	}
-
-
-	public List<String> findUserNameList(){
-
-		try {
-			return getEntityManager().createNamedQuery("XXGroupUser.findUserNameList",String.class).getResultList();
-		} catch (NoResultException e) {
-			logger.debug(e.getMessage());
-		}
-		return null;
-	}
-
-
-
 
 
 	public Set<String> findGroupNamesByUserName(String userName) {
