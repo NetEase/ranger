@@ -23,13 +23,13 @@
  * 
  */
 
-import javax.persistence.EntityManager;
-
 import org.apache.log4j.Logger;
 import org.apache.ranger.common.AppConstants;
 import org.apache.ranger.common.RESTErrorUtil;
 import org.apache.ranger.common.db.BaseDao;
 import org.springframework.beans.factory.annotation.Autowired;
+
+import javax.persistence.EntityManager;
 
 
 public abstract class RangerDaoManagerBase {
