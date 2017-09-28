@@ -172,7 +172,7 @@ public class SyncMetastoreEventListener extends MetaStoreEventListener {
         hivePrivilegeObjectType = HivePrivilegeObject.HivePrivilegeObjectType.DATABASE;
         hiveAccessType = HiveAccessType.CREATE;
         Database createDb = ((CreateDatabaseEvent)tableEvent).getDatabase();
-        dbName = createDb.getName();
+        dbName = createDb.getName().toLowerCase();
         if (createDb.getLocationUri() != null) {
           location = createDb.getLocationUri();
         }
@@ -181,7 +181,7 @@ public class SyncMetastoreEventListener extends MetaStoreEventListener {
         hivePrivilegeObjectType = HivePrivilegeObject.HivePrivilegeObjectType.DATABASE;
         hiveAccessType = HiveAccessType.DROP;
         Database dropDb = ((DropDatabaseEvent)tableEvent).getDatabase();
-        dbName = dropDb.getName();
+        dbName = dropDb.getName().toLowerCase();
         if (dropDb.getLocationUri() != null) {
           location = dropDb.getLocationUri();
         }
@@ -190,8 +190,8 @@ public class SyncMetastoreEventListener extends MetaStoreEventListener {
         hivePrivilegeObjectType = HivePrivilegeObject.HivePrivilegeObjectType.TABLE_OR_VIEW;
         hiveAccessType = HiveAccessType.CREATE;
         Table createTable = ((CreateTableEvent)tableEvent).getTable();
-        dbName = createTable.getDbName();
-        objName = createTable.getTableName();
+        dbName = createTable.getDbName().toLowerCase();
+        objName = createTable.getTableName().toLowerCase();
         tableType = createTable.getTableType();
         if (createTable.getSd().getLocation() != null) {
           location = createTable.getSd().getLocation();
@@ -201,8 +201,8 @@ public class SyncMetastoreEventListener extends MetaStoreEventListener {
         hivePrivilegeObjectType = HivePrivilegeObject.HivePrivilegeObjectType.TABLE_OR_VIEW;
         hiveAccessType = HiveAccessType.DROP;
         Table dropTable = ((DropTableEvent)tableEvent).getTable();
-        dbName = dropTable.getDbName();
-        objName = dropTable.getTableName();
+        dbName = dropTable.getDbName().toLowerCase();
+        objName = dropTable.getTableName().toLowerCase();
         if (dropTable.getSd().getLocation() != null) {
           location = dropTable.getSd().getLocation();
         }
@@ -211,13 +211,13 @@ public class SyncMetastoreEventListener extends MetaStoreEventListener {
         hivePrivilegeObjectType = HivePrivilegeObject.HivePrivilegeObjectType.TABLE_OR_VIEW;
         hiveAccessType = HiveAccessType.ALTER;
         AlterTableEvent alterTable = ((AlterTableEvent)tableEvent);
-        dbName = alterTable.getOldTable().getDbName();
-        objName = alterTable.getOldTable().getTableName();
+        dbName = alterTable.getOldTable().getDbName().toLowerCase();
+        objName = alterTable.getOldTable().getTableName().toLowerCase();
         if (alterTable.getOldTable().getSd().getLocation() != null) {
           location = alterTable.getOldTable().getSd().getLocation();
         }
-        newDbName = alterTable.getNewTable().getDbName();
-        newObjName = alterTable.getNewTable().getTableName();
+        newDbName = alterTable.getNewTable().getDbName().toLowerCase();
+        newObjName = alterTable.getNewTable().getTableName().toLowerCase();
         if (alterTable.getNewTable().getSd().getLocation() != null) {
           newLocation = alterTable.getNewTable().getSd().getLocation();
         }
@@ -276,6 +276,7 @@ public class SyncMetastoreEventListener extends MetaStoreEventListener {
             LOGGER.info("SyncPoliciesRunnable " + syncRequestStruct.syncRequest.toString() + ", " + syncRequestStruct.hiveOperationType);
             rangerPlugin.getRangerAdminClient().syncPolicys(syncRequestStruct.syncRequest, syncRequestStruct.hiveOperationType);
           }
+          Thread.sleep(1000);
         } catch (Exception ex) {
           ex.printStackTrace();
         }
