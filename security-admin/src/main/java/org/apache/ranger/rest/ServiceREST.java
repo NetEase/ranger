@@ -1253,39 +1253,6 @@ public class ServiceREST {
 		return hdfsPolicy;
 	}
 
-	/*
-	private RangerPolicy searchHdfsPolicyByHivePolicyName(Long hiveServiceId, String hdfsPolicyName) throws Exception {
-		if(LOG.isDebugEnabled()) {
-			LOG.debug("==> ServiceREST.searchHdfsPolicyByHivePolicyName(" + hiveServiceId + ", " + hdfsPolicyName + ") ");
-		}
-
-		RangerService hdfsService = getRelatedHdfsService(hiveServiceId);
-		SearchFilter hdfsFilter = new SearchFilter();
-		hdfsFilter.setParam(SearchFilter.SERVICE_NAME, hdfsService.getName());
-		hdfsFilter.setParam(SearchFilter.SERVICE_TYPE, "hdfs");
-		hdfsFilter.setParam(SearchFilter.POLICY_NAME, hdfsPolicyName);
-		List<RangerPolicy> macthHdfsPolicies = getPolicies(hdfsFilter);
-		RangerPolicy hdfsPolicy = null;
-		for (RangerPolicy policy : macthHdfsPolicies) {
-			if (policy.getResources().get("path") == null) {
-				continue;
-			}
-
-			hdfsPolicy = policy;
-			break;
-
-		}
-
-		if (null == hdfsPolicy) {
-			LOG.warn("can not find matching hdfs policy " + hiveServiceId + ", " + hdfsPolicyName + ") ");
-		}
-		if(LOG.isDebugEnabled()) {
-			LOG.debug("<== ServiceREST.searchHdfsPolicyByHivePolicyName(" + hiveServiceId + ", " + hdfsPolicyName + ") ");
-		}
-
-		return hdfsPolicy;
-	}*/
-
 	// search hdfs policy by hdfs location
 	// a hdfs policy may correspond to multiple hive policy(.eg Multiple tables have the same location)
 	private List<RangerPolicy> searchHivePolicyByLocation(Long hiveServiceId, String location) throws Exception {
@@ -1308,29 +1275,6 @@ public class ServiceREST {
 
 		return macthHivePolicies;
 	}
-
-	/*
-	private RangerPolicy searchHdfsPolicy(RangerPolicy hivePolicy) throws Exception {
-		if(LOG.isDebugEnabled()) {
-			LOG.debug("==> ServiceREST.searchHdfsPolicy(" + hivePolicy.getName() + ") ");
-		}
-
-		RangerPolicy hdfsPolicy = null;
-		SearchFilter hdfsFilter = new SearchFilter();
-		hdfsFilter.setParam(SearchFilter.POLICY_NAME, generateHdfsPolicyName(hivePolicy));
-		hdfsFilter.setParam(SearchFilter.SERVICE_TYPE, "hdfs");
-		List<RangerPolicy> macthHdfsPolicies = getPolicies(hdfsFilter);
-		if (macthHdfsPolicies.size() == 1) {
-			hdfsPolicy = macthHdfsPolicies.get(0);
-		} else if (macthHdfsPolicies.size() > 1) {
-			LOG.error("search for more than 2 hdfs policy");
-		}
-
-		if(LOG.isDebugEnabled()) {
-			LOG.debug("<== ServiceREST.searchHdfsPolicy(" + hivePolicy.getName() + ") ");
-		}
-		return hdfsPolicy;
-	}*/
 
 	private boolean userIsDelegateAdmin(RangerPolicy policy, String userName, Set<String> groups) {
 		boolean ret = false;
@@ -1386,8 +1330,6 @@ public class ServiceREST {
 
 		switch (hiveOperationType) {
 			case CREATETABLE: {
-				List<RangerPolicy> relatedHivePolicies = new ArrayList<>();
-
 				RangerPolicy matchHivePolicy = null;
 
 				// find exist hive policy
@@ -1403,6 +1345,7 @@ public class ServiceREST {
 
 				RangerPolicy relatedHdfsPolicy = searchHdfsPolicyByLocation(hdfsServiceId, location);
 				if (null == relatedHdfsPolicy) {
+					List<RangerPolicy> relatedHivePolicies = new ArrayList<>();
 					relatedHivePolicies.add(matchHivePolicy);
 
 					relatedHdfsPolicy = generateHdfsPolicy(relatedHivePolicies, location);
@@ -1410,9 +1353,6 @@ public class ServiceREST {
 						svcStore.createPolicy(relatedHdfsPolicy);
 					}
 				} else {
-					relatedHivePolicies = searchHivePolicyByLocation(hiveServiceId, location);
-					relatedHivePolicies.add(matchHivePolicy);
-
 					hdfsPolicyAddHivePolicyItem(relatedHdfsPolicy, matchHivePolicy);
 					svcStore.updatePolicy(relatedHdfsPolicy);
 				}
@@ -1730,6 +1670,13 @@ public class ServiceREST {
 			// external table readonly
 			policyItem.getAccesses().add(new RangerPolicyItemAccess("SELECT", Boolean.TRUE));
 		} else {
+			policyItem.getAccesses().add(new RangerPolicyItemAccess("SELECT", Boolean.TRUE));
+			policyItem.getAccesses().add(new RangerPolicyItemAccess("UPDATE", Boolean.TRUE));
+			policyItem.getAccesses().add(new RangerPolicyItemAccess("CREATE", Boolean.TRUE));
+			policyItem.getAccesses().add(new RangerPolicyItemAccess("DROP", Boolean.TRUE));
+			policyItem.getAccesses().add(new RangerPolicyItemAccess("ALTER", Boolean.TRUE));
+			policyItem.getAccesses().add(new RangerPolicyItemAccess("INDEX", Boolean.TRUE));
+			policyItem.getAccesses().add(new RangerPolicyItemAccess("LOCK", Boolean.TRUE));
 			policyItem.getAccesses().add(new RangerPolicyItemAccess("ALL", Boolean.TRUE));
 		}
 		policyItem.setDelegateAdmin(syncRequest.getDelegateAdmin());
@@ -1945,8 +1892,10 @@ public class ServiceREST {
 
 
 	private String generateHdfsPolicyName(RangerPolicy hivePolicy) {
-		// service name and policy id will not change
-		return "sync-" + hivePolicy.getName();
+		RangerPolicyResource dbResource = hivePolicy.getResources().get("database");
+		RangerPolicyResource tabResource = hivePolicy.getResources().get("table");
+
+		return "sync-" + dbResource.getValues().get(0) + "-" + tabResource.getValues().get(0) + "-" + System.currentTimeMillis();
 	}
 
 	@POST
