@@ -1414,7 +1414,7 @@ public class ServiceREST {
 				if (false == tabName.equalsIgnoreCase(newTabName) || false == dbName.equalsIgnoreCase(newDbName)){
 					// update hive-policy db and table name
 					for (RangerPolicy policy : searchPolicies) {
-						alterHivePolicyResource(policy, syncRequest);
+						alterHivePolicyDbTableResource(policy, syncRequest);
 					}
 				}
 
@@ -1587,21 +1587,22 @@ public class ServiceREST {
 		return status;
 	}
 
-	private RangerPolicy alterHivePolicyResource(RangerPolicy hivePolicy, SynchronizeRequest syncRequest) throws Exception {
-		Map<String, RangerPolicyResource> policyResources = new HashMap<>();
+	private RangerPolicy alterHivePolicyDbTableResource(RangerPolicy hivePolicy, SynchronizeRequest syncRequest) throws Exception {
+		Map<String, RangerPolicyResource> policyResources = hivePolicy.getResources();
 		RangerAccessResource newResource = new RangerAccessResourceImpl(syncRequest.getNewResource());
 		Set<String> resourceNames = newResource.getKeys();
 
 		// update policy database-name, table-name, columns-name
 		if(! CollectionUtils.isEmpty(resourceNames)) {
 			for(String resourceName : resourceNames) {
-				RangerPolicyResource policyResource = new RangerPolicyResource(newResource.getValue(resourceName));
-				policyResource.setIsRecursive(syncRequest.getIsRecursive());
-
-				policyResources.put(resourceName, policyResource);
+				// only modify db & table name, the column name is not included in the syncRequest
+				if (resourceName.equalsIgnoreCase("database")
+						|| resourceName.equalsIgnoreCase("table")) {
+					RangerPolicyResource policyResource = new RangerPolicyResource(newResource.getValue(resourceName));
+					hivePolicy.getResources().put(resourceName, policyResource);
+				}
 			}
 		}
-		hivePolicy.setResources(policyResources);
 
 		return hivePolicy;
 	}
