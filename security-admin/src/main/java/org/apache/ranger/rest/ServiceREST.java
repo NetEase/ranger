@@ -1744,6 +1744,9 @@ public class ServiceREST {
 				List<RangerPolicyItemAccess> hdfsPolicyItemAccessList = new ArrayList<>();
 				List<RangerPolicyItemAccess> hivePolicyItemAccessList = hivePolicyItem.getAccesses();
 				for(RangerPolicyItemAccess hivePolicyItemAccess : hivePolicyItemAccessList) {
+					if (false == hivePolicyItemAccess.getIsAllowed()) {
+						break;
+					}
 					if (StringUtils.equalsIgnoreCase(hivePolicyItemAccess.getType(), HiveAccessType.SELECT.name())
 							|| (null != tableType && tableType.equalsIgnoreCase(ServiceREST.EXTERNAL_TABLE_TYPE))) {
 						// EXTERNAL TABLE, hdfs only read
@@ -1800,16 +1803,13 @@ public class ServiceREST {
 		List<RangerPolicyItemAccess> hdfsPolicyItemAccessList = new ArrayList<RangerPolicyItemAccess>();
 		List<RangerPolicyItemAccess> hivePolicyItemAccessList = hivePolicyItem.getAccesses();
 		for(RangerPolicyItemAccess hivePolicyItemAccess : hivePolicyItemAccessList) {
+			if (false == hivePolicyItemAccess.getIsAllowed()) {
+				break;
+			}
 			if (StringUtils.equalsIgnoreCase(hivePolicyItemAccess.getType(), HiveAccessType.SELECT.name())) {
 				mapRangerPolicyItemAccess.put("read", readPolicyItemAccess);
 				mapRangerPolicyItemAccess.put("execute", executePolicyItemAccess);
-			} else if (StringUtils.equalsIgnoreCase(hivePolicyItemAccess.getType(), HiveAccessType.UPDATE.name())
-					|| StringUtils.equalsIgnoreCase(hivePolicyItemAccess.getType(), HiveAccessType.ALTER.name())
-					|| StringUtils.equalsIgnoreCase(hivePolicyItemAccess.getType(), HiveAccessType.CREATE.name())
-					|| StringUtils.equalsIgnoreCase(hivePolicyItemAccess.getType(), HiveAccessType.DROP.name())) {
-				mapRangerPolicyItemAccess.put("write", writePolicyItemAccess);
-				mapRangerPolicyItemAccess.put("execute", executePolicyItemAccess);
-			} else if (StringUtils.equalsIgnoreCase(hivePolicyItemAccess.getType(), HiveAccessType.ALL.name())) {
+			} else {
 				mapRangerPolicyItemAccess.put("read", readPolicyItemAccess);
 				mapRangerPolicyItemAccess.put("write", writePolicyItemAccess);
 				mapRangerPolicyItemAccess.put("execute", executePolicyItemAccess);
