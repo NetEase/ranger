@@ -1174,10 +1174,12 @@ public class ServiceREST {
 		return ret;
 	}
 
+	// colName = "", search match databaseName & tableName hive-policy
+	// colName = "abc", search match databaseName & tableName & columnName hive-policy
 	private List<RangerPolicy> searchHivePolicy(Long hiveServiceId, String dbName,
-																							String tabName, boolean onlyTablePolicy) throws Exception {
+																							String tabName, String colName) throws Exception {
 		if(LOG.isDebugEnabled()) {
-			LOG.debug("==> ServiceREST.searchHivePolicy(" + dbName + ", " + tabName + ") ");
+			LOG.debug("==> ServiceREST.searchHivePolicy(" + dbName + ", " + tabName + ", " + colName + ") ");
 		}
 
 		SearchFilter hiveFilter = new SearchFilter();
@@ -1185,8 +1187,8 @@ public class ServiceREST {
 		hiveFilter.setParam(SearchFilter.SERVICE_TYPE, "hive");
 		hiveFilter.setParam(SearchFilter.RESOURCE_PREFIX + "database", dbName);
 		hiveFilter.setParam(SearchFilter.RESOURCE_PREFIX + "table", tabName);
-		if (true == onlyTablePolicy) {
-			hiveFilter.setParam(SearchFilter.RESOURCE_PREFIX + "column", "*");
+		if (!colName.isEmpty()) {
+			hiveFilter.setParam(SearchFilter.RESOURCE_PREFIX + "column", colName);
 		}
 
 		List<RangerPolicy> policies = new ArrayList<>();
@@ -1196,10 +1198,10 @@ public class ServiceREST {
 			RangerPolicyResource tabResource = policy.getResources().get("table");
 			RangerPolicyResource colResource = policy.getResources().get("column");
 
-			if (true == onlyTablePolicy) {
+			if (!colName.isEmpty()) {
 				if (dbResource.getValues().containsAll(Arrays.asList(dbName))
 						&& tabResource.getValues().containsAll(Arrays.asList(tabName))
-						&& colResource.getValues().containsAll(Arrays.asList("*"))) {
+						&& colResource.getValues().containsAll(Arrays.asList(colName))) {
 					policies.add(policy);
 				}
 			} else {
@@ -1325,15 +1327,26 @@ public class ServiceREST {
 		// hive schema db & table name to lower case
 		final String dbName = syncRequest.getResource().get("database");
 		final String tabName = syncRequest.getResource().get("table");
+		final String colName = syncRequest.getResource().get("column");
 		final String newDbName = syncRequest.getNewResource().get("database");
 		final String newTabName = syncRequest.getNewResource().get("table");
+		final String newColName = syncRequest.getNewResource().get("column");
+		final List<String> arrCols, arrNewCols;
+		if (colName != null && newColName != null) {
+			String[] cols = colName.split(",");
+			String[] newCols = newColName.split(",");
+			arrCols = Arrays.asList(cols);
+			arrNewCols = Arrays.asList(newCols);
+		} else {
+			arrCols = arrNewCols = null;
+		}
 
 		switch (hiveOperationType) {
 			case CREATETABLE: {
 				RangerPolicy matchHivePolicy = null;
 
 				// find exist hive policy
-				List<RangerPolicy> searchPolicies = searchHivePolicy(hiveServiceId, dbName, tabName, true);
+				List<RangerPolicy> searchPolicies = searchHivePolicy(hiveServiceId, dbName, tabName, "*");
 				if (searchPolicies.size() == 0) {
 					// not exist
 					matchHivePolicy = generateHivePolicy(matchHiveServiceName, syncRequest);
@@ -1363,7 +1376,7 @@ public class ServiceREST {
 				break;
 			case DROPTABLE: {
 				// delete match hive policy
-				List<RangerPolicy> searchPolicies = searchHivePolicy(hiveServiceId, dbName, tabName, false);
+				List<RangerPolicy> searchPolicies = searchHivePolicy(hiveServiceId, dbName, tabName, "");
 				if (searchPolicies.size() == 0) {
 					LOG.warn("can not find matching hive policy " + hiveServiceId + ", " + dbName + ", " + tabName);
 					break;
@@ -1388,15 +1401,14 @@ public class ServiceREST {
 			}
 				break;
 			case ALTERTABLE: {
-				List<RangerPolicy> searchPolicies = searchHivePolicy(hiveServiceId, dbName, tabName, false);
-				if (searchPolicies.size() == 0) {
-					LOG.warn("can not find matching hive policy " + matchHiveServiceName);
-					break;
-				}
-
 				// temporary deletion
 				String newLocation = syncRequest.getNewLocation();
 				if (false == location.equalsIgnoreCase(newLocation)) {
+					List<RangerPolicy> searchPolicies = searchHivePolicy(hiveServiceId, dbName, tabName, "");
+					if (searchPolicies.size() == 0) {
+						LOG.warn("can not find matching hive policy " + matchHiveServiceName);
+						break;
+					}
 					// change hdfs location
 					adjustHdfsPolicyByLocation(hdfsServiceId, hiveServiceId, location, null, searchPolicies);
 
@@ -1408,18 +1420,44 @@ public class ServiceREST {
 					String hdfsPath = uri.getPath();
 					for (RangerPolicy policy : searchPolicies) {
 						setPolicyDesc(policy, POLICY_DESC_LOCATION, hdfsPath);
+						svcStore.updatePolicy(policy);
 					}
-				}
-
-				if (false == tabName.equalsIgnoreCase(newTabName) || false == dbName.equalsIgnoreCase(newDbName)){
+				} else if (false == dbName.equalsIgnoreCase(newDbName) ||
+						false == tabName.equalsIgnoreCase(newTabName)){
+					List<RangerPolicy> searchPolicies = searchHivePolicy(hiveServiceId, dbName, tabName, "");
 					// update hive-policy db and table name
 					for (RangerPolicy policy : searchPolicies) {
 						alterHivePolicyDbTableResource(policy, syncRequest);
+						svcStore.updatePolicy(policy);
 					}
-				}
-
-				for (RangerPolicy policy : searchPolicies) {
-					svcStore.updatePolicy(policy);
+				} else if (!arrCols.containsAll(arrNewCols)) {
+					if (isAlterTableChangeColumn(arrCols, arrNewCols)) {
+						// ALTER TABLE table_name CHANGE col_name new_col_name INT
+						for (int colIndex = 0; colIndex < arrCols.size(); colIndex ++) {
+							String oldColName = arrCols.get(colIndex);
+							if (!arrNewCols.contains(oldColName)) {
+								List<RangerPolicy> searchPolicies = searchHivePolicy(hiveServiceId, dbName, tabName, oldColName);
+								for (RangerPolicy policy : searchPolicies) {
+									policy.getResources().get("column").setValue(arrNewCols.get(colIndex));
+									svcStore.updatePolicy(policy);
+								}
+							}
+						}
+					} else if (arrNewCols.containsAll(arrCols)) {
+						// ALTER TABLE table_name ADD COLUMNS(new_col_name INT)
+						// do nothing
+					} else {
+						// ALTER TABLE table_name REPLACE columns(col_name1 INT, col_name2 INT)
+						for (int colIndex = 0; colIndex < arrCols.size(); colIndex ++) {
+							String oldColName = arrCols.get(colIndex);
+							if (!arrNewCols.contains(oldColName)) {
+								List<RangerPolicy> searchPolicies = searchHivePolicy(hiveServiceId, dbName, tabName, oldColName);
+								for (RangerPolicy policy : searchPolicies) {
+									svcStore.deletePolicy(policy.getId());
+								}
+							}
+						}
+					}
 				}
 			}
 				break;
@@ -1427,6 +1465,21 @@ public class ServiceREST {
 				LOG.error("ServiceREST.syncHdfsPolicy(" + matchHiveServiceName + ") mismatched hive operation " + hiveOperationType.name());
 				break;
 		}
+	}
+
+	private boolean isAlterTableChangeColumn(List<String> arrCols, List<String> arrNewCols) {
+		if (arrCols.size() != arrNewCols.size()) {
+			return false;
+		}
+
+		int moidifedCount = 0;
+		for (String colName : arrCols) {
+			if (!arrNewCols.contains(colName)) {
+				moidifedCount ++;
+			}
+		}
+
+		return (moidifedCount==1) ? true : false;
 	}
 
 	// update hive Description
@@ -1446,7 +1499,7 @@ public class ServiceREST {
 			return;
 		}
 
-		List<RangerPolicy> policies = searchHivePolicy(hiveServiceId, dbName, tabName, true);
+		List<RangerPolicy> policies = searchHivePolicy(hiveServiceId, dbName, tabName, "*");
 		if (policies.size() == 1) {
 			hivePolicy.setDescription(policies.get(0).getDescription());
 		}
@@ -1588,7 +1641,6 @@ public class ServiceREST {
 	}
 
 	private RangerPolicy alterHivePolicyDbTableResource(RangerPolicy hivePolicy, SynchronizeRequest syncRequest) throws Exception {
-		Map<String, RangerPolicyResource> policyResources = hivePolicy.getResources();
 		RangerAccessResource newResource = new RangerAccessResourceImpl(syncRequest.getNewResource());
 		Set<String> resourceNames = newResource.getKeys();
 
@@ -1747,9 +1799,7 @@ public class ServiceREST {
 					if (false == hivePolicyItemAccess.getIsAllowed()) {
 						break;
 					}
-					if (StringUtils.equalsIgnoreCase(hivePolicyItemAccess.getType(), HiveAccessType.SELECT.name())
-							|| (null != tableType && tableType.equalsIgnoreCase(ServiceREST.EXTERNAL_TABLE_TYPE))) {
-						// EXTERNAL TABLE, hdfs only read
+					if (StringUtils.equalsIgnoreCase(hivePolicyItemAccess.getType(), HiveAccessType.SELECT.name())) {
 						mapRangerPolicyItemAccess.put("read", readPolicyItemAccess);
 						mapRangerPolicyItemAccess.put("execute", executePolicyItemAccess);
 					} else {

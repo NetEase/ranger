@@ -24,10 +24,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.metastore.MetaStoreEventListener;
-import org.apache.hadoop.hive.metastore.api.Database;
-import org.apache.hadoop.hive.metastore.api.MetaException;
-import org.apache.hadoop.hive.metastore.api.Partition;
-import org.apache.hadoop.hive.metastore.api.Table;
+import org.apache.hadoop.hive.metastore.api.*;
 import org.apache.hadoop.hive.metastore.events.*;
 import org.apache.hadoop.hive.ql.security.authorization.plugin.*;
 import org.apache.hadoop.hive.shims.Utils;
@@ -35,6 +32,7 @@ import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.ranger.authorization.hadoop.config.RangerConfiguration;
 import org.apache.ranger.authorization.hadoop.constants.RangerHadoopConstants;
 import org.apache.ranger.authorization.hive.authorizer.*;
+import org.apache.ranger.authorization.hive.authorizer.HiveObjectType;
 import org.apache.ranger.authorization.utils.StringUtil;
 import org.apache.ranger.plugin.policyengine.*;
 import org.apache.ranger.plugin.service.RangerBasePlugin;
@@ -163,6 +161,7 @@ public class SyncMetastoreEventListener extends MetaStoreEventListener {
     HivePrivilegeObject.HivePrivilegeObjectType hivePrivilegeObjectType = HivePrivilegeObject.HivePrivilegeObjectType.TABLE_OR_VIEW;
     String dbName = "", objName = "";
     String newDbName = null, newObjName = null;
+    String colsName = null, newColsName = null; // must init null
     String tableType = "";
     String location = "";
     String newLocation = "";
@@ -221,17 +220,34 @@ public class SyncMetastoreEventListener extends MetaStoreEventListener {
         if (alterTable.getNewTable().getSd().getLocation() != null) {
           newLocation = alterTable.getNewTable().getSd().getLocation();
         }
+        // check column is modify
+        List<String> arrCols = new ArrayList<>();
+        List<String> arrNewCols = new ArrayList<>();
+        if (alterTable.getOldTable().getSd() != null) {
+          for (FieldSchema fieldSchema : alterTable.getOldTable().getSd().getCols()) {
+            arrCols.add(fieldSchema.getName());
+          }
+        }
+        if (alterTable.getNewTable().getSd() != null) {
+          for (FieldSchema fieldSchema : alterTable.getNewTable().getSd().getCols()) {
+            arrNewCols.add(fieldSchema.getName());
+          }
+        }
+        if (!arrCols.containsAll(arrNewCols)) {
+          colsName = StringUtils.join(arrCols, COLUMN_SEP);
+          newColsName = StringUtils.join(arrNewCols, COLUMN_SEP);
+        }
         break;
       default:
         LOGGER.error("can not match HiveOperationType : " + hiveOperationType);
         return;
     }
 
-    HivePrivilegeObject hivePrivilegeObject = new HivePrivilegeObject(hivePrivilegeObjectType, dbName, objName);
+    HivePrivilegeObject hivePrivilegeObject = new HivePrivilegeObject(hivePrivilegeObjectType, dbName, objName, null , colsName);
     RangerHiveResource resource = getHiveResource(hiveOperationType, hivePrivilegeObject);
     RangerHiveResource newResource = null;
     if (null != newDbName) {
-      HivePrivilegeObject newHivePrivilegeObject = new HivePrivilegeObject(hivePrivilegeObjectType, newDbName, newObjName);
+      HivePrivilegeObject newHivePrivilegeObject = new HivePrivilegeObject(hivePrivilegeObjectType, newDbName, newObjName, null , newColsName);
       newResource = getHiveResource(hiveOperationType, newHivePrivilegeObject);
     }
     try {
