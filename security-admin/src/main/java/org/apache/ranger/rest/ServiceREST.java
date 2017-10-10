@@ -110,13 +110,7 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Context;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 @Path("plugins")
 @Component
@@ -1327,18 +1321,18 @@ public class ServiceREST {
 		// hive schema db & table name to lower case
 		final String dbName = syncRequest.getResource().get("database");
 		final String tabName = syncRequest.getResource().get("table");
-		final String colName = syncRequest.getResource().get("column");
+		final String colNames = syncRequest.getResource().get("column");
 		final String newDbName = syncRequest.getNewResource().get("database");
 		final String newTabName = syncRequest.getNewResource().get("table");
-		final String newColName = syncRequest.getNewResource().get("column");
-		final List<String> arrCols, arrNewCols;
-		if (colName != null && newColName != null) {
-			String[] cols = colName.split(",");
-			String[] newCols = newColName.split(",");
-			arrCols = Arrays.asList(cols);
+		final String newColNames = syncRequest.getNewResource().get("column");
+		final List<String> arrOldCols, arrNewCols;
+		if (colNames != null && newColNames != null) {
+			String[] cols = colNames.split(",");
+			String[] newCols = newColNames.split(",");
+			arrOldCols = Arrays.asList(cols);
 			arrNewCols = Arrays.asList(newCols);
 		} else {
-			arrCols = arrNewCols = null;
+			arrOldCols = arrNewCols = null;
 		}
 
 		switch (hiveOperationType) {
@@ -1430,30 +1424,45 @@ public class ServiceREST {
 						alterHivePolicyDbTableResource(policy, syncRequest);
 						svcStore.updatePolicy(policy);
 					}
-				} else if (!arrCols.containsAll(arrNewCols)) {
-					if (isAlterTableChangeColumn(arrCols, arrNewCols)) {
+				} else if (!arrOldCols.containsAll(arrNewCols)) {
+					if (isAlterTableChangeColumn(arrOldCols, arrNewCols)) {
 						// ALTER TABLE table_name CHANGE col_name new_col_name INT
-						for (int colIndex = 0; colIndex < arrCols.size(); colIndex ++) {
-							String oldColName = arrCols.get(colIndex);
-							if (!arrNewCols.contains(oldColName)) {
+						for (int colIndex = 0; colIndex < arrOldCols.size(); colIndex ++) {
+							String oldColName = arrOldCols.get(colIndex);
+							String newColName = arrNewCols.get(colIndex);
+
+							if (!oldColName.equalsIgnoreCase(newColName)) {
 								List<RangerPolicy> searchPolicies = searchHivePolicy(hiveServiceId, dbName, tabName, oldColName);
 								for (RangerPolicy policy : searchPolicies) {
-									policy.getResources().get("column").setValue(arrNewCols.get(colIndex));
+									List<String> values = policy.getResources().get("column").getValues();
+									Collections.replaceAll(values, oldColName, newColName);
 									svcStore.updatePolicy(policy);
 								}
 							}
 						}
-					} else if (arrNewCols.containsAll(arrCols)) {
+					} else if (arrNewCols.containsAll(arrOldCols)) {
 						// ALTER TABLE table_name ADD COLUMNS(new_col_name INT)
 						// do nothing
 					} else {
 						// ALTER TABLE table_name REPLACE columns(col_name1 INT, col_name2 INT)
-						for (int colIndex = 0; colIndex < arrCols.size(); colIndex ++) {
-							String oldColName = arrCols.get(colIndex);
-							if (!arrNewCols.contains(oldColName)) {
-								List<RangerPolicy> searchPolicies = searchHivePolicy(hiveServiceId, dbName, tabName, oldColName);
-								for (RangerPolicy policy : searchPolicies) {
-									svcStore.deletePolicy(policy.getId());
+						boolean hdfsPolicyChanged = false;
+						RangerPolicy relatedHdfsPolicy = searchHdfsPolicyByLocation(hdfsServiceId, location);
+
+						for (int colIndex = 0; colIndex < arrOldCols.size(); colIndex ++) {
+							String oldColName = arrOldCols.get(colIndex);
+							List<RangerPolicy> searchPolicies = searchHivePolicy(hiveServiceId, dbName, tabName, oldColName);
+							for (RangerPolicy policy : searchPolicies) {
+								hdfsPolicyChanged = true;
+								hdfsPolicyMinusHivePolicyItem(relatedHdfsPolicy, policy);
+
+								svcStore.deletePolicy(policy.getId());
+							}
+
+							if (true == hdfsPolicyChanged) {
+								if (relatedHdfsPolicy.getPolicyItems().size() == 0) {
+									svcStore.deletePolicy(relatedHdfsPolicy.getId());
+								} else {
+									svcStore.updatePolicy(relatedHdfsPolicy);
 								}
 							}
 						}
@@ -1472,14 +1481,16 @@ public class ServiceREST {
 			return false;
 		}
 
-		int moidifedCount = 0;
-		for (String colName : arrCols) {
-			if (!arrNewCols.contains(colName)) {
-				moidifedCount ++;
+		int differentCount = 0;
+		for (int i = 0; i < arrCols.size(); i ++) {
+			String colName = arrCols.get(i);
+			String newColName = arrNewCols.get(i);
+			if (!colName.equalsIgnoreCase(newColName)) {
+				differentCount ++;
 			}
 		}
 
-		return (moidifedCount==1) ? true : false;
+		return (differentCount==1) ? true : false;
 	}
 
 	// update hive Description
