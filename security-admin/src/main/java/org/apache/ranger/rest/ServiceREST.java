@@ -1181,7 +1181,7 @@ public class ServiceREST {
 		hiveFilter.setParam(SearchFilter.SERVICE_TYPE, "hive");
 		hiveFilter.setParam(SearchFilter.RESOURCE_PREFIX + "database", dbName);
 		hiveFilter.setParam(SearchFilter.RESOURCE_PREFIX + "table", tabName);
-		if (!colName.isEmpty()) {
+		if (false == "".equalsIgnoreCase(colName)) {
 			hiveFilter.setParam(SearchFilter.RESOURCE_PREFIX + "column", colName);
 		}
 
@@ -1192,7 +1192,7 @@ public class ServiceREST {
 			RangerPolicyResource tabResource = policy.getResources().get("table");
 			RangerPolicyResource colResource = policy.getResources().get("column");
 
-			if (!colName.isEmpty()) {
+			if (false == "".equalsIgnoreCase(colName)) {
 				if (dbResource.getValues().containsAll(Arrays.asList(dbName))
 						&& tabResource.getValues().containsAll(Arrays.asList(tabName))
 						&& colResource.getValues().containsAll(Arrays.asList(colName))) {
@@ -1332,7 +1332,7 @@ public class ServiceREST {
 			arrOldCols = Arrays.asList(cols);
 			arrNewCols = Arrays.asList(newCols);
 		} else {
-			arrOldCols = arrNewCols = null;
+			arrOldCols = arrNewCols = new ArrayList<>();
 		}
 
 		switch (hiveOperationType) {
@@ -1396,13 +1396,14 @@ public class ServiceREST {
 				break;
 			case ALTERTABLE: {
 				// temporary deletion
+				boolean alterLocationOrTableName = false;
 				String newLocation = syncRequest.getNewLocation();
+				List<RangerPolicy> searchPolicies = searchHivePolicy(hiveServiceId, dbName, tabName, "");
+				if (searchPolicies.size() == 0) {
+					LOG.info("don't search hive policy " + hiveServiceId + ", " + dbName + ", " + tabName);
+					break;
+				}
 				if (false == location.equalsIgnoreCase(newLocation)) {
-					List<RangerPolicy> searchPolicies = searchHivePolicy(hiveServiceId, dbName, tabName, "");
-					if (searchPolicies.size() == 0) {
-						LOG.warn("can not find matching hive policy " + matchHiveServiceName);
-						break;
-					}
 					// change hdfs location
 					adjustHdfsPolicyByLocation(hdfsServiceId, hiveServiceId, location, null, searchPolicies);
 
@@ -1414,17 +1415,24 @@ public class ServiceREST {
 					String hdfsPath = uri.getPath();
 					for (RangerPolicy policy : searchPolicies) {
 						setPolicyDesc(policy, POLICY_DESC_LOCATION, hdfsPath);
-						svcStore.updatePolicy(policy);
+						alterLocationOrTableName = true;
 					}
-				} else if (false == dbName.equalsIgnoreCase(newDbName) ||
+				}
+				if (false == dbName.equalsIgnoreCase(newDbName) ||
 						false == tabName.equalsIgnoreCase(newTabName)){
-					List<RangerPolicy> searchPolicies = searchHivePolicy(hiveServiceId, dbName, tabName, "");
 					// update hive-policy db and table name
 					for (RangerPolicy policy : searchPolicies) {
 						alterHivePolicyDbTableResource(policy, syncRequest);
+						alterLocationOrTableName = true;
+					}
+				}
+				if (true == alterLocationOrTableName) {
+					for (RangerPolicy policy : searchPolicies) {
 						svcStore.updatePolicy(policy);
 					}
-				} else if (!arrOldCols.containsAll(arrNewCols)) {
+				}
+
+				if (!arrOldCols.containsAll(arrNewCols)) {
 					if (isAlterTableChangeColumn(arrOldCols, arrNewCols)) {
 						// ALTER TABLE table_name CHANGE col_name new_col_name INT
 						for (int colIndex = 0; colIndex < arrOldCols.size(); colIndex ++) {
@@ -1432,8 +1440,8 @@ public class ServiceREST {
 							String newColName = arrNewCols.get(colIndex);
 
 							if (!oldColName.equalsIgnoreCase(newColName)) {
-								List<RangerPolicy> searchPolicies = searchHivePolicy(hiveServiceId, dbName, tabName, oldColName);
-								for (RangerPolicy policy : searchPolicies) {
+								List<RangerPolicy> searchColPolicies = searchHivePolicy(hiveServiceId, dbName, tabName, oldColName);
+								for (RangerPolicy policy : searchColPolicies) {
 									List<String> values = policy.getResources().get("column").getValues();
 									Collections.replaceAll(values, oldColName, newColName);
 									svcStore.updatePolicy(policy);
@@ -1450,8 +1458,8 @@ public class ServiceREST {
 
 						for (int colIndex = 0; colIndex < arrOldCols.size(); colIndex ++) {
 							String oldColName = arrOldCols.get(colIndex);
-							List<RangerPolicy> searchPolicies = searchHivePolicy(hiveServiceId, dbName, tabName, oldColName);
-							for (RangerPolicy policy : searchPolicies) {
+							List<RangerPolicy> searchColPolicies = searchHivePolicy(hiveServiceId, dbName, tabName, oldColName);
+							for (RangerPolicy policy : searchColPolicies) {
 								hdfsPolicyChanged = true;
 								hdfsPolicyMinusHivePolicyItem(relatedHdfsPolicy, policy);
 
