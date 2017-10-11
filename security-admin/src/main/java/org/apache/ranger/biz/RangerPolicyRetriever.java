@@ -244,6 +244,16 @@ public class RangerPolicyRetriever {
 		final Map<Long, String> accessTypes     = new HashMap<Long, String>();
 		final Map<Long, String> conditions      = new HashMap<Long, String>();
 		final Map<Long, String> resourceDefs    = new HashMap<Long, String>();
+		Map<Long,List<String>> groupMember      = new ConcurrentHashMap<>();
+
+
+		Map<Long, List<String>> getGroupMember() {
+			return groupMember;
+		}
+
+		public void setGroupMember(Map<Long, List<String>> groupMember) {
+			this.groupMember = groupMember;
+		}
 
 		String getUserName(Long userId) {
 			String ret = null;
@@ -486,6 +496,13 @@ public class RangerPolicyRetriever {
 		List<RangerPolicy> getAllPolicies() {
 			List<RangerPolicy> ret = new ArrayList<RangerPolicy>();
 
+
+			List<XXGroupUsernameMap> groupUsernameMap = daoMgr.getXXGroupUser().findGroupUsernameList();
+			Map<Long,List<String>> groupMember = null;
+			groupMember = getGroupMember(groupUsernameMap);
+
+			lookupCache.setGroupMember(groupMember);
+
 			while(iterPolicy.hasNext()) {
 				RangerPolicy policy = getNextPolicy();
 
@@ -593,10 +610,9 @@ public class RangerPolicyRetriever {
 
 		private void getPolicyItems(RangerPolicy policy) {
 
-			List<XXPortalUser> xxPortalUserList = daoMgr.getXXPortalUser().findAllXPortalUser();
 			Map<Long,List<String>> groupMember = null;
-			List<XXGroupUsernameMap> groupUsernameMap = daoMgr.getXXGroupUser().findGroupUsernameList();
-			groupMember = getGroupMember(groupUsernameMap);
+
+			groupMember = lookupCache.getGroupMember();
 
 			while(iterPolicyItems.hasNext()) {
 				XXPolicyItem xPolicyItem = iterPolicyItems.next();
@@ -607,17 +623,11 @@ public class RangerPolicyRetriever {
 					policyItem.setDelegateAdmin(xPolicyItem.getDelegateAdmin());
 
 					while(iterUserPerms.hasNext()) {
+
 						XXPolicyItemUserPerm xUserPerm = iterUserPerms.next();
 
 						if(xUserPerm.getPolicyitemid().equals(xPolicyItem.getId())) {
 							policyItem.getUsers().add(lookupCache.getUserName(xUserPerm.getUserid()));
-
-							// add user password
-							for(XXPortalUser portalUser : xxPortalUserList){
-								if(portalUser.getId() == xUserPerm.getUserid()) {
-									policyItem.getUserPasswds().add(portalUser.getPassword());
-								}
-							}
 						} else {
 							if(iterUserPerms.hasPrevious()) {
 								iterUserPerms.previous();
