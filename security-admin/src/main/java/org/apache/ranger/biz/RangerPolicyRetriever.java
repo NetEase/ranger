@@ -245,15 +245,42 @@ public class RangerPolicyRetriever {
 		final Map<Long, String> conditions      = new HashMap<Long, String>();
 		final Map<Long, String> resourceDefs    = new HashMap<Long, String>();
 		Map<Long,List<String>> groupMember      = new ConcurrentHashMap<>();
+		long lastUpdateTime = 0L;
 
 
 		Map<Long, List<String>> getGroupMember() {
+
+			long currentUpdateTime = System.currentTimeMillis();
+
+			 if (currentUpdateTime - lastUpdateTime >= 3000) {
+				 List<XXGroupUsernameMap> groupUsername = daoMgr.getXXGroupUser().findGroupUsernameList();
+				 groupMember = getCacheGroupMemberMap(groupUsername);
+				 lastUpdateTime = currentUpdateTime;
+			 }
+
 			return groupMember;
 		}
 
 		public void setGroupMember(Map<Long, List<String>> groupMember) {
 			this.groupMember = groupMember;
 		}
+
+		Map<Long,List<String>> getCacheGroupMemberMap(List<XXGroupUsernameMap> usernameMaps) {
+			Map<Long,List<String>> groupMember = new ConcurrentHashMap<>();
+
+			for(int i = 0;i < usernameMaps.size();++i) {
+				if (!groupMember.containsKey(usernameMaps.get(i).getGroupId())) {
+					List<String> user = new ArrayList<>();
+					user.add(usernameMaps.get(i).getUserName());
+					groupMember.put(usernameMaps.get(i).getGroupId() ,user);
+				} else {
+					groupMember.get(usernameMaps.get(i).getGroupId()).add(usernameMaps.get(i).getUserName());
+				}
+			}
+
+			return groupMember;
+		}
+
 
 		String getUserName(Long userId) {
 			String ret = null;
@@ -499,7 +526,7 @@ public class RangerPolicyRetriever {
 
 			List<XXGroupUsernameMap> groupUsernameMap = daoMgr.getXXGroupUser().findGroupUsernameList();
 			Map<Long,List<String>> groupMember = null;
-			groupMember = getGroupMember(groupUsernameMap);
+			groupMember = getGroupMemberMap(groupUsernameMap);
 
 			lookupCache.setGroupMember(groupMember);
 
@@ -591,7 +618,7 @@ public class RangerPolicyRetriever {
 		}
 
 
-		private Map<Long,List<String>> getGroupMember(List<XXGroupUsernameMap> usernameMaps) {
+		 Map<Long,List<String>> getGroupMemberMap(List<XXGroupUsernameMap> usernameMaps) {
 			Map<Long,List<String>> groupMember = new ConcurrentHashMap<>();
 
 			for(int i = 0;i < usernameMaps.size();++i) {
