@@ -460,12 +460,18 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
     }
   }
 
+
+
   @Override
   public void onCreateDatabase(CreateDatabaseEvent dbEvent)
       throws MetaException {
     // don't sync paths/privileges if the operation has failed
     if (!dbEvent.getStatus()) {
-      LOGGER.debug("Skip notify onCreateDatabase event, since the operation failed. \n");
+      LOGGER.info("Skip notify onCreateDatabase event, since the operation failed. \n");
+      return;
+    }
+    if (!MetaStoreEventListenerUtils.needSynchronize(dbEvent)) {
+      LOGGER.info("Table lifecycle parameters is empty, it needs to be synchronized");
       return;
     }
 
@@ -484,7 +490,11 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
   public void onDropDatabase(DropDatabaseEvent dbEvent) throws MetaException {
     // don't sync paths/privileges if the operation has failed
     if (!dbEvent.getStatus()) {
-      LOGGER.debug("Skip notify onDropDatabase event, since the operation failed. \n");
+      LOGGER.info("Skip notify onDropDatabase event, since the operation failed. \n");
+      return;
+    }
+    if (!MetaStoreEventListenerUtils.needSynchronize(dbEvent)) {
+      LOGGER.info("Table lifecycle parameters is empty, it needs to be synchronized");
       return;
     }
 
@@ -503,7 +513,11 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
   public void onCreateTable(CreateTableEvent tableEvent) throws MetaException {
     // don't sync paths/privileges if the operation has failed
     if (!tableEvent.getStatus()) {
-      LOGGER.debug("Skip notify onCreateTable event, since the operation failed. \n");
+      LOGGER.info("Skip notify onCreateTable event, since the operation failed. \n");
+      return;
+    }
+    if (!MetaStoreEventListenerUtils.needSynchronize(tableEvent)) {
+      LOGGER.info("Table lifecycle parameters is empty, it needs to be synchronized");
       return;
     }
 
@@ -524,6 +538,10 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
     // don't sync paths/privileges if the operation has failed
     if (!tableEvent.getStatus()) {
       LOGGER.debug("Skip notify onDropTable event, since the operation failed. \n");
+      return;
+    }
+    if (!MetaStoreEventListenerUtils.needSynchronize(tableEvent)) {
+      LOGGER.info("Table lifecycle parameters is empty, it needs to be synchronized");
       return;
     }
 
@@ -547,6 +565,10 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
     // don't sync privileges if the operation has failed
     if (!tableEvent.getStatus()) {
       LOGGER.debug("Skip notify onAlterTable event, since the operation failed.");
+      return;
+    }
+    if (!MetaStoreEventListenerUtils.needSynchronize(tableEvent)) {
+      LOGGER.info("Table lifecycle parameters is empty, it needs to be synchronized");
       return;
     }
 
@@ -574,6 +596,10 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
       LOGGER.debug("Skip notify onAddPartition event, since the operation failed.");
       return;
     }
+    if (!MetaStoreEventListenerUtils.needSynchronize(partitionEvent)) {
+      LOGGER.info("Table lifecycle parameters is empty, it needs to be synchronized");
+      return;
+    }
 
     // the DROP TABLE or TRUNCATE TABLE operation triggers a large number of partition events
     String dbName = partitionEvent.getTable().getDbName();
@@ -596,7 +622,11 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
   public void onAlterPartition(AlterPartitionEvent partitionEvent) throws MetaException {
     // don't sync path if the operation has failed
     if (!partitionEvent.getStatus()) {
-      LOGGER.debug("Skip notify onDropPartition event, since the operation failed.");
+      LOGGER.info("Skip notify onDropPartition event, since the operation failed.");
+      return;
+    }
+    if (!MetaStoreEventListenerUtils.needSynchronize(partitionEvent)) {
+      LOGGER.info("Table lifecycle parameters is empty, it needs to be synchronized");
       return;
     }
 
@@ -623,7 +653,11 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
   public void onDropPartition(DropPartitionEvent partitionEvent) throws MetaException {
     // don't sync path if the operation has failed
     if (!partitionEvent.getStatus()) {
-      LOGGER.debug("Skip notify onDropPartition event, since the operation failed.");
+      LOGGER.info("Skip notify onDropPartition event, since the operation failed.");
+      return;
+    }
+    if (!MetaStoreEventListenerUtils.needSynchronize(partitionEvent)) {
+      LOGGER.info("Table lifecycle parameters is empty, it needs to be synchronized");
       return;
     }
 

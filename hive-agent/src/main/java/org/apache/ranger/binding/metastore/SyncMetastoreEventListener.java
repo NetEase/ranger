@@ -136,7 +136,12 @@ public class SyncMetastoreEventListener extends MetaStoreEventListener {
     synchronizePolicy(tableEvent, HiveOperationType.ALTERTABLE);
   }
 
-  public void synchronizePolicy(ListenerEvent tableEvent, HiveOperationType hiveOperationType) throws MetaException {
+  public void synchronizePolicy(ListenerEvent listenerEvent, HiveOperationType hiveOperationType) throws MetaException {
+    if (false == MetaStoreEventListenerUtils.needSynchronize(listenerEvent)) {
+      LOGGER.info("Table lifecycle parameters is empty, it needs to be synchronized");
+      return;
+    }
+
     UserGroupInformation ugi;
     try {
       ugi = Utils.getUGI();
@@ -170,7 +175,7 @@ public class SyncMetastoreEventListener extends MetaStoreEventListener {
       case CREATEDATABASE:
         hivePrivilegeObjectType = HivePrivilegeObject.HivePrivilegeObjectType.DATABASE;
         hiveAccessType = HiveAccessType.CREATE;
-        Database createDb = ((CreateDatabaseEvent)tableEvent).getDatabase();
+        Database createDb = ((CreateDatabaseEvent)listenerEvent).getDatabase();
         dbName = createDb.getName().toLowerCase();
         if (createDb.getLocationUri() != null) {
           location = createDb.getLocationUri();
@@ -179,7 +184,7 @@ public class SyncMetastoreEventListener extends MetaStoreEventListener {
       case DROPDATABASE:
         hivePrivilegeObjectType = HivePrivilegeObject.HivePrivilegeObjectType.DATABASE;
         hiveAccessType = HiveAccessType.DROP;
-        Database dropDb = ((DropDatabaseEvent)tableEvent).getDatabase();
+        Database dropDb = ((DropDatabaseEvent)listenerEvent).getDatabase();
         dbName = dropDb.getName().toLowerCase();
         if (dropDb.getLocationUri() != null) {
           location = dropDb.getLocationUri();
@@ -188,7 +193,7 @@ public class SyncMetastoreEventListener extends MetaStoreEventListener {
       case CREATETABLE:
         hivePrivilegeObjectType = HivePrivilegeObject.HivePrivilegeObjectType.TABLE_OR_VIEW;
         hiveAccessType = HiveAccessType.CREATE;
-        Table createTable = ((CreateTableEvent)tableEvent).getTable();
+        Table createTable = ((CreateTableEvent)listenerEvent).getTable();
         dbName = createTable.getDbName().toLowerCase();
         objName = createTable.getTableName().toLowerCase();
         tableType = createTable.getTableType();
@@ -199,7 +204,7 @@ public class SyncMetastoreEventListener extends MetaStoreEventListener {
       case DROPTABLE:
         hivePrivilegeObjectType = HivePrivilegeObject.HivePrivilegeObjectType.TABLE_OR_VIEW;
         hiveAccessType = HiveAccessType.DROP;
-        Table dropTable = ((DropTableEvent)tableEvent).getTable();
+        Table dropTable = ((DropTableEvent)listenerEvent).getTable();
         dbName = dropTable.getDbName().toLowerCase();
         objName = dropTable.getTableName().toLowerCase();
         if (dropTable.getSd().getLocation() != null) {
@@ -209,7 +214,7 @@ public class SyncMetastoreEventListener extends MetaStoreEventListener {
       case ALTERTABLE:
         hivePrivilegeObjectType = HivePrivilegeObject.HivePrivilegeObjectType.TABLE_OR_VIEW;
         hiveAccessType = HiveAccessType.ALTER;
-        AlterTableEvent alterTable = ((AlterTableEvent)tableEvent);
+        AlterTableEvent alterTable = ((AlterTableEvent)listenerEvent);
         dbName = alterTable.getOldTable().getDbName().toLowerCase();
         objName = alterTable.getOldTable().getTableName().toLowerCase();
         if (alterTable.getOldTable().getSd().getLocation() != null) {
