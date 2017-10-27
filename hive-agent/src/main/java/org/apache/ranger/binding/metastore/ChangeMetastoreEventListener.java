@@ -86,6 +86,7 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
 
   protected static CuratorFramework zkClient;
   private static zkListener listener = null;
+  private static ThreadLocal<InterProcessMutex> lockLocal = new ThreadLocal<InterProcessMutex>();
 
   private static String zkPath_ = "/hive-metastore-changelog";
   private final static String MAX_ID_FILE_NAME = "/maxid";
@@ -247,6 +248,13 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
     }
 
     try {
+      InterProcessMutex lock = new InterProcessMutex(zkClient, zkPath_ + LOCK_RELATIVE_PATH);
+      if (!lock.acquire(10, TimeUnit.SECONDS)) {
+        LOGGER.warn("writeZNodeData() could not acquire the lock");
+        return;
+      }
+      lockLocal.set(lock);
+
       // delete expired data
       GetChildrenBuilder childrenBuilder = zkClient.getChildren();
       List<String> children = childrenBuilder.forPath(zkPath_);
@@ -346,6 +354,15 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
       LOGGER.error(e.getMessage());
       closeZkClient();
     } finally {
+      try {
+        InterProcessMutex lock = lockLocal.get();
+        if (lock.isAcquiredInThisProcess()) {
+          lock.release();
+        }
+      } catch (Exception e) {
+        e.printStackTrace();
+        LOGGER.error(e.getMessage());
+      }
     }
 
     LOGGER.info("<== writeZNodeData()");
