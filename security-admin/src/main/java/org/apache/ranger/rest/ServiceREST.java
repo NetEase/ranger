@@ -1672,9 +1672,14 @@ public class ServiceREST {
 		String hdfsPath = uri.getPath();
 
 		String projectLocation = getPolicyDesc(searchPolicies.get(0), POLICY_DESC_PROJECT_PATH);
+		if (projectLocation == null || projectLocation.isEmpty()) {
+			LOG.error("hive database policy projectLocation is null!");
+			return false;
+		}
+
 		String[] subLocation = projectLocation.split(",");
 		for (String subLoc : subLocation) {
-			int pos = hdfsPath.indexOf(subLoc);
+			int pos = hdfsPath.indexOf(subLoc + "/");
 			if (pos == 0) {
 				inPorject = true;
 				break;
