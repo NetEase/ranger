@@ -1,11 +1,16 @@
 package org.apache.ranger.binding.metastore;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hive.metastore.events.*;
 
 import java.util.Map;
 
 public class MetaStoreEventListenerUtils {
+  private static final Log LOGGER = LogFactory.getLog(MetaStoreEventListenerUtils.class);
+
   static String PARAMETER_LIFECYCLE = "LIFECYCLE";
+
   static public boolean needSynchronize(ListenerEvent listenerEvent) {
     String lifecycleParam = "";
     if (listenerEvent instanceof CreateDatabaseEvent) {
@@ -66,6 +71,7 @@ public class MetaStoreEventListenerUtils {
     if (null == lifecycleParam || lifecycleParam.isEmpty()) {
       return true;
     } else {
+      LOGGER.info("lifecycleParam = " + lifecycleParam);
       return false;
     }
   }

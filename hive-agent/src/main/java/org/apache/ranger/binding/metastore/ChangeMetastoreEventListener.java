@@ -488,7 +488,7 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
       return;
     }
     if (!MetaStoreEventListenerUtils.needSynchronize(dbEvent)) {
-      LOGGER.info("Table lifecycle parameters is empty, it needs to be synchronized");
+      LOGGER.info("Table lifecycle parameters is not empty, No synchronization event.");
       return;
     }
 
@@ -511,7 +511,7 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
       return;
     }
     if (!MetaStoreEventListenerUtils.needSynchronize(dbEvent)) {
-      LOGGER.info("Table lifecycle parameters is empty, it needs to be synchronized");
+      LOGGER.info("Table lifecycle parameters is not empty, No synchronization event.");
       return;
     }
 
@@ -534,7 +534,7 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
       return;
     }
     if (!MetaStoreEventListenerUtils.needSynchronize(tableEvent)) {
-      LOGGER.info("Table lifecycle parameters is empty, it needs to be synchronized");
+      LOGGER.info("Table lifecycle parameters is not empty, No synchronization event.");
       return;
     }
 
@@ -558,7 +558,7 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
       return;
     }
     if (!MetaStoreEventListenerUtils.needSynchronize(tableEvent)) {
-      LOGGER.info("Table lifecycle parameters is empty, it needs to be synchronized");
+      LOGGER.info("Table lifecycle parameters is not empty, No synchronization event.");
       return;
     }
 
@@ -585,7 +585,7 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
       return;
     }
     if (!MetaStoreEventListenerUtils.needSynchronize(tableEvent)) {
-      LOGGER.info("Table lifecycle parameters is empty, it needs to be synchronized");
+      LOGGER.info("Table lifecycle parameters is not empty, No synchronization event.");
       return;
     }
 
@@ -614,7 +614,7 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
       return;
     }
     if (!MetaStoreEventListenerUtils.needSynchronize(partitionEvent)) {
-      LOGGER.info("Table lifecycle parameters is empty, it needs to be synchronized");
+      LOGGER.info("Table lifecycle parameters is not empty, No synchronization event.");
       return;
     }
 
@@ -643,7 +643,7 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
       return;
     }
     if (!MetaStoreEventListenerUtils.needSynchronize(partitionEvent)) {
-      LOGGER.info("Table lifecycle parameters is empty, it needs to be synchronized");
+      LOGGER.info("Table lifecycle parameters is not empty, No synchronization event.");
       return;
     }
 
@@ -674,7 +674,7 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
       return;
     }
     if (!MetaStoreEventListenerUtils.needSynchronize(partitionEvent)) {
-      LOGGER.info("Table lifecycle parameters is empty, it needs to be synchronized");
+      LOGGER.info("Table lifecycle parameters is not empty, No synchronization event.");
       return;
     }
 
