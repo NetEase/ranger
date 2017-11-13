@@ -26,20 +26,23 @@ def log_setup():
     logger.setLevel(logging.DEBUG)
 
 
-def check(metastore_change_path):
+def check(metastore_change_path, maxid_file):
     global int_preMaxId
     global int_currentMaxId
 
     logging.info('now checking hive metastore change maxid' + metastore_change_path)
-    filePreMaxid = open(baseHome + '/maxid.txt','r+')
+    logging.info('maxid_file = ' + maxid_file)
+    filePreMaxid = open(baseHome + '/' + maxid_file,'r+')
     preMaxId = filePreMaxid.read()
     if preMaxId.strip() == '':
         preMaxId = '0'
+
     int_preMaxId = int(preMaxId)
 
     os.system(baseHome + "/bin/metastoreChange-check.sh " + metastore_change_path)
     f = open(baseHome + '/metastore_result.txt','r')
     lines = f.readlines()
+    f.close()
     lines_length = len(lines)
     if lines_length >= 2:
         currentMaxId = lines[lines_length-2];
@@ -47,7 +50,7 @@ def check(metastore_change_path):
 
         print 'int_preMaxId = %d' % int_preMaxId
         print 'int_currentMaxId = %d' % int_currentMaxId
-        logging.info('int_preMaxId = ' + str(int_preMaxId))
+        logging.info('int_preMaxId = ' + str(int_preMaxId))        
         logging.info('int_currentMaxId = ' + str(int_currentMaxId))
 
         if int_currentMaxId > int_preMaxId:
@@ -69,12 +72,23 @@ def getEnvValFromScript(script):
 log_setup()
 source_env = getEnvValFromScript(baseHome + "/bin/monitor-env.sh")
 metastore_change_paths = source_env['METASTORE_CHANGE_PATH'].split(",")
+maxid_files = source_env['MAX_ID_FILES'].split(",")
+
+index = -1
+strBody = ""
 
 for change_path in metastore_change_paths:
-    if check(change_path):
-        logging.info('The hive metastore, of which namespace is ' + change_path + ', is so good ~ ')
+    index = index+1
+
+    if check(change_path, maxid_files[index]):
+        logging.info('The hive metastore change ' + change_path + ', is so good ~ ')
     else:
-        logging.error('The hive metastore, of which namespace is ' + change_path + ', is dead! Send alert')
-        alertUtils.sendAlert("mail","MetaStoreChange error ", change_path + ", int_preMaxId=" + str(int_preMaxId) + ", int_currentMaxId=" + str(int_currentMaxId))
+        strBody = strBody + change_path + ", int_preMaxId=" + str(int_preMaxId) + ", int_currentMaxId=" + str(int_currentMaxId) + "\n--------\n"
+        logging.error('The hive metastore change ' + change_path + ', is dead! Send alert')
+
+if strBody != "":
+        alertUtils.sendAlert("mail","MetaStoreChange error", strBody)
+        alertUtils.sendAlert("sms","MetaStoreChange error", strBody)
+
 
 logging.info(' -----------------------------\n')

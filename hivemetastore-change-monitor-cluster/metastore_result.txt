@@ -1,0 +1,2 @@
+database_name	tab_name
+default	cn_comment_test3
