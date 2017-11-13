@@ -86,7 +86,6 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
 
   protected static CuratorFramework zkClient;
   private static zkListener listener = null;
-  private static ThreadLocal<InterProcessMutex> lockLocal = new ThreadLocal<InterProcessMutex>();
 
   private static String zkPath_ = "/hive-metastore-changelog";
   private final static String MAX_ID_FILE_NAME = "/maxid";
@@ -234,27 +233,21 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
     }
   }
 
-  private void writeZNodeData(List<TUpdateDelta> tUpdateDeltas) {
+  private boolean writeZNodeData(List<TUpdateDelta> tUpdateDeltas) {
     if (tUpdateDeltas.size() == 0)
-      return;
+      return true;
 
     LOGGER.info("==> writeZNodeData(" + tUpdateDeltas.size() + ")");
+    boolean writeMaxIdResult = true, writeFileResult = true;
 
     try {
       getSingletonClient();
     } catch (Exception ex) {
       ex.printStackTrace();
-      return;
+      return false;
     }
 
     try {
-      InterProcessMutex lock = new InterProcessMutex(zkClient, zkPath_ + LOCK_RELATIVE_PATH);
-      if (!lock.acquire(10, TimeUnit.SECONDS)) {
-        LOGGER.warn("writeZNodeData() could not acquire the lock");
-        return;
-      }
-      lockLocal.set(lock);
-
       // delete expired data
       GetChildrenBuilder childrenBuilder = zkClient.getChildren();
       List<String> children = childrenBuilder.forPath(zkPath_);
@@ -283,16 +276,17 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
       }
 
       Stat stat = zkClient.checkExists().forPath(zkPath_ + MAX_ID_FILE_NAME);
-      Long newMaxFileId = 1L;
+      Long newFileId = 1L;
       if (null != stat) {
         byte[] byteFileMaxId = zkClient.getData().forPath(zkPath_ + MAX_ID_FILE_NAME);
         String strFileMaxId = new String(byteFileMaxId);
         try {
-          newMaxFileId = Long.parseLong(strFileMaxId) + 1;
+          newFileId = Long.parseLong(strFileMaxId) + 1;
         } catch (NumberFormatException e) {
           LOGGER.error(e.getMessage());
         }
       }
+
       TUpdateMetadataRequest tUpdateMetadataRequest = new TUpdateMetadataRequest();
       tUpdateMetadataRequest.setProtocol_version(MetaStore_Update_Service_Version);
       tUpdateMetadataRequest.setDeltas(tUpdateDeltas);
@@ -315,37 +309,36 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
         LOGGER.info("updateMetadataBytes.length = " + updateMetadataLen);
 
         Stat statMaxId = zkClient.checkExists().forPath(zkPath_ + MAX_ID_FILE_NAME);
-        Stat statNewMaxFileId = zkClient.checkExists().forPath(zkPath_ + "/" + newMaxFileId);
-
+        Stat statNewFileId = zkClient.checkExists().forPath(zkPath_ + "/" + newFileId);
         if (zookeeperShellPath_.isEmpty()) {
           if (null == statMaxId) {
             LOGGER.info("create : " + zkPath_ + MAX_ID_FILE_NAME);
-            zkClient.create().withMode(CreateMode.PERSISTENT).forPath(zkPath_ + MAX_ID_FILE_NAME, String.valueOf(newMaxFileId).getBytes());
+            zkClient.create().withMode(CreateMode.PERSISTENT).forPath(zkPath_ + MAX_ID_FILE_NAME, String.valueOf(newFileId).getBytes());
           } else {
             LOGGER.info("update : " + zkPath_ + MAX_ID_FILE_NAME);
-            zkClient.setData().forPath(zkPath_ + MAX_ID_FILE_NAME, String.valueOf(newMaxFileId).getBytes());
+            zkClient.setData().forPath(zkPath_ + MAX_ID_FILE_NAME, String.valueOf(newFileId).getBytes());
           }
-          if (null == statNewMaxFileId) {
-            LOGGER.info("create : " + zkPath_ + "/" + newMaxFileId);
-            zkClient.create().withMode(CreateMode.PERSISTENT).forPath(zkPath_ + "/" + String.valueOf(newMaxFileId), strUpdateMetadata.getBytes());
+          if (null == statNewFileId) {
+            LOGGER.info("create : " + zkPath_ + "/" + newFileId);
+            zkClient.create().withMode(CreateMode.PERSISTENT).forPath(zkPath_ + "/" + String.valueOf(newFileId), strUpdateMetadata.getBytes());
           } else {
-            LOGGER.info("update : " + zkPath_ + "/" + newMaxFileId);
-            zkClient.setData().forPath(zkPath_ + "/" + String.valueOf(newMaxFileId), strUpdateMetadata.getBytes());
+            LOGGER.warn(zkPath_ + "/" + newFileId + " already exist!");
+            writeFileResult = false;
           }
         } else {
           if (null == statMaxId) {
             LOGGER.info("create : " + zkPath_ + MAX_ID_FILE_NAME);
-            callZookeeperShell("create",zkPath_ + MAX_ID_FILE_NAME, String.valueOf(newMaxFileId));
+            writeMaxIdResult = callZookeeperShell("create",zkPath_ + MAX_ID_FILE_NAME, String.valueOf(newFileId));
           } else {
             LOGGER.info("update : " + zkPath_ + MAX_ID_FILE_NAME);
-            callZookeeperShell("set",zkPath_ + MAX_ID_FILE_NAME, String.valueOf(newMaxFileId));
+            writeMaxIdResult = callZookeeperShell("set",zkPath_ + MAX_ID_FILE_NAME, String.valueOf(newFileId));
           }
-          if (null == statNewMaxFileId) {
-            LOGGER.info("create : " + zkPath_ + "/" + String.valueOf(newMaxFileId));
-            callZookeeperShell("create",zkPath_ + "/" + String.valueOf(newMaxFileId), strUpdateMetadata);
+          if (null == statNewFileId) {
+            LOGGER.info("create : " + zkPath_ + "/" + String.valueOf(newFileId));
+            writeFileResult = callZookeeperShell("create",zkPath_ + "/" + String.valueOf(newFileId), strUpdateMetadata);
           } else {
-            LOGGER.info("update : " + zkPath_ + "/" + String.valueOf(newMaxFileId));
-            callZookeeperShell("set",zkPath_ + "/" + String.valueOf(newMaxFileId), strUpdateMetadata);
+            LOGGER.warn(zkPath_ + "/" + newFileId + " already exist!");
+            writeFileResult = false;
           }
         }
       }
@@ -355,10 +348,6 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
       closeZkClient();
     } finally {
       try {
-        InterProcessMutex lock = lockLocal.get();
-        if (lock.isAcquiredInThisProcess()) {
-          lock.release();
-        }
       } catch (Exception e) {
         e.printStackTrace();
         LOGGER.error(e.getMessage());
@@ -366,10 +355,12 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
     }
 
     LOGGER.info("<== writeZNodeData()");
+    return (writeFileResult == true) && (writeMaxIdResult == true);
   }
 
   boolean callZookeeperShell(String cmd, String znodePath, String params) {
-    boolean runResult = false;
+    boolean runResult = true;
+    boolean nodeAlreadyExist = false;
 
     if (zookeeperShellPath_.isEmpty()) {
       LOGGER.error("writeZkShell() zkWiteShellPath is empty!");
@@ -397,6 +388,9 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
       String errline = null;
       while ((errline = brError.readLine()) != null) {
         LOGGER.error(errline);
+        if (errline.contains("Node already exists")) {
+          nodeAlreadyExist = true;
+        }
       }
 
       // waitFor() 判断Process进程是否终止，通过返回值判断是否正常终止。0 代表正常终止
@@ -416,7 +410,7 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
       }
     }
 
-    return runResult;
+    return (runResult==true) && (nodeAlreadyExist==false);
   }
 
   // the consumer TUpdateDelta from the queue
@@ -461,7 +455,11 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
             iterator.remove();
           }
 
-          writeZNodeData(tUpdateDeltaList);
+          boolean result = writeZNodeData(tUpdateDeltaList);
+          if (false == result) {
+            LOGGER.error("writeZNodeData error! Save data waiting for the next call writeZNodeData() again");
+            queue.addAll(tUpdateDeltaList);
+          }
 
           if (limit1 > 0 && limit2 > 0) {
             Thread.currentThread().sleep(asyncInterval_);
