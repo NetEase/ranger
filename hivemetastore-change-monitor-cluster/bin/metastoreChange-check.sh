@@ -21,4 +21,5 @@ fi
 > "$BASE_PATH"/../metastore_result.txt
 ${ZOOKEEPER_CLI_PATH} -server ${ZOOKEEPER_SERVER} <<EOF >"$BASE_PATH"/../metastore_result.txt
 get ${metastore_change_path}
+quit
 EOF

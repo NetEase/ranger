@@ -44,8 +44,8 @@ def check(metastore_change_path, maxid_file):
     lines = f.readlines()
     f.close()
     lines_length = len(lines)
-    if lines_length >= 2:
-        currentMaxId = lines[lines_length-2];
+    if lines_length >= 5:
+        currentMaxId = lines[lines_length-5];
         int_currentMaxId = int(currentMaxId)
 
         print 'int_preMaxId = %d' % int_preMaxId
