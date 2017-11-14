@@ -437,6 +437,7 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
               LOGGER.warn("tUpdateDeltaQueue_.size = " + queue.size() + " > " + writeZkBatchSize_);
               break;
             }
+            LOGGER.info("SaveMetaStoreChangeRunnable() queue get > " + tUpdateDelta.toString());
 
             tUpdateDeltaList.add(tUpdateDelta);
           }
@@ -445,12 +446,13 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
           Iterator<Map.Entry<String, TUpdateDelta>> iterator = mapPartitionUpdate.entrySet().iterator();
           while (iterator.hasNext()){
             if (limit2-- < 0) {
-              LOGGER.warn("mapPartitionUpdate.size = " + mapPartitionUpdate.size() + " > " + writeZkBatchSize_);
+              LOGGER.warn("SaveMetaStoreChangeRunnable() mapPartitionUpdate.size = " + mapPartitionUpdate.size() + " > " + writeZkBatchSize_);
               break;
             }
 
             Map.Entry<String, TUpdateDelta> entry = iterator.next();
             tUpdateDeltaList.add(entry.getValue());
+            LOGGER.info("SaveMetaStoreChangeRunnable() mapPartitionUpdate get > " + entry.getValue().toString());
 
             iterator.remove();
           }
@@ -629,8 +631,11 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
 
     String key = dbName + "--1234567890--" + tableName;
     if (false == mapPartitionUpdate.containsKey(key)) {
+      LOGGER.info("onAddPartition() " + tUpdateDelta.toString());
       mapPartitionUpdate.put(key, tUpdateDelta);
     }
+
+    LOGGER.info("onAddPartition() <<<<<<");
   }
 
   @Override
@@ -658,10 +663,11 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
 
     String key = dbName + "--1234567890--" + tableName;
     if (false == mapPartitionUpdate.containsKey(key)) {
+      LOGGER.info("onAlterPartition() " + tUpdateDelta.toString());
       mapPartitionUpdate.put(key, tUpdateDelta);
     }
 
-    LOGGER.info("onAlterPartition()" + tUpdateDelta.toString());
+    LOGGER.info("onAlterPartition() <<<<<<");
   }
 
   @Override
@@ -689,7 +695,10 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
 
     String key = dbName + "--1234567890--" + tableName;
     if (false == mapPartitionUpdate.containsKey(key)) {
+      LOGGER.info("onDropPartition() " + tUpdateDelta.toString());
       mapPartitionUpdate.put(key, tUpdateDelta);
     }
+
+    LOGGER.info("onDropPartition() <<<<<<");
   }
 }
