@@ -1643,8 +1643,8 @@ public class XUserMgr extends XUserMgrBase {
 			}*/
 			
 			XXPolicyItemGroupPermDao xXPolicyItemGroupPermDao=daoManager.getXXPolicyItemGroupPerm();
-			// 查找需要删除的x_policy_item
-			List<XXPolicyItemGroupPerm> policyItemGroupPerms = xXPolicyItemGroupPermDao.findByGroupId(id);
+			// 查找需要删除的x_policy_item (该item出现在对应group对应的XXPolicyItemGroupPerm,但不在XXPolicyItemUserPerm)
+			List<XXPolicyItemGroupPerm> policyItemGroupPerms = xXPolicyItemGroupPermDao.findByGroupIdNotInPolicyItemUserPerm(id);
 			List<Long> policyItemIds = new ArrayList();
 			for (XXPolicyItemGroupPerm policyItemGroupPerm : policyItemGroupPerms) {
 				policyItemIds.add(policyItemGroupPerm.getPolicyitemid());
@@ -1653,18 +1653,18 @@ public class XUserMgr extends XUserMgrBase {
 			if (!policyItemIds.isEmpty()) {
 				// 删除不在x_group_item_user_perm中的x_policy_item_condition对象
 				XXPolicyItemConditionDao xXPolicyItemConditionDao = daoManager.getXXPolicyItemCondition();
-				xXPolicyItemConditionDao.deleteByPolicyItemIdsNotInPolicyItemUserPerm(policyItemIds);
+				xXPolicyItemConditionDao.deleteByPolicyItemIds(policyItemIds);
 				
 				// 删除不在x_group_item_user_perm中的x_policy_item_access对象
 				XXPolicyItemAccessDao xXPolicyItemAccessDao = daoManager.getXXPolicyItemAccess();
-				xXPolicyItemAccessDao.deleteByPolicyItemIdsNotInPolicyItemUserPerm(policyItemIds);
+				xXPolicyItemAccessDao.deleteByPolicyItemIds(policyItemIds);
 				
 				// 删除x_policy_item_group_perm中记录
 				xXPolicyItemGroupPermDao.deleteByGroupId(id);
 				
 				// 删除不在x_group_item_user_perm中的x_policy_item对象
 				XXPolicyItemDao xXPolicyItemDao = daoManager.getXXPolicyItem(); 
-				xXPolicyItemDao.deleteByIdsNotInPolicyItemUserPerm(policyItemIds);
+				xXPolicyItemDao.deleteByIds(policyItemIds);
 			}			
 			
 			if(CollectionUtils.isNotEmpty(xXGroupPermissions)){

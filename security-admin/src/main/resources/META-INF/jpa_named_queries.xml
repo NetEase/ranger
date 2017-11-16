@@ -275,10 +275,9 @@
         </query>
 	</named-query>
 	
-	<named-query name="XXPolicyItem.deleteByIdsNotInPolicyItemUserPerm">
+	<named-query name="XXPolicyItem.deleteByIds">
 		<query>DELETE FROM  XXPolicyItem obj
-			   WHERE obj.id IN :itemIds	 
-			   	AND obj.id NOT IN (select polItemUser.policyItemId from XXPolicyItemUserPerm polItemUser)
+			   WHERE obj.id IN :itemIds
 		</query>
 	</named-query>
 
@@ -516,10 +515,9 @@
 		</query>
 	</named-query>
 	
-	<named-query name="XXPolicyItemAccess.deleteByPolicyItemIdsNotInPolicyItemUserPerm">
+	<named-query name="XXPolicyItemAccess.deleteByPolicyItemIds">
 		<query>DELETE FROM  XXPolicyItemAccess obj
-			   WHERE obj.policyItemId IN :policyItemIds	 
-			   	and obj.policyItemId NOT IN (select polItemUser.policyItemId from XXPolicyItemUserPerm polItemUser) 
+			   WHERE obj.policyItemId IN :policyItemIds 
 		</query>
 	</named-query>
 	
@@ -553,10 +551,9 @@
 		</query>
 	</named-query>
 	
-	<named-query name="XXPolicyItemCondition.deleteByPolicyItemIdsNotInPolicyItemUserPerm">
+	<named-query name="XXPolicyItemCondition.deleteByPolicyItemIds">
 		<query>DELETE FROM  XXPolicyItemCondition obj
-			   WHERE obj.policyItemId IN :policyItemIds	 
-			   	and obj.policyItemId NOT IN (select polItemUser.policyItemId from XXPolicyItemUserPerm polItemUser) 
+			   WHERE obj.policyItemId IN :policyItemIds
 		</query>
 	</named-query>
 	
@@ -573,9 +570,10 @@
 		</query>
 	</named-query>
 
-	<named-query name="XXPolicyItemGroupPerm.findByGroupId">
-		<query>select obj from XXPolicyItemGroupPerm obj
-		        where obj.groupId = :groupId
+	<named-query name="XXPolicyItemGroupPerm.findByGroupIdNotInPolicyItemUserPerm">
+		<query>select obj1 from XXPolicyItemGroupPerm obj1 LEFT JOIN XXPolicyItemUserPerm obj2
+                on obj1.policyItemId = obj2.policyItemId
+                where obj1.groupId = :groupId and obj2.policyItemId is null
 		</query>
 	</named-query>
 
