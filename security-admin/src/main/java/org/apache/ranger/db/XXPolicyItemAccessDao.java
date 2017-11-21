@@ -82,9 +82,9 @@ public class XXPolicyItemAccessDao extends BaseDao<XXPolicyItemAccess> {
 		}
 	}
 
-	public void deleteByPolicyItemIdsNotInPolicyItemUserPerm(List<Long> policyItemIds) {
+	public void deleteByPolicyItemIds(List<Long> policyItemIds) {
 		getEntityManager()
-			.createNamedQuery("XXPolicyItemAccess.deleteByPolicyItemIdsNotInPolicyItemUserPerm")
+			.createNamedQuery("XXPolicyItemAccess.deleteByPolicyItemIds")
 			.setParameter("policyItemIds", policyItemIds)
 			.executeUpdate();
 	}

@@ -70,13 +70,13 @@ public class XXPolicyItemGroupPermDao extends BaseDao<XXPolicyItemGroupPerm> {
 		}
 	}
 	
-	public List<XXPolicyItemGroupPerm> findByGroupId(Long groupId) {
+	public List<XXPolicyItemGroupPerm> findByGroupIdNotInPolicyItemUserPerm(Long groupId) {
 		if(groupId == null) {
 			return new ArrayList<XXPolicyItemGroupPerm>();
 		}
 		try {
 			return getEntityManager()
-					.createNamedQuery("XXPolicyItemGroupPerm.findByGroupId", tClass)
+					.createNamedQuery("XXPolicyItemGroupPerm.findByGroupIdNotInPolicyItemUserPerm", tClass)
 					.setParameter("groupId", groupId).getResultList();
 		} catch (NoResultException e) {
 			return new ArrayList<XXPolicyItemGroupPerm>();
