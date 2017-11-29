@@ -96,7 +96,7 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
   private Map<String, TUpdateDelta> mapPartitionUpdate= new ConcurrentHashMap();
   private Long curretnTUpdateDeltaId_ = 0L;
   private String hostName_ = "";
-  private int asyncInterval_ = 3000;
+  private int asyncInterval_ = 500;
   private int autoClearTime_ = 5;
   private int writeZkBatchSize_ = 10;
   private int zkReconnectInterval_ = 30; // minute
