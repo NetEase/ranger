@@ -19,9 +19,7 @@
 
  package org.apache.ranger.authorization.hive.authorizer;
 
-import java.io.IOException;
-import java.util.*;
-
+import com.google.common.collect.Sets;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
@@ -32,6 +30,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.permission.FsAction;
 import org.apache.hadoop.hive.common.FileUtils;
 import org.apache.hadoop.hive.conf.HiveConf;
+import org.apache.hadoop.hive.ql.parse.SemanticException;
 import org.apache.hadoop.hive.ql.security.HiveAuthenticationProvider;
 import org.apache.hadoop.hive.ql.security.authorization.plugin.HiveAccessControlException;
 import org.apache.hadoop.hive.ql.security.authorization.plugin.HiveAuthzContext;
@@ -54,7 +53,12 @@ import org.apache.ranger.plugin.policyengine.RangerAccessResult;
 import org.apache.ranger.plugin.service.RangerBasePlugin;
 import org.apache.ranger.plugin.util.GrantRevokeRequest;
 
-import com.google.common.collect.Sets;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class RangerHiveAuthorizer extends RangerHiveAuthorizerBase {
 	private static final Log LOG = LogFactory.getLog(RangerHiveAuthorizer.class) ; 
@@ -603,6 +607,12 @@ public class RangerHiveAuthorizer extends RangerHiveAuthorizerBase {
 		return ret;
 	}
 
+	@Override
+	public void reinitRoles() throws HiveAccessControlException, HiveAuthzPluginException {
+
+	}
+
+
 	RangerHiveResource createHiveResource(HivePrivilegeObject privilegeObject) {
 		RangerHiveResource resource = null;
 
@@ -623,6 +633,20 @@ public class RangerHiveAuthorizer extends RangerHiveAuthorizerBase {
 		return resource;
 	}
 
+	@Override
+	public Object getHiveAuthorizationTranslator() throws HiveAuthzPluginException {
+		return null;
+	}
+
+
+	public List<HivePrivilegeObject> applyRowFilterAndColumnMasking(HiveAuthzContext queryContext, List<HivePrivilegeObject> hiveObjs) throws SemanticException {
+		return null;
+	}
+
+
+	public boolean needTransform() {
+		return false;
+	}
 
 	private RangerHiveResource getHiveResource(HiveOperationType   hiveOpType,
 											   HivePrivilegeObject hiveObj) {
@@ -1018,7 +1042,8 @@ public class RangerHiveAuthorizer extends RangerHiveAuthorizerBase {
 		if(ss != null) {
 			ret.setClientIPAddress(ss.getUserIpAddress());
 			ret.setSessionId(ss.getSessionId());
-			ret.setRequestData(ss.getCmd());
+			//ret.setRequestData(ss.getCmd());
+			ret.setRequestData("Not Support");
 		}
 
 		HiveAuthzSessionContext sessionContext = getHiveAuthzSessionContext();

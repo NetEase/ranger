@@ -19,9 +19,6 @@
 
  package org.apache.ranger.authorization.hive.authorizer;
 
-import java.io.IOException;
-import java.util.List;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.hive.conf.HiveConf;
@@ -41,6 +38,9 @@ import org.apache.hadoop.hive.ql.security.authorization.plugin.HiveRoleGrant;
 import org.apache.hadoop.hive.ql.security.authorization.plugin.SettableConfigUpdater;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.ranger.authorization.utils.StringUtil;
+
+import java.io.IOException;
+import java.util.List;
 
 public abstract class RangerHiveAuthorizerBase implements HiveAuthorizer {
 
@@ -228,5 +228,10 @@ public abstract class RangerHiveAuthorizerBase implements HiveAuthorizer {
 	private void throwNotImplementedException(String method) throws HiveAuthzPluginException {
 		throw new HiveAuthzPluginException(method + "() not implemented in Ranger HiveAuthorizer");
 	}
+
+	public Object getHiveAuthorizationTranslator() throws HiveAuthzPluginException {
+		return null;
+	}
+
 
 }
