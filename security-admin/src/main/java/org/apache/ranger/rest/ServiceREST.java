@@ -1649,9 +1649,32 @@ public class ServiceREST {
 		policy.setDescription(desc);
 	}
 
+
+
+	private boolean isHivePolicySearchResultUnique(List<RangerPolicy> result) {
+
+		if(null == result)
+			return false;
+		int searchSize = result.size();
+		for (Iterator iter = result.iterator(); iter.hasNext();) {
+			RangerPolicy policyCandidate = (RangerPolicy)iter.next();
+			if (null != policyCandidate.getResources() && policyCandidate.getResources().get("database") != null) {
+				RangerPolicyResource databases = policyCandidate.getResources().get("database");
+				if (databases.getValues().size() != 1) {
+					searchSize--;
+				}
+			}
+		}
+
+		if (searchSize != 1) {
+			return false;
+		}
+		return true;
+	}
+
 	// Determine whether the hdfs path is within the project
 	private boolean inProjectPath(RangerPolicy hivePolicy, String location) throws Exception {
-		boolean inPorject = false;
+		boolean inProject = false;
 
 		String hiveServiceName = hivePolicy.getService();
 
@@ -1676,7 +1699,10 @@ public class ServiceREST {
 		}
 
 		List<RangerPolicy> searchPolicies = searchHivePolicy(hiveService.getId(), dbName, "*", "*");
-		if (searchPolicies.size() != 1) {
+
+		boolean isResultUnique = isHivePolicySearchResultUnique(searchPolicies);
+
+		if (!isResultUnique) {
 			LOG.error("hive database policy does not exist - hivePolicy = " + hivePolicy.toString());
 			return false;
 		}
@@ -1694,16 +1720,16 @@ public class ServiceREST {
 		for (String subLoc : subLocation) {
 			int pos = hdfsPath.indexOf(subLoc + "/");
 			if (pos == 0) {
-				inPorject = true;
+				inProject = true;
 				break;
 			}
 		}
 
-		return inPorject;
+		return inProject;
 	}
 
 	private boolean inProjectPath(String hiveServiceName, String dbName, String location) throws Exception {
-		boolean inPorject = false;
+		boolean inProject = false;
 
 		if (null == location || location.isEmpty()) {
 			LOG.error("inProjectPath() location is null " + location);
@@ -1718,22 +1744,10 @@ public class ServiceREST {
 
 		List<RangerPolicy> searchPolicies = searchHivePolicy(hiveService.getId(), dbName, "*", "*");
 
-		int searchSize = searchPolicies.size();
+		boolean isResultUnique = isHivePolicySearchResultUnique(searchPolicies);
 
-		for (Iterator iter = searchPolicies.iterator(); iter.hasNext();) {
-			RangerPolicy policyCandidate = (RangerPolicy)iter.next();
-			if (null != policyCandidate.getResources() && policyCandidate.getResources().get("database") != null) {
-				RangerPolicyResource databases = (RangerPolicyResource)policyCandidate.getResources().get("database");
-				if (databases.getValues().size() != 1) {
-					searchSize--;
-				}
-
-			}
-
-		}
-
-		if (searchSize != 1) {
-			LOG.error("hive database policy does not exist - hivePolicyId = " + hiveService.getId() + ", dbName = " + dbName);
+		if (!isResultUnique) {
+			LOG.error("exist at least 2 same hive policies,please check hive policy");
 			return false;
 		}
 
@@ -1745,12 +1759,12 @@ public class ServiceREST {
 		for (String subLoc : subLocation) {
 			int pos = hdfsPath.indexOf(subLoc);
 			if (pos == 0) {
-				inPorject = true;
+				inProject = true;
 				break;
 			}
 		}
 
-		return inPorject;
+		return inProject;
 	}
 
 	private String getPolicyDesc(RangerPolicy policy, String key) {
@@ -2000,7 +2014,7 @@ public class ServiceREST {
 			}
 			if (StringUtils.equalsIgnoreCase(hivePolicyItemAccess.getType(), HiveAccessType.DROP.name())
 					|| StringUtils.equalsIgnoreCase(hivePolicyItemAccess.getType(), HiveAccessType.ALTER.name())) {
-				if (!inProjectPath || isExternalTabler) {
+				if (isExternalTabler) {
 					mapRangerPolicyItemAccess.put("read", readPolicyItemAccess);
 					mapRangerPolicyItemAccess.put("execute", executePolicyItemAccess);
 				} else {
