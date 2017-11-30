@@ -326,19 +326,22 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
             writeFileResult = false;
           }
         } else {
-          if (null == statMaxId) {
-            LOGGER.info("create : " + zkPath_ + MAX_ID_FILE_NAME);
-            writeMaxIdResult = callZookeeperShell("create",zkPath_ + MAX_ID_FILE_NAME, String.valueOf(newFileId));
-          } else {
-            LOGGER.info("update : " + zkPath_ + MAX_ID_FILE_NAME);
-            writeMaxIdResult = callZookeeperShell("set",zkPath_ + MAX_ID_FILE_NAME, String.valueOf(newFileId));
-          }
           if (null == statNewFileId) {
             LOGGER.info("create : " + zkPath_ + "/" + String.valueOf(newFileId));
             writeFileResult = callZookeeperShell("create",zkPath_ + "/" + String.valueOf(newFileId), strUpdateMetadata);
           } else {
             LOGGER.warn(zkPath_ + "/" + newFileId + " already exist!");
             writeFileResult = false;
+          }
+          if (true == writeFileResult) {
+            // Write znode is successful before updating the MAXID
+            if (null == statMaxId) {
+              LOGGER.info("create : " + zkPath_ + MAX_ID_FILE_NAME);
+              writeMaxIdResult = callZookeeperShell("create", zkPath_ + MAX_ID_FILE_NAME, String.valueOf(newFileId));
+            } else {
+              LOGGER.info("update : " + zkPath_ + MAX_ID_FILE_NAME);
+              writeMaxIdResult = callZookeeperShell("set", zkPath_ + MAX_ID_FILE_NAME, String.valueOf(newFileId));
+            }
           }
         }
       }
