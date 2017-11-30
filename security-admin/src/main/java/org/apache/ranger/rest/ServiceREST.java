@@ -1718,19 +1718,21 @@ public class ServiceREST {
 
 		List<RangerPolicy> searchPolicies = searchHivePolicy(hiveService.getId(), dbName, "*", "*");
 
+		int searchSize = searchPolicies.size();
+
 		for (Iterator iter = searchPolicies.iterator(); iter.hasNext();) {
 			RangerPolicy policyCandidate = (RangerPolicy)iter.next();
 			if (null != policyCandidate.getResources() && policyCandidate.getResources().get("database") != null) {
 				RangerPolicyResource databases = (RangerPolicyResource)policyCandidate.getResources().get("database");
 				if (databases.getValues().size() != 1) {
-					searchPolicies.remove(policyCandidate);
+					searchSize--;
 				}
 
 			}
 
 		}
 
-		if (searchPolicies.size() != 1) {
+		if (searchSize != 1) {
 			LOG.error("hive database policy does not exist - hivePolicyId = " + hiveService.getId() + ", dbName = " + dbName);
 			return false;
 		}
