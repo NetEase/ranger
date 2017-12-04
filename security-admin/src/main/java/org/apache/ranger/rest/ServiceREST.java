@@ -1655,18 +1655,17 @@ public class ServiceREST {
 
 		if(null == result)
 			return false;
-		int searchSize = result.size();
 		for (Iterator iter = result.iterator(); iter.hasNext();) {
 			RangerPolicy policyCandidate = (RangerPolicy)iter.next();
 			if (null != policyCandidate.getResources() && policyCandidate.getResources().get("database") != null) {
 				RangerPolicyResource databases = policyCandidate.getResources().get("database");
 				if (databases.getValues().size() != 1) {
-					searchSize--;
+					iter.remove();
 				}
 			}
 		}
 
-		if (searchSize != 1) {
+		if (result.size() != 1) {
 			return false;
 		}
 		return true;

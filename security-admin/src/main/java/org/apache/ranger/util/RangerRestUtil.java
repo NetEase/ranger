@@ -37,10 +37,10 @@ import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 public class RangerRestUtil {
@@ -189,7 +189,7 @@ public class RangerRestUtil {
 										ArrayList<String> providerList = generateProvider(serviceName, database, table, column, policyItem.getAccesses());
 										String roleName = "policy" + policy.getId() + "-" + policyItemIndex++;
 										List<String> groupList  = policyItem.getGroups();
-										Map<String, List<String>> memberList = policyItem.getGroupMember();
+										Map<String, List<String>> memberList = new ConcurrentHashMap<>(policyItem.getGroupMember());
 
 										if (policyItem.getUsers() != null && !policyItem.getUsers().isEmpty()) {
 											String groupName = "group" + "-" + roleName;
@@ -203,11 +203,11 @@ public class RangerRestUtil {
 												groupList.add(groupName);
 											}
 											if (memberList != null) {
-												Map<String,List<String>> newMemberList = new HashMap<>(memberList);
+												Map<String,List<String>> newMemberList = new ConcurrentHashMap(memberList);
 												newMemberList.put(groupName,policyItem.getUsers());
 												memberList = newMemberList;
 											} else {
-												memberList = new HashMap<>();
+												memberList = new ConcurrentHashMap<>();
 												memberList.put(groupName,policyItem.getUsers());
 											}
 										}
