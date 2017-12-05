@@ -1651,7 +1651,7 @@ public class ServiceREST {
 
 
 
-	private boolean isHivePolicySearchResultUnique(List<RangerPolicy> result) {
+	private boolean filterHivePolicySearchResult(List<RangerPolicy> result) {
 
 		if(null == result)
 			return false;
@@ -1665,9 +1665,11 @@ public class ServiceREST {
 			}
 		}
 
-		if (result.size() != 1) {
+		if(result.size() != 1) {
+			LOG.error("hive database policy does not exist only one term - hivePolicy");
 			return false;
 		}
+
 		return true;
 	}
 
@@ -1699,10 +1701,10 @@ public class ServiceREST {
 
 		List<RangerPolicy> searchPolicies = searchHivePolicy(hiveService.getId(), dbName, "*", "*");
 
-		boolean isResultUnique = isHivePolicySearchResultUnique(searchPolicies);
+		boolean isResultUnique = filterHivePolicySearchResult(searchPolicies);
 
 		if (!isResultUnique) {
-			LOG.error("hive database policy does not exist - hivePolicy = " + hivePolicy.toString());
+			LOG.error("hive database policy does not exist only one term - hivePolicy = " + hivePolicy.toString());
 			return false;
 		}
 
@@ -1743,7 +1745,7 @@ public class ServiceREST {
 
 		List<RangerPolicy> searchPolicies = searchHivePolicy(hiveService.getId(), dbName, "*", "*");
 
-		boolean isResultUnique = isHivePolicySearchResultUnique(searchPolicies);
+		boolean isResultUnique = filterHivePolicySearchResult(searchPolicies);
 
 		if (!isResultUnique) {
 			LOG.error("exist at least 2 same hive policies,please check hive policy");
