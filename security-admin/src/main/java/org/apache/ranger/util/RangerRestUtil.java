@@ -161,6 +161,7 @@ public class RangerRestUtil {
 
 			List<RangerPolicy> listPolicy = servicePolicies.getPolicies();
 			for (RangerPolicy policy : listPolicy) {
+				logger.debug("policy id ="+policy.getId());
 				if (policy.getIsEnabled()) {
 					Map<String, RangerPolicy.RangerPolicyResource> policyResourceMap = policy.getResources();
 					RangerPolicy.RangerPolicyResource dbResource = policyResourceMap.get("database");
@@ -186,10 +187,13 @@ public class RangerRestUtil {
 							for (String table : tableResource.getValues())
 								for (String column : columnResource.getValues()) {
 									for (RangerPolicy.RangerPolicyItem policyItem : policyItemList) {
+										logger.debug("table name ="+table+policy.toString());
 										ArrayList<String> providerList = generateProvider(serviceName, database, table, column, policyItem.getAccesses());
 										String roleName = "policy" + policy.getId() + "-" + policyItemIndex++;
 										List<String> groupList  = policyItem.getGroups();
-										Map<String, List<String>> memberList = new ConcurrentHashMap<>(policyItem.getGroupMember());
+										Map<String, List<String>> memberList = null;
+										if(null != policyItem.getGroupMember())
+											 memberList = new ConcurrentHashMap<>(policyItem.getGroupMember());
 
 										if (policyItem.getUsers() != null && !policyItem.getUsers().isEmpty()) {
 											String groupName = "group" + "-" + roleName;
