@@ -1416,8 +1416,14 @@ public class ServiceREST {
 					adjustHdfsPolicyByLocation(hdfsServiceId, hiveServiceId, location, null, searchPolicies);
 
 					// 2.only keep these select/drop/alter Permission
+
 					for (RangerPolicy policy : searchPolicies) {
-						onlyRetainedSelectDropAlter(policy);
+
+						boolean isExternal = ServiceREST.EXTERNAL_TABLE_TYPE.equalsIgnoreCase(getPolicyDesc(policy,POLICY_DESC_TABLE_TYPE));
+
+						if(!inProjectPath(policy,null) || isExternal) {
+							onlyRetainedSelectDropAlter(policy);
+						}
 					}
 
 					// 3.newHdfsPolicy may exist or may not exist
