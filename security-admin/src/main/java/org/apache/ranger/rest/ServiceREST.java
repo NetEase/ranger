@@ -1421,7 +1421,7 @@ public class ServiceREST {
 
 						boolean isExternal = ServiceREST.EXTERNAL_TABLE_TYPE.equalsIgnoreCase(getPolicyDesc(policy,POLICY_DESC_TABLE_TYPE));
 
-						if(!inProjectPath(policy,null) || isExternal) {
+						if(!inProjectPath(policy,newLocation) || isExternal) {
 							onlyRetainedSelectDropAlter(policy);
 						}
 					}
@@ -1909,8 +1909,8 @@ public class ServiceREST {
 		policyItem.getGroups().addAll(syncRequest.getGroups());
 
 		boolean inProjectPath = inProjectPath(hiveServiceName, dbName, syncRequest.getLocation());
-		boolean isExternalTabler = syncRequest.getTableType().equalsIgnoreCase(ServiceREST.EXTERNAL_TABLE_TYPE);
-		if (!inProjectPath || isExternalTabler) {
+		boolean isExternalTable = syncRequest.getTableType().equalsIgnoreCase(ServiceREST.EXTERNAL_TABLE_TYPE);
+		if (!inProjectPath || isExternalTable) {
 			policyItem.getAccesses().add(new RangerPolicyItemAccess("select", Boolean.TRUE));
 			policyItem.getAccesses().add(new RangerPolicyItemAccess("drop", Boolean.TRUE));
 			policyItem.getAccesses().add(new RangerPolicyItemAccess("alter", Boolean.TRUE));
