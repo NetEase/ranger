@@ -607,7 +607,7 @@ public class RangerHiveAuthorizer extends RangerHiveAuthorizerBase {
 		return ret;
 	}
 
-	@Override
+
 	public void reinitRoles() throws HiveAccessControlException, HiveAuthzPluginException {
 
 	}
