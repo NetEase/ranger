@@ -29,68 +29,109 @@ public class MetaStoreEventListenerUtils {
 
   static String PARAMETER_LIFECYCLE = "LIFECYCLE";
 
+  static String NOT_SYNC_METASTORE = "NOT_SYNC_METASTORE";
+
   static public boolean needSynchronize(ListenerEvent listenerEvent) {
     String lifecycleParam = "";
-    if (listenerEvent instanceof CreateDatabaseEvent) {
-      CreateDatabaseEvent event = (CreateDatabaseEvent)listenerEvent;
-      Map<String, String> mapParameters = event.getDatabase().getParameters();
-      if (null != mapParameters && mapParameters.containsKey(PARAMETER_LIFECYCLE)) {
-        lifecycleParam = mapParameters.get(PARAMETER_LIFECYCLE);
+    String notSyncMetastore = "";
+    try {
+      if (listenerEvent instanceof CreateDatabaseEvent) {
+        CreateDatabaseEvent event = (CreateDatabaseEvent) listenerEvent;
+        Map<String, String> mapParameters = event.getDatabase().getParameters();
+        if (null != mapParameters && mapParameters.containsKey(PARAMETER_LIFECYCLE)) {
+          lifecycleParam = mapParameters.get(PARAMETER_LIFECYCLE);
+        }
+        if (null != mapParameters && mapParameters.containsKey(NOT_SYNC_METASTORE)) {
+          notSyncMetastore = mapParameters.get(NOT_SYNC_METASTORE);
+        }
+      } else if (listenerEvent instanceof DropDatabaseEvent) {
+        DropDatabaseEvent event = (DropDatabaseEvent) listenerEvent;
+        Map<String, String> mapParameters = event.getDatabase().getParameters();
+        if (null != mapParameters && mapParameters.containsKey(PARAMETER_LIFECYCLE)) {
+          lifecycleParam = mapParameters.get(PARAMETER_LIFECYCLE);
+        }
+        if (null != mapParameters && mapParameters.containsKey(NOT_SYNC_METASTORE)) {
+          notSyncMetastore = mapParameters.get(NOT_SYNC_METASTORE);
+        }
+      } else if (listenerEvent instanceof CreateTableEvent) {
+        CreateTableEvent event = (CreateTableEvent) listenerEvent;
+        Map<String, String> mapParameters = event.getTable().getParameters();
+        if (null != mapParameters && mapParameters.containsKey(PARAMETER_LIFECYCLE)) {
+          lifecycleParam = mapParameters.get(PARAMETER_LIFECYCLE);
+        }
+        if (null != mapParameters && mapParameters.containsKey(NOT_SYNC_METASTORE)) {
+          notSyncMetastore = mapParameters.get(NOT_SYNC_METASTORE);
+        }
+      } else if (listenerEvent instanceof DropTableEvent) {
+        DropTableEvent event = (DropTableEvent) listenerEvent;
+        Map<String, String> mapParameters = event.getTable().getParameters();
+        if (null != mapParameters && mapParameters.containsKey(PARAMETER_LIFECYCLE)) {
+          lifecycleParam = mapParameters.get(PARAMETER_LIFECYCLE);
+        }
+        if (null != mapParameters && mapParameters.containsKey(NOT_SYNC_METASTORE)) {
+          notSyncMetastore = mapParameters.get(NOT_SYNC_METASTORE);
+        }
+      } else if (listenerEvent instanceof AlterTableEvent) {
+        AlterTableEvent event = (AlterTableEvent) listenerEvent;
+        Map<String, String> oldParameters = event.getOldTable().getParameters();
+        if (null != oldParameters && oldParameters.containsKey(PARAMETER_LIFECYCLE)) {
+          lifecycleParam = oldParameters.get(PARAMETER_LIFECYCLE);
+        }
+        if (null != oldParameters && oldParameters.containsKey(NOT_SYNC_METASTORE)) {
+          notSyncMetastore = oldParameters.get(NOT_SYNC_METASTORE);
+        }
+        Map<String, String> newParameters = event.getNewTable().getParameters();
+        if (null != newParameters && newParameters.containsKey(PARAMETER_LIFECYCLE)) {
+          lifecycleParam = lifecycleParam + newParameters.get(PARAMETER_LIFECYCLE);
+        }
+        if (null != oldParameters && oldParameters.containsKey(NOT_SYNC_METASTORE)) {
+          notSyncMetastore = newParameters.get(NOT_SYNC_METASTORE);
+        }
+      } else if (listenerEvent instanceof AddPartitionEvent) {
+        AddPartitionEvent event = (AddPartitionEvent) listenerEvent;
+        Map<String, String> mapParameters = event.getTable().getParameters();
+        if (null != mapParameters && mapParameters.containsKey(PARAMETER_LIFECYCLE)) {
+          lifecycleParam = mapParameters.get(PARAMETER_LIFECYCLE);
+        }
+        if (null != mapParameters && mapParameters.containsKey(NOT_SYNC_METASTORE)) {
+          notSyncMetastore = mapParameters.get(NOT_SYNC_METASTORE);
+        }
+      } else if (listenerEvent instanceof AlterPartitionEvent) {
+        AlterPartitionEvent event = (AlterPartitionEvent) listenerEvent;
+        Map<String, String> mapParameters = event.getTable().getParameters();
+        if (null != mapParameters && mapParameters.containsKey(PARAMETER_LIFECYCLE)) {
+          lifecycleParam = mapParameters.get(PARAMETER_LIFECYCLE);
+        }
+        if (null != mapParameters && mapParameters.containsKey(NOT_SYNC_METASTORE)) {
+          notSyncMetastore = mapParameters.get(NOT_SYNC_METASTORE);
+        }
+      } else if (listenerEvent instanceof DropPartitionEvent) {
+        DropPartitionEvent event = (DropPartitionEvent) listenerEvent;
+        Map<String, String> mapParameters = event.getTable().getParameters();
+        if (null != mapParameters && mapParameters.containsKey(PARAMETER_LIFECYCLE)) {
+          lifecycleParam = mapParameters.get(PARAMETER_LIFECYCLE);
+        }
+        if (null != mapParameters && mapParameters.containsKey(NOT_SYNC_METASTORE)) {
+          notSyncMetastore = mapParameters.get(NOT_SYNC_METASTORE);
+        }
       }
-    } else if (listenerEvent instanceof DropDatabaseEvent) {
-      DropDatabaseEvent event = (DropDatabaseEvent)listenerEvent;
-      Map<String, String> mapParameters = event.getDatabase().getParameters();
-      if (null != mapParameters && mapParameters.containsKey(PARAMETER_LIFECYCLE)) {
-        lifecycleParam = mapParameters.get(PARAMETER_LIFECYCLE);
-      }
-    } else if (listenerEvent instanceof CreateTableEvent) {
-      CreateTableEvent event = (CreateTableEvent)listenerEvent;
-      Map<String, String> mapParameters = event.getTable().getParameters();
-      if (null != mapParameters && mapParameters.containsKey(PARAMETER_LIFECYCLE)) {
-        lifecycleParam = mapParameters.get(PARAMETER_LIFECYCLE);
-      }
-    } else if (listenerEvent instanceof DropTableEvent) {
-      DropTableEvent event = (DropTableEvent)listenerEvent;
-      Map<String, String> mapParameters = event.getTable().getParameters();
-      if (null != mapParameters && mapParameters.containsKey(PARAMETER_LIFECYCLE)) {
-        lifecycleParam = mapParameters.get(PARAMETER_LIFECYCLE);
-      }
-    } else if (listenerEvent instanceof AlterTableEvent) {
-      AlterTableEvent event = (AlterTableEvent)listenerEvent;
-      Map<String, String> oldParameters = event.getOldTable().getParameters();
-      if (null != oldParameters && oldParameters.containsKey(PARAMETER_LIFECYCLE)) {
-        lifecycleParam = oldParameters.get(PARAMETER_LIFECYCLE);
-      }
-      Map<String, String> newParameters = event.getOldTable().getParameters();
-      if (null != newParameters && newParameters.containsKey(PARAMETER_LIFECYCLE)) {
-        lifecycleParam = lifecycleParam + newParameters.get(PARAMETER_LIFECYCLE);
-      }
-    } else if (listenerEvent instanceof AddPartitionEvent) {
-      AddPartitionEvent event = (AddPartitionEvent)listenerEvent;
-      Map<String, String> mapParameters = event.getTable().getParameters();
-      if (null != mapParameters && mapParameters.containsKey(PARAMETER_LIFECYCLE)) {
-        lifecycleParam = mapParameters.get(PARAMETER_LIFECYCLE);
-      }
-    } else if (listenerEvent instanceof AlterPartitionEvent) {
-      AlterPartitionEvent event = (AlterPartitionEvent)listenerEvent;
-      Map<String, String> mapParameters = event.getTable().getParameters();
-      if (null != mapParameters && mapParameters.containsKey(PARAMETER_LIFECYCLE)) {
-        lifecycleParam = mapParameters.get(PARAMETER_LIFECYCLE);
-      }
-    } else if (listenerEvent instanceof DropPartitionEvent) {
-      DropPartitionEvent event = (DropPartitionEvent)listenerEvent;
-      Map<String, String> mapParameters = event.getTable().getParameters();
-      if (null != mapParameters && mapParameters.containsKey(PARAMETER_LIFECYCLE)) {
-        lifecycleParam = mapParameters.get(PARAMETER_LIFECYCLE);
-      }
-    }
 
-    // When the lifecycle parameters are empty, no synchronization is required
-    if (null == lifecycleParam || lifecycleParam.isEmpty()) {
+      // When the lifecycle parameters are empty, synchronization is required
+      if (null != notSyncMetastore && notSyncMetastore.trim().equalsIgnoreCase("on")) {
+        LOGGER.info("notSyncMetastore = " + notSyncMetastore);
+        return false;
+      } else {
+        if (null == lifecycleParam || lifecycleParam.isEmpty()) {
+          return true;
+        } else {
+          LOGGER.info("lifecycleParam = " + lifecycleParam);
+          return false;
+        }
+      }
+    } catch (Throwable e) {
+      LOGGER.info("catch a Exception " + e);
+      LOGGER.info("return needSync true by default");
       return true;
-    } else {
-      LOGGER.info("lifecycleParam = " + lifecycleParam);
-      return false;
     }
   }
 }

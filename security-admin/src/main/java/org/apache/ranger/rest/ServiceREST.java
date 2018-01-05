@@ -1562,6 +1562,10 @@ public class ServiceREST {
 			return;
 		}
 
+		if (null == dbResource || null == tabResource ) {
+			return;
+		}
+
 		String dbName = dbResource.getValues().get(0);
 		String tabName = tabResource.getValues().get(0);
 		if (dbName.trim().isEmpty() || dbName.equalsIgnoreCase("*")
