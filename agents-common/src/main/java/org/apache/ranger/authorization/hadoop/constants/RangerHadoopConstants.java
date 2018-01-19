@@ -92,6 +92,13 @@ public class RangerHadoopConstants {
 	public static final String RANGER_ZK_MS_CHANGELOG_PATH        = "ranger.zookeeper.metastore.changelog.path";
 	public static final String RANGER_ZK_MS_WRITE_SHELL_PATH 		  = "ranger.zookeeper.metastore.write.shell.path";
 
+	public static final String RANGER_MS_CHANGELOG_JDBC_NAME 		  = "ranger.metastore.changelog.jdbc.name";
+	public static final String RANGER_MS_CHANGELOG_JDBC_URL 		  = "ranger.metastore.changelog.jdbc.url";
+	public static final String RANGER_MS_CHANGELOG_JDBC_USERNAME  = "ranger.metastore.changelog.jdbc.username";
+	public static final String RANGER_MS_CHANGELOG_JDBC_PASSWORD  = "ranger.metastore.changelog.jdbc.password";
+	public static final String RANGER_MS_CHANGELOG_TABLE_NAME     = "ranger.metastore.changelog.table.name";
+	public static final String RANGER_MS_CHANGELOG_MONITOR_SHELL  = "ranger.metastore.changelog.monitor.shell";
+
 	public static final String CHECK_PRIVILEGE_URI_ACCESS_ALLOW   = "check.privilege.uri.access.allow";
 	public static final String CHECK_PRIVILEGE_DFS_COMMAND        = "check.privilege.dfs.command";
 

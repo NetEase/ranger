@@ -23,7 +23,7 @@
   </parent>
   <groupId>org.apache.ranger</groupId>
   <artifactId>ranger</artifactId>
-    <version>0.5.4-4.9.5-hotfix</version>
+    <version>0.5-mammut414</version>
   <description>Security for Enforcing Enterprise Policies</description>
   <packaging>pom</packaging>
   <name>ranger</name>
@@ -165,6 +165,7 @@
 		<knox.gateway.version>0.6.0</knox.gateway.version>
 		<local.lib.dir>${project.basedir}/../lib/local</local.lib.dir>
 		<log4j.version>1.2.17</log4j.version>
+        <mybatis.version>3.2.8</mybatis.version>
 		<mysql-connector-java.version>5.1.39</mysql-connector-java.version>
 		<noggit.version>0.6</noggit.version>
 		<owasp-java-html-sanitizer.version>r239</owasp-java-html-sanitizer.version>
