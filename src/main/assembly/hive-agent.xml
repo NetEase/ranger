@@ -52,6 +52,7 @@
 		    		<include>org.apache.httpcomponents:httpmime:jar:${httpcomponent.httpmime.version}</include>
 		   			<include>org.noggit:noggit:jar:${noggit.version}</include>
                     <include>mysql:mysql-connector-java:jar:${mysql-connector-java.version}</include>
+                    <include>org.mybatis:mybatis:jar:${mybatis.version}</include>
                 </includes>
                 <unpack>false</unpack>
             </dependencySet>
@@ -63,7 +64,7 @@
 	<include>org.apache.ranger:ranger-plugins-audit</include>
 	<include>org.apache.ranger:ranger-plugins-cred</include>
 	<include>org.apache.ranger:ranger-plugins-common</include>
-	<include>org.apache.ranger:ranger-hive-plugin</include>
+    <include>org.apache.ranger:ranger-hive-plugin</include>
      </includes>
     </moduleSet>
     <moduleSet>
