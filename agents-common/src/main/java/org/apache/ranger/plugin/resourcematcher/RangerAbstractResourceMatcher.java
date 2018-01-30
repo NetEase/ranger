@@ -92,7 +92,9 @@ public abstract class RangerAbstractResourceMatcher implements RangerResourceMat
 		}
 
 		if(policyValues.isEmpty()) {
-			isMatchAny = true;
+			// policy valuse must have value
+			LOG.error("policy valuse must have value !!!" + this.toString());
+			isMatchAny = false;
 		}
 
 		if(LOG.isDebugEnabled()) {

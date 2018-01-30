@@ -80,6 +80,12 @@ public class RangerPathResourceMatcher extends RangerAbstractResourceMatcher {
 		boolean ret = false;
 		boolean allValuesRequested = isAllValuesRequested(resource);
 
+		if(policyValues.isEmpty()) {
+			// policy valuse must have value
+			LOG.error("policy valuse must have value !!!" + this.toString());
+			return false;
+		}
+
 		if(allValuesRequested || isMatchAny) {
 			ret = isMatchAny;
 		} else {
