@@ -436,13 +436,14 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
 
           int limit1 = writeZkBatchSize_;
           while ((tUpdateDelta = queue.poll()) != null) {
+            tUpdateDeltaList.add(tUpdateDelta);
+
             if (limit1-- < 0) {
               LOGGER.warn("tUpdateDeltaQueue_.size = " + queue.size() + " > " + writeZkBatchSize_);
               break;
+            } else {
+              LOGGER.info("SaveMetaStoreChangeRunnable() queue get > " + tUpdateDelta.toString());
             }
-            LOGGER.info("SaveMetaStoreChangeRunnable() queue get > " + tUpdateDelta.toString());
-
-            tUpdateDeltaList.add(tUpdateDelta);
           }
 
           int limit2 = writeZkBatchSize_;

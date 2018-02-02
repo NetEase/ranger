@@ -168,7 +168,7 @@ public class RangerServicePoliciesCache {
 
 	private class ServicePoliciesWrapper {
 		ServicePolicies servicePolicies;
-		Date updateTime = null;
+		Date updateTime = new Date();
 		long longestDbLoadTimeInMs = -1;
 
 		ReentrantLock lock = new ReentrantLock();
@@ -193,6 +193,14 @@ public class RangerServicePoliciesCache {
 			boolean ret = false;
 
 			try {
+				Date nowTime = new Date();
+				if ((nowTime.getTime() - updateTime.getTime() < waitTimeInSeconds*1000) || lock.isLocked()) {
+					LOG.info("getLatestOrCached update time < " + waitTimeInSeconds + " seconds or is locked");
+					return false;
+				}
+				LOG.info("getLatestOrCached update time > " + waitTimeInSeconds + " seconds, need refreshe ...");
+				updateTime = new Date();
+
 				ret = lock.tryLock(waitTimeInSeconds, TimeUnit.SECONDS);
 				if (ret) {
 					LOG.info(Thread.currentThread().getName() + " obtain lock here ...");
@@ -211,47 +219,29 @@ public class RangerServicePoliciesCache {
 		}
 
 		void getLatest(String serviceName, ServiceStore serviceStore) throws Exception {
+			LOG.info("==> ServicePoliciesWrapper.getLatest(" + serviceName + ")");
 
-			if (LOG.isDebugEnabled()) {
-				LOG.debug("==> ServicePoliciesWrapper.getLatest(" + serviceName + ")");
+			long startTimeMs = System.currentTimeMillis();
+
+			ServicePolicies servicePoliciesFromDb = serviceStore.getServicePolicies(serviceName);
+
+			long dbLoadTime = System.currentTimeMillis() - startTimeMs;
+
+			if (dbLoadTime > longestDbLoadTimeInMs) {
+				longestDbLoadTimeInMs = dbLoadTime;
 			}
+			updateTime = new Date();
 
-			if (LOG.isDebugEnabled()) {
-				LOG.debug("Found ServicePolicies in-cache : " + (servicePolicies != null));
-			}
-
-			Long servicePolicyVersionInDb = serviceStore.getServicePolicyVersion(serviceName);
-
-
-			if (servicePolicies == null || servicePolicyVersionInDb == null || !servicePolicyVersionInDb.equals(servicePolicies.getPolicyVersion())) {
-				if (LOG.isDebugEnabled()) {
-					LOG.debug("loading servicePolicies from db ... cachedServicePoliciesVersion=" + (servicePolicies != null ? servicePolicies.getPolicyVersion() : null) + ", servicePolicyVersionInDb=" + servicePolicyVersionInDb);
+			if (servicePoliciesFromDb != null) {
+				if (servicePoliciesFromDb.getPolicyVersion() == null) {
+					servicePoliciesFromDb.setPolicyVersion(0L);
 				}
-
-				long startTimeMs = System.currentTimeMillis();
-
-				ServicePolicies servicePoliciesFromDb = serviceStore.getServicePolicies(serviceName);
-
-				long dbLoadTime = System.currentTimeMillis() - startTimeMs;
-
-				if (dbLoadTime > longestDbLoadTimeInMs) {
-					longestDbLoadTimeInMs = dbLoadTime;
-				}
-				updateTime = new Date();
-
-				if (servicePoliciesFromDb != null) {
-					if (servicePoliciesFromDb.getPolicyVersion() == null) {
-						servicePoliciesFromDb.setPolicyVersion(0L);
-					}
-					servicePolicies = servicePoliciesFromDb;
-					// do not use this function any more, return description etc.
-					// pruneUnusedAttributes();
-				}
+				servicePolicies = servicePoliciesFromDb;
+				// do not use this function any more, return description etc.
+				// pruneUnusedAttributes();
 			}
 
-			if (LOG.isDebugEnabled()) {
-				LOG.debug("<== ServicePoliciesWrapper.getLatest(" + serviceName + ")");
-			}
+			LOG.info("<== ServicePoliciesWrapper.getLatest(" + serviceName + ")");
 		}
 
 		private void pruneUnusedAttributes() {

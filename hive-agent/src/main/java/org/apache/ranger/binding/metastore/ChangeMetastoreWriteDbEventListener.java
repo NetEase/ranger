@@ -167,8 +167,6 @@ public class ChangeMetastoreWriteDbEventListener extends MetaStoreEventListener 
 
     LOGGER.info("==> insertImpalaMetastoreUpdateLog(" + tUpdateDeltas.size() + ")");
 
-    callMonitorShell();
-
     SqlSession sqlSession = null;
     try {
       sqlSession = sqlSessionFactory.openSession();

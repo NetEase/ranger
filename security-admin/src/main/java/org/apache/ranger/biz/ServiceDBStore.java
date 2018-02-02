@@ -1693,9 +1693,7 @@ public class ServiceDBStore implements ServiceStore {
 
 	@Override
 	public ServicePolicies getServicePoliciesIfUpdated(String serviceName, Long lastKnownVersion) throws Exception {
-		if (LOG.isDebugEnabled()) {
-			LOG.debug("==> ServiceDBStore.getServicePoliciesIfUpdated(" + serviceName + ", " + lastKnownVersion + ")");
-		}
+		LOG.info("==> ServiceDBStore.getServicePoliciesIfUpdated(" + serviceName + ", " + lastKnownVersion + ")");
 
 		ServicePolicies ret = null;
 
@@ -1883,6 +1881,11 @@ public class ServiceDBStore implements ServiceStore {
 	}
 
 	private void updatePolicyVersion(RangerService service) throws Exception {
+		// don't update version
+		if (true) {
+			return;
+		}
+
 		if(service == null || service.getId() == null) {
 			return;
 		}

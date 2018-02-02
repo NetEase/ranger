@@ -100,7 +100,6 @@ public class RangerBasePlugin {
 		init();
 	}
 
-
 	public void init() {
 		cleanup();
 
