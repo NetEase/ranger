@@ -19,19 +19,20 @@
 
 package org.apache.ranger.biz;
 
-import java.util.*;
-import java.util.Map.Entry;
-
-import javax.annotation.PostConstruct;
-
-import org.apache.commons.httpclient.URI;
-import org.apache.commons.httpclient.URIException;
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.hadoop.fs.FileSystem;
-import org.apache.hadoop.fs.Path;
-import org.apache.ranger.common.*;
+import org.apache.ranger.common.AppConstants;
+import org.apache.ranger.common.ContextUtil;
+import org.apache.ranger.common.DateUtil;
+import org.apache.ranger.common.MessageEnums;
+import org.apache.ranger.common.PasswordUtils;
+import org.apache.ranger.common.RESTErrorUtil;
+import org.apache.ranger.common.RangerFactory;
+import org.apache.ranger.common.RangerServicePoliciesCache;
+import org.apache.ranger.common.StringUtil;
+import org.apache.ranger.common.UserSessionBase;
 import org.apache.ranger.db.RangerDaoManager;
 import org.apache.ranger.db.XXAccessTypeDefDao;
 import org.apache.ranger.db.XXAccessTypeDefGrantsDao;
@@ -90,13 +91,9 @@ import org.apache.ranger.plugin.model.RangerServiceDef.RangerPolicyConditionDef;
 import org.apache.ranger.plugin.model.RangerServiceDef.RangerResourceDef;
 import org.apache.ranger.plugin.model.RangerServiceDef.RangerServiceConfigDef;
 import org.apache.ranger.plugin.model.validation.RangerServiceDefHelper;
-import org.apache.ranger.plugin.policyengine.RangerAccessResource;
-import org.apache.ranger.plugin.policyengine.RangerAccessResourceImpl;
 import org.apache.ranger.plugin.store.EmbeddedServiceDefsUtil;
 import org.apache.ranger.plugin.store.ServicePredicateUtil;
 import org.apache.ranger.plugin.store.ServiceStore;
-import org.apache.ranger.plugin.util.GrantRevokeRequest;
-import org.apache.ranger.plugin.util.HiveOperationType;
 import org.apache.ranger.plugin.util.SearchFilter;
 import org.apache.ranger.plugin.util.ServicePolicies;
 import org.apache.ranger.service.RangerAuditFields;
@@ -120,9 +117,15 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
-import org.apache.commons.collections.CollectionUtils ;
 
-import static com.sun.tools.javac.jvm.ByteCodes.ret;
+import javax.annotation.PostConstruct;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 
 
 @Component
@@ -1709,9 +1712,9 @@ public class ServiceDBStore implements ServiceStore {
 			ret = RangerServicePoliciesCache.getInstance().getServicePolicies(serviceName, this);
 		}
 
-		if (ret != null && lastKnownVersion != null && lastKnownVersion.equals(ret.getPolicyVersion())) {
+		if (lastKnownVersion != null && lastKnownVersion.equals(ret.getPolicyVersion())) {
 			// ServicePolicies are not changed
-			ret = null;
+			ret = RangerServicePoliciesCache.getInstance().getServicePolicies(serviceName, this);
 		}
 
 		if (LOG.isDebugEnabled()) {
@@ -1886,6 +1889,7 @@ public class ServiceDBStore implements ServiceStore {
 		if(service == null || service.getId() == null) {
 			return;
 		}
+		if (true) return;
 
 		XXServiceDao serviceDao = daoMgr.getXXService();
 
