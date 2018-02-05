@@ -2664,7 +2664,10 @@ public class ServiceREST {
 				httpCode = HttpServletResponse.SC_BAD_REQUEST;
 				logMsg   = excp.getMessage();
 			} finally {
-				createPolicyDownloadAudit(serviceName, lastKnownVersion, pluginId, ret, httpCode, request);
+
+				if (httpCode != HttpServletResponse.SC_OK) {
+					createPolicyDownloadAudit(serviceName, lastKnownVersion, pluginId, ret, httpCode, request);
+				}
 
 				RangerPerfTracer.log(perf);
 			}
