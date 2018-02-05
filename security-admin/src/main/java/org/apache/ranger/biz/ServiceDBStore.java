@@ -1712,7 +1712,7 @@ public class ServiceDBStore implements ServiceStore {
 			ret = RangerServicePoliciesCache.getInstance().getServicePolicies(serviceName, this);
 		}
 
-		if (lastKnownVersion != null && lastKnownVersion.equals(ret.getPolicyVersion())) {
+		if (lastKnownVersion != null) {
 			// ServicePolicies are not changed
 			ret = RangerServicePoliciesCache.getInstance().getServicePolicies(serviceName, this);
 		}
