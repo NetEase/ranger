@@ -21,18 +21,19 @@ package org.apache.ranger.common;
 
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.StringUtils;
-import org.apache.ranger.authorization.hadoop.config.RangerConfiguration;
-import org.apache.ranger.entity.XXService;
-import org.apache.ranger.plugin.model.RangerPolicy;
-import org.apache.ranger.plugin.store.ServiceStore;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.ranger.authorization.hadoop.config.RangerConfiguration;
+import org.apache.ranger.plugin.model.RangerPolicy;
+import org.apache.ranger.plugin.store.ServiceStore;
 import org.apache.ranger.plugin.util.ServicePolicies;
 
-import com.jcraft.jsch.Logger;
-
-import java.util.*;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -304,7 +305,7 @@ public class RangerServicePoliciesCache {
 			Long servicePolicyVersionInDb = serviceStore.getServicePolicyVersion(policy.getService());
 
 			// update policy in cache
-			if (servicePolicies != null && !servicePolicyVersionInDb.equals(servicePolicies.getPolicyVersion())) {
+			if (servicePolicies != null) {
 				if (LOG.isDebugEnabled()) {
 					LOG.debug("loading servicePolicies from db ... cachedServicePoliciesVersion=" + (servicePolicies != null ? servicePolicies.getPolicyVersion() : null) + ", servicePolicyVersionInDb=" + servicePolicyVersionInDb);
 				}
