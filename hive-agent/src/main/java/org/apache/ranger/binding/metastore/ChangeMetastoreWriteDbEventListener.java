@@ -214,9 +214,6 @@ public class ChangeMetastoreWriteDbEventListener extends MetaStoreEventListener 
       sqlSession.close();
     }
 
-    // test
-    delImpalaMetastoreUpdateLog();
-
     return true;
   }
 
