@@ -19,20 +19,19 @@
 
 package org.apache.ranger.plugin.util;
 
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.Reader;
-import java.io.Writer;
-
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.ranger.admin.client.RangerAdminClient;
 import org.apache.ranger.plugin.service.RangerBasePlugin;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.Reader;
+import java.io.Writer;
 
 
 public class PolicyRefresher extends Thread {
@@ -225,9 +224,11 @@ public class PolicyRefresher extends Thread {
 					svcPolicies.setServiceName(serviceName);
 				}
 
-				LOG.info("PolicyRefresher(serviceName=" + serviceName + "): found updated version. lastKnownVersion=" + lastKnownVersion + "; newVersion=" + newVersion);
+                if (lastKnownVersion != newVersion) {
+					LOG.info("PolicyRefresher(serviceName=" + serviceName + "): found updated version. lastKnownVersion=" + lastKnownVersion + "; newVersion=" + newVersion);
+				}
 
-			   	lastKnownVersion = newVersion;
+				lastKnownVersion = newVersion;
 
 			} else {
 				if(LOG.isDebugEnabled()) {
