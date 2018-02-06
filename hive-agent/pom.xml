@@ -136,5 +136,10 @@
           <artifactId>curator-recipes</artifactId>
           <version>${curator.version}</version>
       </dependency>
+     <dependency>
+         <groupId>org.apache.solr</groupId>
+         <artifactId>solr-solrj</artifactId>
+         <version>${solr.version}</version>
+     </dependency>
   </dependencies>
 </project>

@@ -50,6 +50,8 @@
 					<include>org.eclipse.persistence:eclipselink</include>
                     <include>org.eclipse.persistence:javax.persistence</include>
 		    		<include>org.apache.httpcomponents:httpmime:jar:${httpcomponent.httpmime.version}</include>
+                    <include>org.apache.httpcomponents:httpclient:jar:${httpcomponents.httpclient.version}</include>
+                    <include>org.apache.httpcomponents:httpcore:jar:${httpcomponents.httpcore.version}</include>
 		   			<include>org.noggit:noggit:jar:${noggit.version}</include>
                     <include>mysql:mysql-connector-java:jar:${mysql-connector-java.version}</include>
                     <include>org.mybatis:mybatis:jar:${mybatis.version}</include>

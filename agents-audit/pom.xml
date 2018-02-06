@@ -67,9 +67,9 @@
       <version>${kafka.version}</version>
     </dependency>
     <dependency>
-      <groupId>org.apache.ranger</groupId>
-      <artifactId>ranger_solrj</artifactId>
-      <version>${project.version}</version>
+      <groupId>org.apache.solr</groupId>
+      <artifactId>solr-solrj</artifactId>
+      <version>${solr.version}</version>
     </dependency>
     <dependency>
       <groupId>org.apache.httpcomponents</groupId>
