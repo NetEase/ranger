@@ -55,6 +55,7 @@
 		   			<include>org.noggit:noggit:jar:${noggit.version}</include>
                     <include>mysql:mysql-connector-java:jar:${mysql-connector-java.version}</include>
                     <include>org.mybatis:mybatis:jar:${mybatis.version}</include>
+                    <include>org.apache.solr:solr-solrj:jar:${solr.version}</include>
                 </includes>
                 <unpack>false</unpack>
             </dependencySet>

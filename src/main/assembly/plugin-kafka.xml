@@ -74,6 +74,7 @@
 							<include>org.codehaus.jackson:jackson-mapper-asl</include>
 							<include>org.codehaus.jackson:jackson-xc</include>
 							<include>mysql:mysql-connector-java:jar:${mysql-connector-java.version}</include>
+							<include>org.apache.solr:solr-solrj:jar:${solr.version}</include>
 						</includes>
 					</dependencySet>
 					<dependencySet>
