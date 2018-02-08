@@ -21,18 +21,19 @@ package org.apache.ranger.common;
 
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.StringUtils;
-import org.apache.ranger.authorization.hadoop.config.RangerConfiguration;
-import org.apache.ranger.entity.XXService;
-import org.apache.ranger.plugin.model.RangerPolicy;
-import org.apache.ranger.plugin.store.ServiceStore;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+import org.apache.ranger.authorization.hadoop.config.RangerConfiguration;
+import org.apache.ranger.plugin.model.RangerPolicy;
+import org.apache.ranger.plugin.store.ServiceStore;
 import org.apache.ranger.plugin.util.ServicePolicies;
 
-import com.jcraft.jsch.Logger;
-
-import java.util.*;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -168,7 +169,7 @@ public class RangerServicePoliciesCache {
 
 	private class ServicePoliciesWrapper {
 		ServicePolicies servicePolicies;
-		Date updateTime = new Date();
+		Date updateTime = null;
 		long longestDbLoadTimeInMs = -1;
 
 		ReentrantLock lock = new ReentrantLock();
@@ -193,14 +194,6 @@ public class RangerServicePoliciesCache {
 			boolean ret = false;
 
 			try {
-				Date nowTime = new Date();
-				if ((nowTime.getTime() - updateTime.getTime() < waitTimeInSeconds*1000) || lock.isLocked()) {
-					LOG.info("getLatestOrCached update time < " + waitTimeInSeconds + " seconds or is locked");
-					return false;
-				}
-				LOG.info("getLatestOrCached update time > " + waitTimeInSeconds + " seconds, need refreshe ...");
-				updateTime = new Date();
-
 				ret = lock.tryLock(waitTimeInSeconds, TimeUnit.SECONDS);
 				if (ret) {
 					LOG.info(Thread.currentThread().getName() + " obtain lock here ...");
@@ -219,29 +212,47 @@ public class RangerServicePoliciesCache {
 		}
 
 		void getLatest(String serviceName, ServiceStore serviceStore) throws Exception {
-			LOG.info("==> ServicePoliciesWrapper.getLatest(" + serviceName + ")");
 
-			long startTimeMs = System.currentTimeMillis();
-
-			ServicePolicies servicePoliciesFromDb = serviceStore.getServicePolicies(serviceName);
-
-			long dbLoadTime = System.currentTimeMillis() - startTimeMs;
-
-			if (dbLoadTime > longestDbLoadTimeInMs) {
-				longestDbLoadTimeInMs = dbLoadTime;
+			if (LOG.isDebugEnabled()) {
+				LOG.debug("==> ServicePoliciesWrapper.getLatest(" + serviceName + ")");
 			}
-			updateTime = new Date();
 
-			if (servicePoliciesFromDb != null) {
-				if (servicePoliciesFromDb.getPolicyVersion() == null) {
-					servicePoliciesFromDb.setPolicyVersion(0L);
+			if (LOG.isDebugEnabled()) {
+				LOG.debug("Found ServicePolicies in-cache : " + (servicePolicies != null));
+			}
+
+			Long servicePolicyVersionInDb = serviceStore.getServicePolicyVersion(serviceName);
+
+
+			if (servicePolicies == null || servicePolicyVersionInDb == null || !servicePolicyVersionInDb.equals(servicePolicies.getPolicyVersion())) {
+				if (LOG.isDebugEnabled()) {
+					LOG.debug("loading servicePolicies from db ... cachedServicePoliciesVersion=" + (servicePolicies != null ? servicePolicies.getPolicyVersion() : null) + ", servicePolicyVersionInDb=" + servicePolicyVersionInDb);
 				}
-				servicePolicies = servicePoliciesFromDb;
-				// do not use this function any more, return description etc.
-				// pruneUnusedAttributes();
+
+				long startTimeMs = System.currentTimeMillis();
+
+				ServicePolicies servicePoliciesFromDb = serviceStore.getServicePolicies(serviceName);
+
+				long dbLoadTime = System.currentTimeMillis() - startTimeMs;
+
+				if (dbLoadTime > longestDbLoadTimeInMs) {
+					longestDbLoadTimeInMs = dbLoadTime;
+				}
+				updateTime = new Date();
+
+				if (servicePoliciesFromDb != null) {
+					if (servicePoliciesFromDb.getPolicyVersion() == null) {
+						servicePoliciesFromDb.setPolicyVersion(0L);
+					}
+					servicePolicies = servicePoliciesFromDb;
+					// do not use this function any more, return description etc.
+					// pruneUnusedAttributes();
+				}
 			}
 
-			LOG.info("<== ServicePoliciesWrapper.getLatest(" + serviceName + ")");
+			if (LOG.isDebugEnabled()) {
+				LOG.debug("<== ServicePoliciesWrapper.getLatest(" + serviceName + ")");
+			}
 		}
 
 		private void pruneUnusedAttributes() {
@@ -288,24 +299,24 @@ public class RangerServicePoliciesCache {
 
 			return sb.toString();
 		}
-		
+
 		void updatePolicy (String action, RangerPolicy policy, ServiceStore serviceStore) {
-			
+
 			Long servicePolicyVersionInDb = serviceStore.getServicePolicyVersion(policy.getService());
 
 			// update policy in cache
-			if (servicePolicies != null && !servicePolicyVersionInDb.equals(servicePolicies.getPolicyVersion())) {
+			if (servicePolicies != null) {
 				if (LOG.isDebugEnabled()) {
 					LOG.debug("loading servicePolicies from db ... cachedServicePoliciesVersion=" + (servicePolicies != null ? servicePolicies.getPolicyVersion() : null) + ", servicePolicyVersionInDb=" + servicePolicyVersionInDb);
 				}
-				
+
 				if (action.equals("create")) {
 					servicePolicies.getPolicies().add(policy);
 				} else {
-					
+
 					boolean shouldAddPolicy = false;
 					Iterator<RangerPolicy> iter = servicePolicies.getPolicies().iterator();
-					
+
 					while (iter.hasNext()) {
 						RangerPolicy oldPolicy = iter.next();
 						if (oldPolicy.getId().equals(policy.getId())) {
@@ -315,25 +326,25 @@ public class RangerServicePoliciesCache {
 							} else if (action.equals("delete")) {
 								iter.remove();
 							}
-							
+
 							break;
 						}
 					}
-					
+
 					if (shouldAddPolicy) {
 						servicePolicies.getPolicies().add(policy);
 					}
 				}
-				
+
 				servicePolicies.setPolicyVersion(servicePolicyVersionInDb);
 			}
 		}
 	}
-	
+
 	public void updatePolicyInCache (String action, RangerPolicy policy, ServiceStore serviceStore) {
-		
+
 		String serviceName = policy.getService();
-		
+
 		ServicePoliciesWrapper servicePoliciesWrapper = null;
 
 		synchronized (this) {
@@ -343,7 +354,7 @@ public class RangerServicePoliciesCache {
 				servicePoliciesWrapper = new ServicePoliciesWrapper();
 				servicePoliciesMap.put(serviceName, servicePoliciesWrapper);
 			}
-			
+
 			servicePoliciesWrapper.updatePolicy(action, policy, serviceStore);
 		}
 	}
