@@ -98,6 +98,7 @@ public class RangerHadoopConstants {
 	public static final String RANGER_MS_CHANGELOG_JDBC_PASSWORD  = "ranger.metastore.changelog.jdbc.password";
 	public static final String RANGER_MS_CHANGELOG_TABLE_NAME     = "ranger.metastore.changelog.table.name";
 	public static final String RANGER_MS_CHANGELOG_MONITOR_SHELL  = "ranger.metastore.changelog.monitor.shell";
+	public static final String RANGER_MS_CHANGELOG_PART2TABLE_MERGE_NUM  		= "ranger.metastore.changelog.part2table.merge.num";
 
 	public static final String CHECK_PRIVILEGE_URI_ACCESS_ALLOW   = "check.privilege.uri.access.allow";
 	public static final String CHECK_PRIVILEGE_DFS_COMMAND        = "check.privilege.dfs.command";

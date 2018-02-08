@@ -22,9 +22,12 @@ import com.google.common.base.Preconditions;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hive.common.FileUtils;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.metastore.MetaStoreEventListener;
+import org.apache.hadoop.hive.metastore.api.FieldSchema;
 import org.apache.hadoop.hive.metastore.api.MetaException;
+import org.apache.hadoop.hive.metastore.api.Partition;
 import org.apache.hadoop.hive.metastore.events.*;
 import org.apache.ibatis.session.SqlSession;
 import org.apache.ranger.authorization.hadoop.config.RangerConfiguration;
@@ -56,6 +59,7 @@ public class ChangeMetastoreWriteDbEventListener extends MetaStoreEventListener 
   private String hostName_ = "";
   private int asyncInterval_ = 500;
   private int AutoClearHour = 24;
+  private int part2tableMergeNum = 100;
   private String MonitorShell = "";
   private String ChangelogTabelName = "";
 
@@ -81,6 +85,7 @@ public class ChangeMetastoreWriteDbEventListener extends MetaStoreEventListener 
         RangerHadoopConstants.RANGER_MS_CHANGELOG_TABLE_NAME + " not config");
 
     AutoClearHour = RangerConfiguration.getInstance().getInt(RangerHadoopConstants.RANGER_ZK_MS_CHANGELOG_AUTO_CLEAR_TIME, 24);
+    part2tableMergeNum = RangerConfiguration.getInstance().getInt(RangerHadoopConstants.RANGER_MS_CHANGELOG_PART2TABLE_MERGE_NUM, 100);
     MonitorShell = RangerConfiguration.getInstance().get(RangerHadoopConstants.RANGER_MS_CHANGELOG_MONITOR_SHELL, "");
     ChangelogTabelName = RangerConfiguration.getInstance().get(RangerHadoopConstants.RANGER_MS_CHANGELOG_TABLE_NAME, "");
     if (ChangelogTabelName.isEmpty()) {
@@ -493,9 +498,50 @@ public class ChangeMetastoreWriteDbEventListener extends MetaStoreEventListener 
       return;
     }
 
-    // the DROP TABLE or TRUNCATE TABLE operation triggers a large number of partition events
+    List<String> partCols = new ArrayList<>();
+    List<List<String>> partValsList = new ArrayList<>();
+    if (partitionEvent != null && partitionEvent.getTable().getPartitionKeysIterator() != null) {
+      Iterator<FieldSchema> iter = partitionEvent.getTable().getPartitionKeysIterator();
+      while (iter.hasNext()) {
+        FieldSchema fieldSchema = iter.next();
+        String partName = fieldSchema.getName();
+        partCols.add(partName);
+      }
+    }
+
+    if (partitionEvent != null && partitionEvent.getPartitionIterator() != null) {
+      Iterator<Partition> it = partitionEvent.getPartitionIterator();
+      while (it.hasNext()) {
+        Partition part = it.next();
+        partValsList.add(part.getValues());
+      }
+    }
+
+    LOGGER.info("partition change number = " + partValsList.size());
     String dbName = partitionEvent.getTable().getDbName();
     String tableName = partitionEvent.getTable().getTableName();
+    if (partValsList.size() > part2tableMergeNum) {
+      part2tableEvent(dbName, tableName);
+    } else {
+      for (List<String> partVals : partValsList) {
+        String partName = FileUtils.makePartName(partCols, partVals);
+        TUpdateDelta tUpdateDelta = new TUpdateDelta();
+        tUpdateDelta.setId(curretnTUpdateDeltaId_++);
+        tUpdateDelta.setDatabase(dbName);
+        tUpdateDelta.setTable(tableName);
+        tUpdateDelta.setPartition(partName);
+        tUpdateDelta.setOperation(TOperation.ADD_PARTITION);
+        tUpdateDeltaQueue_.add(tUpdateDelta);
+      }
+    }
+
+    LOGGER.info("onAddPartition() <<<<<<");
+  }
+
+  private void part2tableEvent(String dbName, String tableName) throws MetaException {
+    LOGGER.info("part2tableEvent() >>>");
+
+    // the DROP TABLE or TRUNCATE TABLE operation triggers a large number of partition events
     TUpdateDelta tUpdateDelta = new TUpdateDelta();
     tUpdateDelta.setId(curretnTUpdateDeltaId_++);
     tUpdateDelta.setDatabase(dbName);
@@ -506,11 +552,11 @@ public class ChangeMetastoreWriteDbEventListener extends MetaStoreEventListener 
 
     String key = dbName + "--1234567890--" + tableName;
     if (false == mapPartitionUpdate.containsKey(key)) {
-      LOGGER.info("onAddPartition() " + tUpdateDelta.toString());
+      LOGGER.info("part2tableEvent() " + tUpdateDelta.toString());
       mapPartitionUpdate.put(key, tUpdateDelta);
     }
 
-    LOGGER.info("onAddPartition() <<<<<<");
+    LOGGER.info("part2tableEvent() <<<");
   }
 
   @Override
@@ -525,22 +571,37 @@ public class ChangeMetastoreWriteDbEventListener extends MetaStoreEventListener 
       return;
     }
 
-    // the DROP TABLE or TRUNCATE TABLE operation triggers a large number of partition events
+    List<String> partCols = new ArrayList<>();
+    String newPartName = "", oldPartName = "";
+    if (partitionEvent != null && partitionEvent.getTable().getPartitionKeysIterator() != null) {
+      Iterator<FieldSchema> iter = partitionEvent.getTable().getPartitionKeysIterator();
+      while (iter.hasNext()) {
+        FieldSchema fieldSchema = iter.next();
+        String partName = fieldSchema.getName();
+        partCols.add(partName);
+      }
+    }
+
+    if (partitionEvent != null && partitionEvent.getNewPartition() != null) {
+      List<String> partVals = partitionEvent.getNewPartition().getValues();
+      newPartName = FileUtils.makePartName(partCols, partVals);
+    }
+
+    if (partitionEvent != null && partitionEvent.getOldPartition() != null) {
+      List<String> partVals = partitionEvent.getOldPartition().getValues();
+      oldPartName = FileUtils.makePartName(partCols, partVals);
+    }
+
     String dbName = partitionEvent.getTable().getDbName();
     String tableName = partitionEvent.getTable().getTableName();
     TUpdateDelta tUpdateDelta = new TUpdateDelta();
     tUpdateDelta.setId(curretnTUpdateDeltaId_++);
     tUpdateDelta.setDatabase(dbName);
     tUpdateDelta.setTable(tableName);
-    tUpdateDelta.setPartition("");
-    tUpdateDelta.setNew_name(tableName);
-    tUpdateDelta.setOperation(TOperation.ALTER_TABLE);
-
-    String key = dbName + "--1234567890--" + tableName;
-    if (false == mapPartitionUpdate.containsKey(key)) {
-      LOGGER.info("onAlterPartition() " + tUpdateDelta.toString());
-      mapPartitionUpdate.put(key, tUpdateDelta);
-    }
+    tUpdateDelta.setPartition(oldPartName);
+    tUpdateDelta.setNew_name(newPartName);
+    tUpdateDelta.setOperation(TOperation.ALTER_PARTITION);
+    tUpdateDeltaQueue_.add(tUpdateDelta);
 
     LOGGER.info("onAlterPartition() <<<<<<");
   }
@@ -557,21 +618,41 @@ public class ChangeMetastoreWriteDbEventListener extends MetaStoreEventListener 
       return;
     }
 
-    // the DROP TABLE or TRUNCATE TABLE operation triggers a large number of partition events
+    List<String> partCols = new ArrayList<>();
+    List<List<String>> partValsList = new ArrayList<>();
+    if (partitionEvent != null && partitionEvent.getTable().getPartitionKeysIterator() != null) {
+      Iterator<FieldSchema> iter = partitionEvent.getTable().getPartitionKeysIterator();
+      while (iter.hasNext()) {
+        FieldSchema fieldSchema = iter.next();
+        String partName = fieldSchema.getName();
+        partCols.add(partName);
+      }
+    }
+
+    if (partitionEvent != null && partitionEvent.getPartitionIterator() != null) {
+      Iterator<Partition> it = partitionEvent.getPartitionIterator();
+      while (it.hasNext()) {
+        Partition part = it.next();
+        partValsList.add(part.getValues());
+      }
+    }
+
+    LOGGER.info("partition change number = " + partValsList.size());
     String dbName = partitionEvent.getTable().getDbName();
     String tableName = partitionEvent.getTable().getTableName();
-    TUpdateDelta tUpdateDelta = new TUpdateDelta();
-    tUpdateDelta.setId(curretnTUpdateDeltaId_++);
-    tUpdateDelta.setDatabase(dbName);
-    tUpdateDelta.setTable(tableName);
-    tUpdateDelta.setPartition("");
-    tUpdateDelta.setNew_name(tableName);
-    tUpdateDelta.setOperation(TOperation.ALTER_TABLE);
-
-    String key = dbName + "--1234567890--" + tableName;
-    if (false == mapPartitionUpdate.containsKey(key)) {
-      LOGGER.info("onDropPartition() " + tUpdateDelta.toString());
-      mapPartitionUpdate.put(key, tUpdateDelta);
+    if (partValsList.size() > part2tableMergeNum) {
+      part2tableEvent(dbName, tableName);
+    } else {
+      for (List<String> partVals : partValsList) {
+        String partName = FileUtils.makePartName(partCols, partVals);
+        TUpdateDelta tUpdateDelta = new TUpdateDelta();
+        tUpdateDelta.setId(curretnTUpdateDeltaId_++);
+        tUpdateDelta.setDatabase(dbName);
+        tUpdateDelta.setTable(tableName);
+        tUpdateDelta.setPartition(partName);
+        tUpdateDelta.setOperation(TOperation.DROP_PARTITION);
+        tUpdateDeltaQueue_.add(tUpdateDelta);
+      }
     }
 
     LOGGER.info("onDropPartition() <<<<<<");
