@@ -19,23 +19,25 @@
 
 package org.apache.ranger.audit.destination;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Properties;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.apache.ranger.audit.destination.AuditDestination;
 import org.apache.ranger.audit.model.AuditEventBase;
 import org.apache.ranger.audit.model.AuthzAuditEvent;
 import org.apache.ranger.audit.provider.MiscUtil;
+import org.apache.ranger.audit.utils.InMemoryJAASConfiguration;
 import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.impl.CloudSolrClient;
+import org.apache.solr.client.solrj.impl.HttpClientUtil;
+import org.apache.solr.client.solrj.impl.Krb5HttpClientConfigurer;
 import org.apache.solr.client.solrj.impl.LBHttpSolrClient;
 import org.apache.solr.client.solrj.response.UpdateResponse;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.SolrInputDocument;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Properties;
 
 public class SolrAuditDestination extends AuditDestination {
 	private static final Log LOG = LogFactory
@@ -47,6 +49,7 @@ public class SolrAuditDestination extends AuditDestination {
 
 	public static final String DEFAULT_COLLECTION_NAME = "ranger_audits";
 	SolrClient solrClient = null;
+	public static final String PROP_SOLR_KERBEROS = "java.security.auth.login.config";
 
 	public SolrAuditDestination() {
 	}
@@ -55,6 +58,7 @@ public class SolrAuditDestination extends AuditDestination {
 	public void init(Properties props, String propPrefix) {
 		LOG.info("init() called");
 		super.init(props, propPrefix);
+		init();
 		connect();
 	}
 
@@ -100,6 +104,7 @@ public class SolrAuditDestination extends AuditDestination {
 							+ zkHosts);
 					try {
 						// Instantiate
+						HttpClientUtil.setConfigurer(new Krb5HttpClientConfigurer());
 						CloudSolrClient solrCloudClient = new CloudSolrClient(
 								zkHosts);
 						solrCloudClient.setDefaultCollection(collectionName);
@@ -111,6 +116,7 @@ public class SolrAuditDestination extends AuditDestination {
 				} else if (solrURLs != null && !solrURLs.isEmpty()) {
 					try {
 						LOG.info("Connecting to Solr using URLs=" + solrURLs);
+						HttpClientUtil.setConfigurer(new Krb5HttpClientConfigurer());
 						LBHttpSolrClient lbSolrClient = new LBHttpSolrClient(
 								solrURLs.get(0));
 						lbSolrClient.setConnectionTimeout(1000);
@@ -209,6 +215,26 @@ public class SolrAuditDestination extends AuditDestination {
 
 	public boolean isAsync() {
 		return true;
+	}
+
+	private void init() {
+		LOG.info("==>SolrAuditDestination.init()" );
+		try {
+			// SolrJ requires "java.security.auth.login.config"  property to be set to identify itself that it is kerberized. So using a dummy property for it
+			// Acutal solrclient JAAS configs are read from the ranger-<component>-audit.xml present in  components conf folder and set by InMemoryJAASConfiguration
+			// Refer InMemoryJAASConfiguration doc for JAAS Configuration
+			if ( System.getProperty(PROP_SOLR_KERBEROS) == null ) {
+				System.setProperty(PROP_SOLR_KERBEROS, "/dev/null") ;
+			}
+			LOG.info("Loading SolrClient JAAS config from Ranger audit config if present...");
+			InMemoryJAASConfiguration.init(props);
+		} catch (Exception e) {
+			LOG.error("ERROR: Unable to load SolrClient JAAS config from Audit config file. Audit to Kerberized Solr will fail...");
+			if (LOG.isDebugEnabled()) {
+				LOG.debug("ERROR: Unable to load SolrClient JAAS config from Audit config file. Audit to Kerberized Solr will fail...", e);
+			}
+		}
+		LOG.info("<==SolrAuditDestination.init()" );
 	}
 
 }

@@ -22,18 +22,18 @@
  */
 package org.apache.ranger.common;
 
+import org.apache.log4j.Logger;
+import org.apache.ranger.credentialapi.CredentialReader;
+import org.springframework.beans.BeansException;
+import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
+import org.springframework.beans.factory.config.PropertyPlaceholderConfigurer;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
-
-import org.apache.log4j.Logger;
-import org.apache.ranger.credentialapi.CredentialReader;
-import org.springframework.beans.BeansException;
-import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
-import org.springframework.beans.factory.config.PropertyPlaceholderConfigurer;
 
 
 
@@ -235,5 +235,12 @@ public class PropertiesUtil extends PropertyPlaceholderConfigurer {
     }
 	public static Map<String, String> getPropertiesMap() {
 		return propertiesMap;
+	}
+	public static Properties getProps() {
+		Properties ret = new Properties();
+		if (propertiesMap != null) {
+			ret.putAll(propertiesMap);
+		}
+		return ret;
 	}
 }

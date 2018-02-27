@@ -67,19 +67,19 @@
       <version>${kafka.version}</version>
     </dependency>
     <dependency>
-      <groupId>org.apache.ranger</groupId>
-      <artifactId>ranger_solrj</artifactId>
-      <version>${project.version}</version>
+      <groupId>org.apache.solr</groupId>
+      <artifactId>solr-solrj</artifactId>
+      <version>${solr.version}</version>
     </dependency>
     <dependency>
       <groupId>org.apache.httpcomponents</groupId>
       <artifactId>httpclient</artifactId>
-      <version>${httpcomponent.httpclient.version}</version>
+      <version>${httpcomponents.httpclient.version}</version>
     </dependency>
     <dependency>
       <groupId>org.apache.httpcomponents</groupId>
       <artifactId>httpmime</artifactId>
-      <version>${httpcomponent.httpmime.version}</version>
+      <version>${httpcomponents.httpmime.version}</version>
     </dependency>	
     <dependency>
       <groupId>org.noggit</groupId>
