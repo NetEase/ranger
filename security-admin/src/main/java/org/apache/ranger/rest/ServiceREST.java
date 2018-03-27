@@ -1240,7 +1240,7 @@ public class ServiceREST {
 
 		RangerPolicy hdfsPolicy = null;
 		for (RangerPolicy policy : macthHdfsPolicies) {
-			if (policy.getResources().get("path") == null || policy.getResources().get("path").getIsRecursive()) {
+			if (policy.getResources().get("path") == null) {
 				continue;
 			}
 
@@ -2194,7 +2194,7 @@ public class ServiceREST {
 			if (null == rangerService) {
 				LOG.error("servicedef does not exist - name=" + policy.getService());
 			} else {
-				if (rangerService.getType().equalsIgnoreCase("hive") && null != ret.getResources().get("table")&& !ret.getResources().get("table").getValues().contains("*")) {
+				if (rangerService.getType().equalsIgnoreCase("hive")) {
 					updateHivePolicyDescByTableName(rangerService.getId(), policy);
 
 					String location = getPolicyDesc(policy, POLICY_DESC_LOCATION);
@@ -2253,7 +2253,7 @@ public class ServiceREST {
 			if (null == rangerService) {
 				LOG.error("servicedef does not exist - name=" + policy.getService());
 			} else {
-				if (rangerService.getType().equalsIgnoreCase("hive") && null != ret.getResources().get("table")&& !ret.getResources().get("table").getValues().contains("*")) {
+				if (rangerService.getType().equalsIgnoreCase("hive")) {
 					String location = getPolicyDesc(policy, POLICY_DESC_LOCATION);
 					adjustHdfsPolicyByLocation(null, rangerService.getId(),
 							location, Arrays.asList(policy), Arrays.asList(oldPolicy));
@@ -2306,7 +2306,7 @@ public class ServiceREST {
 			if (null == rangerService) {
 				LOG.error("servicedef does not exist - name=" + policy.getService());
 			} else {
-				if (rangerService.getType().equalsIgnoreCase("hive") && null != policy.getResources().get("table")&& !policy.getResources().get("table").getValues().contains("*")) {
+				if (rangerService.getType().equalsIgnoreCase("hive")) {
 					String location = getPolicyDesc(policy, POLICY_DESC_LOCATION);
 					adjustHdfsPolicyByLocation(null, rangerService.getId(), location,
 							null, Arrays.asList(policy));
