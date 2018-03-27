@@ -453,7 +453,7 @@ CREATE TABLE `x_data_hist` (
 `action` varchar(512) NOT NULL,
 `from_time` datetime NOT NULL,
 `to_time` datetime DEFAULT NULL,
-`content` text NOT NULL,
+`content` mediumtext NOT NULL,
 primary key (`id`)
 );
 

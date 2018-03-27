@@ -159,7 +159,7 @@ public class RangerRestUtil {
 			HashMultimap<String, String> roleProvider = HashMultimap.create();
 			HashMultimap<String, String> userGroups = HashMultimap.create();
 
-			List<RangerPolicy> listPolicy = servicePolicies.getPolicies();
+			List<RangerPolicy> listPolicy = new ArrayList<>(servicePolicies.getPolicies());
 			for (RangerPolicy policy : listPolicy) {
 				logger.debug("policy id ="+policy.getId());
 				if (policy.getIsEnabled()) {

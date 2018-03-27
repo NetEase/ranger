@@ -108,14 +108,16 @@ public abstract class RangerHiveAuthorizerBase implements HiveAuthorizer {
 		// from SQLStdHiveAccessController.applyAuthorizationConfigPolicy()
 		if (mSessionContext != null && mSessionContext.getClientType() == CLIENT_TYPE.HIVESERVER2) {
 			// Configure PREEXECHOOKS with DisallowTransformHook to disallow transform queries
-			String hooks = hiveConf.getVar(ConfVars.PREEXECHOOKS).trim();
-			if (hooks.isEmpty()) {
-				hooks = DisallowTransformHook.class.getName();
-			} else {
-				hooks = hooks + "," + DisallowTransformHook.class.getName();
-			}
+			if (!hiveConf.getBoolVar(ConfVars.HIVE_SERVER2_TRANSFORM_ENABLED)) {
+				String hooks = hiveConf.getVar(ConfVars.PREEXECHOOKS).trim();
+				if (hooks.isEmpty()) {
+					hooks = DisallowTransformHook.class.getName();
+				} else {
+					hooks = hooks + "," + DisallowTransformHook.class.getName();
+				}
 
-			hiveConf.setVar(ConfVars.PREEXECHOOKS, hooks);
+				hiveConf.setVar(ConfVars.PREEXECHOOKS, hooks);
+			}
 
 			SettableConfigUpdater.setHiveConfWhiteList(hiveConf);
 		}

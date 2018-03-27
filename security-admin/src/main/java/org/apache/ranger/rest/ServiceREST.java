@@ -1240,7 +1240,7 @@ public class ServiceREST {
 
 		RangerPolicy hdfsPolicy = null;
 		for (RangerPolicy policy : macthHdfsPolicies) {
-			if (policy.getResources().get("path") == null) {
+			if (policy.getResources().get("path") == null || policy.getResources().get("path").getIsRecursive()) {
 				continue;
 			}
 
@@ -2194,7 +2194,7 @@ public class ServiceREST {
 			if (null == rangerService) {
 				LOG.error("servicedef does not exist - name=" + policy.getService());
 			} else {
-				if (rangerService.getType().equalsIgnoreCase("hive")) {
+				if (rangerService.getType().equalsIgnoreCase("hive") && null != ret.getResources().get("table")&& !ret.getResources().get("table").getValues().contains("*")) {
 					updateHivePolicyDescByTableName(rangerService.getId(), policy);
 
 					String location = getPolicyDesc(policy, POLICY_DESC_LOCATION);
@@ -2249,10 +2249,11 @@ public class ServiceREST {
 			// last synchronize hdfs policy
 			XXService xxService = daoManager.getXXService().findByName(policy.getService());
 			RangerService rangerService = svcService.getPopulatedViewObject(xxService);
+
 			if (null == rangerService) {
 				LOG.error("servicedef does not exist - name=" + policy.getService());
 			} else {
-				if (rangerService.getType().equalsIgnoreCase("hive")) {
+				if (rangerService.getType().equalsIgnoreCase("hive") && null != ret.getResources().get("table")&& !ret.getResources().get("table").getValues().contains("*")) {
 					String location = getPolicyDesc(policy, POLICY_DESC_LOCATION);
 					adjustHdfsPolicyByLocation(null, rangerService.getId(),
 							location, Arrays.asList(policy), Arrays.asList(oldPolicy));
@@ -2305,7 +2306,7 @@ public class ServiceREST {
 			if (null == rangerService) {
 				LOG.error("servicedef does not exist - name=" + policy.getService());
 			} else {
-				if (rangerService.getType().equalsIgnoreCase("hive")) {
+				if (rangerService.getType().equalsIgnoreCase("hive") && null != policy.getResources().get("table")&& !policy.getResources().get("table").getValues().contains("*")) {
 					String location = getPolicyDesc(policy, POLICY_DESC_LOCATION);
 					adjustHdfsPolicyByLocation(null, rangerService.getId(), location,
 							null, Arrays.asList(policy));

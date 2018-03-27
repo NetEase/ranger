@@ -69,6 +69,7 @@
   <field name="reqContext" type="key_lower_case" multiValued="true"/>
   <field name="enforcer" type="key_lower_case" multiValued="false"/>
   <field name="event_count" type="tlong" multiValued="false" docValues="true" default="1"/>
+  <field name="eventType" type="tlong" multiValued="false" docValues="true" default="1"/>
   <field name="event_dur_ms" type="tlong" multiValued="false" docValues="true"/>
   <field name="evtTime" type="tdate" docValues="true"/>
   <field name="id" type="string" multiValued="false" indexed="true" required="true" stored="true"/>

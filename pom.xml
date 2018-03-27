@@ -231,20 +231,19 @@
           </modules>
       </profile>
       <profile>
-          <id>hive1</id>
-            <properties>
-                <hive.version>1.2.1</hive.version>
-            </properties>
-
-      </profile>
-      <profile>
           <id>hive2</id>
-          <properties>
-              <hive.version>2.1.1</hive.version>
-          </properties>
+            <properties>
+                <hive.version>2.1.1</hive.version>
+            </properties>
           <activation>
               <activeByDefault>true</activeByDefault>
           </activation>
+      </profile>
+      <profile>
+          <id>hive1</id>
+          <properties>
+              <hive.version>1.2.1</hive.version>
+          </properties>
       </profile>
   </profiles>
   <distributionManagement>
