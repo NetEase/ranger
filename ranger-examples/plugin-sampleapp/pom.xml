@@ -24,7 +24,7 @@
     <parent>
         <artifactId>ranger-examples</artifactId>
         <groupId>org.apache.ranger</groupId>
-        <version>ranger-0.5-mammut415</version>
+        <version>0.5-mammut415</version>
     </parent>
     <dependencies>
         <dependency>
