@@ -1706,8 +1706,23 @@ public class ServiceREST {
 	}
 
 
-	private  RangerPolicyItem hiveDbPolicyItem2HdfsPolicyItem(RangerPolicyItem hivePolicyItem,boolean recursive) {
+	private  RangerPolicyItem hiveDbPolicyItem2HdfsPolicyItem(RangerPolicyItem hivePolicyItemOrigin,boolean recursive) {
+
+		if(hivePolicyItemOrigin.getDelegateAdmin() != Boolean.TRUE) {
+			return null;
+		}
+
 		RangerPolicyItem hdfsPolicyItem = new RangerPolicyItem();
+		RangerPolicyItem hivePolicyItem = new RangerPolicyItem();
+		if (hivePolicyItemOrigin.getGroups() != null) {
+			hivePolicyItem.setGroups(hivePolicyItemOrigin.getGroups());
+		}
+		if(hivePolicyItemOrigin.getUsers() != null) {
+			hivePolicyItem.setUsers(hivePolicyItemOrigin.getUsers());
+		}
+
+		hivePolicyItem.setAccesses(hivePolicyItemOrigin.getAccesses());
+
 		if (recursive == true) {
 			if (hivePolicyItem.getAccesses().contains(new RangerPolicyItemAccess("create",Boolean.TRUE))) {
 				hivePolicyItem.getAccesses().remove(new RangerPolicyItemAccess("create",Boolean.TRUE));
@@ -1723,8 +1738,13 @@ public class ServiceREST {
 				hdfsPolicyItem.getAccesses().add(new RangerPolicyItemAccess("execute", Boolean.TRUE));
 			}
 			hdfsPolicyItem.setDelegateAdmin(Boolean.TRUE);
-			hdfsPolicyItem.setUsers(hivePolicyItem.getUsers());
-			hdfsPolicyItem.setGroups(hivePolicyItem.getGroups());
+			if (null != hivePolicyItem.getUsers()) {
+				hdfsPolicyItem.setUsers(hivePolicyItem.getUsers());
+			}
+
+			if (null != hivePolicyItem.getGroups()) {
+				hdfsPolicyItem.setGroups(hivePolicyItem.getGroups());
+			}
 
 		} else if (recursive == false) {
 			if (!hivePolicyItem.getAccesses().contains(new RangerPolicyItemAccess("create",Boolean.TRUE))) {
@@ -1734,8 +1754,13 @@ public class ServiceREST {
 			hdfsPolicyItem.getAccesses().add(new RangerPolicyItemAccess("write", Boolean.TRUE));
 			hdfsPolicyItem.getAccesses().add(new RangerPolicyItemAccess("execute", Boolean.TRUE));
 			hdfsPolicyItem.setDelegateAdmin(Boolean.TRUE);
-			hdfsPolicyItem.setUsers(hivePolicyItem.getUsers());
-			hdfsPolicyItem.setGroups(hivePolicyItem.getGroups());
+			if (null != hivePolicyItem.getUsers()) {
+				hdfsPolicyItem.setUsers(hivePolicyItem.getUsers());
+			}
+
+			if (null != hivePolicyItem.getGroups()) {
+				hdfsPolicyItem.setGroups(hivePolicyItem.getGroups());
+			}
 		}
 		return hdfsPolicyItem;
 	}
@@ -2360,17 +2385,23 @@ public class ServiceREST {
    //生成hive库对应的hdfs权限 分为递归和非递归
 	private RangerPolicy generateDBHdfsPolicy(String dbLocation, RangerService hdfsService, RangerPolicy policy, boolean recursive) {
 
+		if(null == policy || null == policy.getPolicyItems()) {
+			LOG.error("error when generate db hdfs policy the location is "+ dbLocation+"service is"+hdfsService);
+			return null;
+		}
+
 		List<RangerPolicyItem> hdfsPolicyItems = new ArrayList<>();
 		RangerPolicy ret = new RangerPolicy();
+
 		for (RangerPolicyItem hivePolicyItem : policy.getPolicyItems()) {
-			RangerPolicyItem hdfsPolicyItem = null;
+			RangerPolicyItem hdfsPolicyItem;
 			hdfsPolicyItem = hiveDbPolicyItem2HdfsPolicyItem(hivePolicyItem,recursive);
 			if (hdfsPolicyItem == null) {
 				continue;
 			}
 			hdfsPolicyItems.add(hdfsPolicyItem);
-
 		}
+
 		ret.setPolicyItems(hdfsPolicyItems);
 		RangerPolicyResource policyResource = new RangerPolicyResource();
 		Map<String, RangerPolicyResource> policyResources = new HashMap<>();
