@@ -128,7 +128,6 @@ public class ServiceREST {
 	private static final Log PERF_LOG = RangerPerfTracer.getPerfLogger("rest.ServiceREST");
 
 	private static final String EXTERNAL_TABLE_TYPE = "EXTERNAL_TABLE";
-	private static final String POLICY_DESC_HDFS_RECURSIVE = "hdfs_recursive";
 	private static final String POLICY_DESC_LOCATION = "location";
 	private static final String POLICY_DESC_TABLE_TYPE = "table_type";
 	private static final String POLICY_DESC_PROJECT_PATH 		= "project_path";
@@ -1653,24 +1652,28 @@ public class ServiceREST {
 
 	private void adjustDbHdfsPolicyByLocation(String location,Long hiveServiceId,
 											RangerPolicy addHivePolicy, RangerPolicy minusHivePolicy,boolean recursive) throws Exception {
-		if (null == location || location.isEmpty()) {
+		if (null == location || location.isEmpty() || "".equals(location)) {
 			LOG.warn("adjustDbHdfsPolicyByLocation() param location is empty!");
 			return;
 		}
-
 		RangerService hdfsService = getRelatedHdfsService(hiveServiceId);
-		if (null == hdfsService) {
+
+		if (null == hdfsService || null == hdfsService.getId()) {
 			LOG.error("Related Hdfs Service does not exist - hiveServiceId = " + hiveServiceId);
 			throw new Exception("Related Hdfs Service does not exist - hiveServiceId = " + hiveServiceId);
 		}
+
 		Long hdfsServiceId = hdfsService.getId();
 
 		RangerPolicy matchHdfsPolicy = searchDbHdfsPolicyByLocation(hdfsServiceId, location,recursive);
+
 		if (matchHdfsPolicy == null) {
-			RangerPolicy dbHdfsPolicy = generateDBHdfsPolicy(location,hdfsService,addHivePolicy,recursive);
-			if (null != dbHdfsPolicy) {
-				svcStore.createPolicy(dbHdfsPolicy);
-			}
+			LOG.warn("can not find match hdfs policy when adjust location"+location);
+			return;
+		}
+
+		if ("".equals(getPolicyDesc(matchHdfsPolicy,POLICY_DESC_DB_PATH)) && matchHdfsPolicy != null) {
+			setPolicyDesc(matchHdfsPolicy,POLICY_DESC_DB_PATH,"true");
 		}
 
 		if (minusHivePolicy != null) {
@@ -1687,13 +1690,13 @@ public class ServiceREST {
 		}
 
 		if (addHivePolicy != null) {
-			List<RangerPolicyItem> addPoliyItems = new ArrayList<>();
+			List<RangerPolicyItem> addHdfsPoliyItems = new ArrayList<>();
 			for (RangerPolicyItem addHivePolicyItem:addHivePolicy.getPolicyItems()) {
-				addPoliyItems.add(hiveDbPolicyItem2HdfsPolicyItem(addHivePolicyItem,recursive));
+				addHdfsPoliyItems.add(hiveDbPolicyItem2HdfsPolicyItem(addHivePolicyItem,recursive));
 			}
 
-			if (addPoliyItems.size() > 0) {
-				matchHdfsPolicy.getPolicyItems().addAll(addPoliyItems);
+			if (addHdfsPoliyItems.size() > 0) {
+				matchHdfsPolicy.getPolicyItems().addAll(addHdfsPoliyItems);
 			}
 
 		}
@@ -2160,11 +2163,6 @@ public class ServiceREST {
 		Boolean hdfsIsRecursive = Boolean.TRUE;
 		for (int i = 0; i < hivePolicies.size(); i ++) {
 			RangerPolicy hivePolicy = hivePolicies.get(i);
-			String hdfsRecursive = getPolicyDesc(hivePolicy, POLICY_DESC_HDFS_RECURSIVE);
-			if (null != hdfsRecursive && hdfsRecursive.equalsIgnoreCase("false")) {
-				hdfsIsRecursive = Boolean.FALSE;
-			}
-
 			String tableType = getPolicyDesc(hivePolicy, POLICY_DESC_TABLE_TYPE);
 			boolean isExternalTabler = tableType.equalsIgnoreCase(ServiceREST.EXTERNAL_TABLE_TYPE);
 			boolean inProjectPath = inProjectPath(hivePolicy, location);
@@ -2293,7 +2291,7 @@ public class ServiceREST {
 	}
 
 	private boolean policyItemEquals(RangerPolicyItem hdfsPolicyItem1, RangerPolicyItem hdfsPolicyItem2) {
-		if(hdfsPolicyItem1 == null || hdfsPolicyItem2 == null)
+		if (hdfsPolicyItem1 == null || hdfsPolicyItem2 == null)
 			return false;
 		if (false == hdfsPolicyItem1.getUsers().containsAll(hdfsPolicyItem2.getUsers())
 				|| false == hdfsPolicyItem2.getUsers().containsAll(hdfsPolicyItem1.getUsers())) {
@@ -2340,35 +2338,34 @@ public class ServiceREST {
 		try {
 			XXService xxService = daoManager.getXXService().findByName(policy.getService());
 			RangerService hiveService = svcService.getPopulatedViewObject(xxService);
-			// 从hive policy的描述里面获取 hive db 的 location
 			String location = getPolicyDesc(policy, POLICY_DESC_LOCATION);
-			if ("".equals(location)) {
-				LOG.error("the hive db policy's description is empty the policy is "+policy);
-				throw restErrorUtil.createRESTException("the hive db policy's description is empty the policy is "+policy);
-			}
-
-			if (hiveService == null || hiveService.getId() == null ) {
+			if (hiveService == null || hiveService.getId() == null) {
 				LOG.error("servicedef does not exist - name=" + policy.getService());
+			} else if ("".equals(location)) {
+				LOG.warn("the hive db policy's description is empty, the policy is "+policy);
+				ret = svcStore.createPolicy(policy);
+				return ret;
 			} else {
-
 				RangerService hdfsService = getRelatedHdfsService(hiveService.getId());
-				RangerPolicy newHdfsPolicyRecur = generateDBHdfsPolicy(location,hdfsService,policy,true);
-
-				RangerPolicy newHdfsPolicyNonrecur = generateDBHdfsPolicy(location,hdfsService,policy,false);
-
-				if (null != newHdfsPolicyRecur && null != newHdfsPolicyNonrecur ) {
+				RangerPolicy newHdfsPolicyRecur = searchDbHdfsPolicyByLocation(hdfsService.getId(),location,true);
+				if (null == newHdfsPolicyRecur) {
+					newHdfsPolicyRecur = generateDBHdfsPolicy(location,hdfsService,policy,true);
 					svcStore.createPolicy(newHdfsPolicyRecur);
-					svcStore.createPolicy(newHdfsPolicyNonrecur);
-					ret = svcStore.createPolicy(policy);
-					return ret;
 				} else {
-					LOG.error("Error create hive db policy"+policy+";"+"the newHdfsPolicyRecur is"+newHdfsPolicyRecur+"the newHdfsPolicyNonrecur is"+newHdfsPolicyNonrecur);
-					throw restErrorUtil.createRESTException("Error create hive db policy"+policy+";"+"the newHdfsPolicyRecur is"+newHdfsPolicyRecur+"the newHdfsPolicyNonrecur is"+newHdfsPolicyNonrecur);
+					adjustDbHdfsPolicyByLocation(location,hiveService.getId(),policy,null,true);
 				}
-				 // access permissions
 
+				RangerPolicy newHdfsPolicyNonrecur = searchDbHdfsPolicyByLocation(hdfsService.getId(),location,false);
+
+				if (null == newHdfsPolicyNonrecur) {
+					newHdfsPolicyNonrecur = generateDBHdfsPolicy(location,hdfsService,policy,false);
+					svcStore.createPolicy(newHdfsPolicyNonrecur);
+				} else {
+					adjustDbHdfsPolicyByLocation(location,hiveService.getId(),policy,null,false);
+				}
+				ret = svcStore.createPolicy(policy);
+				return ret;
 			}
-
 		} catch (WebApplicationException excp) {
 			throw excp;
 		} catch (Throwable excp) {
@@ -2380,9 +2377,7 @@ public class ServiceREST {
          return ret;
 	}
 
-
-
-   //生成hive库对应的hdfs权限 分为递归和非递归
+	//生成hive库对应的hdfs权限 分为递归和非递归
 	private RangerPolicy generateDBHdfsPolicy(String dbLocation, RangerService hdfsService, RangerPolicy policy, boolean recursive) {
 
 		if(null == policy || null == policy.getPolicyItems()) {
@@ -2429,6 +2424,22 @@ public class ServiceREST {
 		} finally {
 			return ret;
 		}
+	}
+
+	boolean isDbPolicy(RangerPolicy policy) {
+		if (policy == null || policy.getResources() == null) {
+			return false;
+		}
+		if (policy.getResources().get("table") == null || policy.getResources().get("column") == null || policy.getResources().get("database") == null) {
+			return false;
+		}
+		if(policy.getResources().get("database").getValues().size() != 1) {
+			return false;
+		}
+		if (policy.getResources().get("table").getValues().contains("*") && policy.getResources().get("column").getValues().contains("*") && !policy.getResources().get("database").getValues().contains("*")) {
+			return true;
+		}
+		return false;
 	}
 
 
@@ -2482,11 +2493,10 @@ public class ServiceREST {
 					boolean isDbPolicy = false;
 
 					try {
-						isDbPolicy = policy.getResources().get("table").getValues().contains("*") && policy.getResources().get("column").getValues().contains("*");
+						isDbPolicy = isDbPolicy(policy);
 					} catch (Exception ex) {
 						LOG.error("Error when determine isDbPolicy, policy is"+policy);
 					}
-
 
 					if (true == isDbPolicy) {
 						try {
@@ -2499,7 +2509,6 @@ public class ServiceREST {
 					}
 
 					updateHivePolicyDescByTableName(rangerService.getId(), policy);
-
 					String location = getPolicyDesc(policy, POLICY_DESC_LOCATION);
 					adjustHdfsPolicyByLocation(null, rangerService.getId(), location,
 							Arrays.asList(policy), null);
@@ -2561,7 +2570,7 @@ public class ServiceREST {
 
 					boolean isDbPolicy = false;
 					try {
-						isDbPolicy = policy.getResources().get("table").getValues().contains("*") && policy.getResources().get("column").getValues().contains("*");
+						isDbPolicy = isDbPolicy(policy);
 					} catch (Exception ex) {
 						LOG.error("Error when determine isDbPolicy, policy is"+policy);
 					}
@@ -2569,6 +2578,20 @@ public class ServiceREST {
 					String location = getPolicyDesc(policy, POLICY_DESC_LOCATION);
 
 					if (true == isDbPolicy) {
+
+						RangerService hdfsService = getRelatedHdfsService(rangerService.getId());
+						RangerPolicy matchHdfsPolicyRecur = searchDbHdfsPolicyByLocation(hdfsService.getId(), location,true);
+
+						if (matchHdfsPolicyRecur == null) {
+							RangerPolicy hdfsPolicy = generateDBHdfsPolicy(location,hdfsService,oldPolicy,true);
+							svcStore.createPolicy(hdfsPolicy);
+						}
+						RangerPolicy matchHdfsPolicyNonRecur = searchDbHdfsPolicyByLocation(hdfsService.getId(), location,false);
+
+						if (matchHdfsPolicyNonRecur == null) {
+							RangerPolicy hdfsPolicy = generateDBHdfsPolicy(location,hdfsService,oldPolicy,true);
+							svcStore.createPolicy(hdfsPolicy);
+						}
 						adjustDbHdfsPolicyByLocation(location,rangerService.getId(),policy,oldPolicy,true);
 						adjustDbHdfsPolicyByLocation(location,rangerService.getId(),policy,oldPolicy,false);
 						return ret;
@@ -2627,22 +2650,31 @@ public class ServiceREST {
 			} else {
 				if (rangerService.getType().equalsIgnoreCase("hive")) {
 					boolean isDbPolicy = false;
-
 					try {
-						isDbPolicy = policy.getResources().get("table").getValues().contains("*") && policy.getResources().get("column").getValues().contains("*");
+						isDbPolicy = isDbPolicy(policy);
 					} catch (Exception ex) {
 						LOG.error("Error when determine isDbPolicy, policy is"+policy);
 					}
-
 					String location = getPolicyDesc(policy, POLICY_DESC_LOCATION);
-
 					if (true == isDbPolicy) {
-						adjustDbHdfsPolicyByLocation(location,rangerService.getId(),null,policy,true);
-						adjustDbHdfsPolicyByLocation(location,rangerService.getId(),null,policy,false);
-						return;
-					}
+						try {
+							RangerService hdfsService = getRelatedHdfsService(rangerService.getId());
+							RangerPolicy  hdfsDbRecur = searchDbHdfsPolicyByLocation(hdfsService.getId(),location,true);
+							RangerPolicy  hdfsDbNonRecur = searchDbHdfsPolicyByLocation(hdfsService.getId(),location,false);
+							if (null != hdfsDbRecur) {
+								adjustDbHdfsPolicyByLocation(location,rangerService.getId(),null,policy,true);
+							}
+							if (null != hdfsDbNonRecur) {
+								adjustDbHdfsPolicyByLocation(location,rangerService.getId(),null,policy,false);
+							}
 
-					location = getPolicyDesc(policy, POLICY_DESC_LOCATION);
+						} catch (Exception ex) {
+							LOG.error("error when delete hive db policy"+policy);
+						} finally {
+							return;
+						}
+
+					}
 					adjustHdfsPolicyByLocation(null, rangerService.getId(), location,
 							null, Arrays.asList(policy));
 				}
