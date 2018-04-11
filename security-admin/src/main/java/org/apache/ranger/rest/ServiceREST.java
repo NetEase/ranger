@@ -2699,6 +2699,10 @@ public class ServiceREST {
 						LOG.error("Error when determine isDbPolicy, policy is"+policy);
 					}
 					String location = getPolicyDesc(policy, POLICY_DESC_LOCATION);
+
+					if ("".equals(location)) {
+						return;
+					}
 					if (true == isDbPolicy) {
 						try {
 							RangerService hdfsService = getRelatedHdfsService(rangerService.getId());
