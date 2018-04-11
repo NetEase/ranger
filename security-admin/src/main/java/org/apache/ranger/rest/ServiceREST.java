@@ -2345,7 +2345,7 @@ public class ServiceREST {
 			String location = getPolicyDesc(policy, POLICY_DESC_LOCATION);
 			if (hiveService == null || hiveService.getId() == null) {
 				LOG.error("servicedef does not exist - name=" + policy.getService());
-			} else if ("".equals(location)) {
+			} else if ("".equals(location) || location == null) {
 				LOG.warn("the hive db policy's description is empty, the policy is "+policy);
 				ret = svcStore.createPolicy(policy);
 				return ret;
@@ -2599,6 +2599,10 @@ public class ServiceREST {
 					}
 
 					String location = getPolicyDesc(policy, POLICY_DESC_LOCATION);
+
+					if ("".equals(location)) {
+						return ret;
+					}
 
 					if (true == isDbPolicy) {
 
