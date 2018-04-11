@@ -1681,7 +1681,7 @@ public class ServiceREST {
 				Iterator<RangerPolicyItem> iter = matchHdfsPolicy.getPolicyItems().iterator();
 				while (iter.hasNext()) {
 					RangerPolicyItem hdfsPolicyItem = iter.next();
-					if (policyItemEquals(hdfsPolicyItem,hiveDbPolicyItem2HdfsPolicyItem(minusHivePolicyItem,recursive))) {
+					if (hdfsPolicyItem == null || policyItemEquals(hdfsPolicyItem,hiveDbPolicyItem2HdfsPolicyItem(minusHivePolicyItem,recursive))) {
 						iter.remove();
 					}
 				}
@@ -1691,8 +1691,12 @@ public class ServiceREST {
 
 		if (addHivePolicy != null) {
 			List<RangerPolicyItem> addHdfsPoliyItems = new ArrayList<>();
-			for (RangerPolicyItem addHivePolicyItem:addHivePolicy.getPolicyItems()) {
-				addHdfsPoliyItems.add(hiveDbPolicyItem2HdfsPolicyItem(addHivePolicyItem,recursive));
+			for (RangerPolicyItem addHivePolicyItem : addHivePolicy.getPolicyItems()) {
+				RangerPolicyItem addHdfsItem = hiveDbPolicyItem2HdfsPolicyItem(addHivePolicyItem,recursive);
+				if (addHdfsItem != null) {
+					addHdfsPoliyItems.add(addHdfsItem);
+				}
+
 			}
 
 			if (addHdfsPoliyItems.size() > 0) {
@@ -1750,7 +1754,7 @@ public class ServiceREST {
 			}
 
 		} else if (recursive == false) {
-			if (!hivePolicyItem.getAccesses().contains(new RangerPolicyItemAccess("create",Boolean.TRUE))) {
+			if (!hivePolicyItem.getAccesses().contains(new RangerPolicyItemAccess("create",Boolean.TRUE)) && !hivePolicyItem.getAccesses().contains(new RangerPolicyItemAccess("all",Boolean.TRUE))) {
 				return null;
 			}
 			hdfsPolicyItem.getAccesses().add(new RangerPolicyItemAccess("read", Boolean.TRUE));
@@ -2350,7 +2354,10 @@ public class ServiceREST {
 				RangerPolicy newHdfsPolicyRecur = searchDbHdfsPolicyByLocation(hdfsService.getId(),location,true);
 				if (null == newHdfsPolicyRecur) {
 					newHdfsPolicyRecur = generateDBHdfsPolicy(location,hdfsService,policy,true);
-					svcStore.createPolicy(newHdfsPolicyRecur);
+					if (null != newHdfsPolicyRecur) {
+						svcStore.createPolicy(newHdfsPolicyRecur);
+					}
+
 				} else {
 					adjustDbHdfsPolicyByLocation(location,hiveService.getId(),policy,null,true);
 				}
@@ -2359,7 +2366,10 @@ public class ServiceREST {
 
 				if (null == newHdfsPolicyNonrecur) {
 					newHdfsPolicyNonrecur = generateDBHdfsPolicy(location,hdfsService,policy,false);
-					svcStore.createPolicy(newHdfsPolicyNonrecur);
+					if (newHdfsPolicyNonrecur != null) {
+						svcStore.createPolicy(newHdfsPolicyNonrecur);
+					}
+
 				} else {
 					adjustDbHdfsPolicyByLocation(location,hiveService.getId(),policy,null,false);
 				}
@@ -2377,7 +2387,7 @@ public class ServiceREST {
          return ret;
 	}
 
-	//生成hive库对应的hdfs权限 分为递归和非递归
+
 	private RangerPolicy generateDBHdfsPolicy(String dbLocation, RangerService hdfsService, RangerPolicy policy, boolean recursive) {
 
 		if(null == policy || null == policy.getPolicyItems()) {
@@ -2395,6 +2405,19 @@ public class ServiceREST {
 				continue;
 			}
 			hdfsPolicyItems.add(hdfsPolicyItem);
+		}
+
+		if (hdfsPolicyItems == null) {
+			return null;
+		}
+		Iterator<RangerPolicyItem> iter = hdfsPolicyItems.iterator();
+ 		while (iter.hasNext()) {
+ 			if (iter.next() == null) {
+ 				iter.remove();
+			}
+		}
+		if (hdfsPolicyItems == null || hdfsPolicyItems.size()==0) {
+ 			return null;
 		}
 
 		ret.setPolicyItems(hdfsPolicyItems);
@@ -2582,18 +2605,34 @@ public class ServiceREST {
 						RangerService hdfsService = getRelatedHdfsService(rangerService.getId());
 						RangerPolicy matchHdfsPolicyRecur = searchDbHdfsPolicyByLocation(hdfsService.getId(), location,true);
 
+						boolean generateHdfsPolicyRecur = false;
+						boolean generateHdfsPolicyNonRecur = false;
 						if (matchHdfsPolicyRecur == null) {
-							RangerPolicy hdfsPolicy = generateDBHdfsPolicy(location,hdfsService,oldPolicy,true);
-							svcStore.createPolicy(hdfsPolicy);
+							RangerPolicy hdfsPolicy = generateDBHdfsPolicy(location,hdfsService,policy,true);
+							if (null != hdfsPolicy){
+								svcStore.createPolicy(hdfsPolicy);
+								generateHdfsPolicyRecur = true;
+							}
+
 						}
 						RangerPolicy matchHdfsPolicyNonRecur = searchDbHdfsPolicyByLocation(hdfsService.getId(), location,false);
 
 						if (matchHdfsPolicyNonRecur == null) {
-							RangerPolicy hdfsPolicy = generateDBHdfsPolicy(location,hdfsService,oldPolicy,true);
-							svcStore.createPolicy(hdfsPolicy);
+							RangerPolicy hdfsPolicy = generateDBHdfsPolicy(location,hdfsService,policy,false);
+							if (null != hdfsPolicy){
+								generateHdfsPolicyNonRecur = true;
+								svcStore.createPolicy(hdfsPolicy);
+							}
+
 						}
-						adjustDbHdfsPolicyByLocation(location,rangerService.getId(),policy,oldPolicy,true);
-						adjustDbHdfsPolicyByLocation(location,rangerService.getId(),policy,oldPolicy,false);
+
+						if (generateHdfsPolicyRecur == false) {
+							adjustDbHdfsPolicyByLocation(location,rangerService.getId(),policy,oldPolicy,true);
+						}
+
+						if (generateHdfsPolicyNonRecur == false) {
+							adjustDbHdfsPolicyByLocation(location,rangerService.getId(),policy,oldPolicy,false);
+						}
 						return ret;
 					}
 					adjustHdfsPolicyByLocation(null, rangerService.getId(),
