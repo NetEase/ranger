@@ -2382,7 +2382,7 @@ public class ServiceREST {
 			LOG.error("createPolicy(" + policy + ") failed", excp);
 			throw restErrorUtil.createRESTException(excp.getMessage());
 		} finally {
-			perf.log();
+
 		}
          return ret;
 	}

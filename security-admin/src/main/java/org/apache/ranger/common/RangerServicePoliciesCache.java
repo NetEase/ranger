@@ -203,7 +203,7 @@ public class RangerServicePoliciesCache {
 				LOG.error("getLatestOrCached:lock got interrupted..", exception);
 			} finally {
 				if (ret) {
-					LOG.info(Thread.currentThread().getName() + " release lock here ...");
+					//LOG.info(Thread.currentThread().getName() + " release lock here ...");
 					lock.unlock();
 				}
 			}
