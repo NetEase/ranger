@@ -137,8 +137,8 @@ public class SyncMetastoreEventListener extends MetaStoreEventListener {
   }
 
   public void synchronizePolicy(ListenerEvent listenerEvent, HiveOperationType hiveOperationType) throws MetaException {
-    if (false == MetaStoreEventListenerUtils.needSynchronize(listenerEvent)) {
-      LOGGER.info("Table lifecycle parameters is empty, it needs to be synchronized");
+    if (false == MetaStoreEventListenerUtils.needSynchronizePolicy(listenerEvent)) {
+      LOGGER.info("Table not sync parameters is on, it needs not to be synchronized");
       return;
     }
 

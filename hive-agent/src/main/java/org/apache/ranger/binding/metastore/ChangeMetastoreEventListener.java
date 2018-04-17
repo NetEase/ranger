@@ -25,20 +25,13 @@ import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.framework.api.ACLProvider;
 import org.apache.curator.framework.api.GetChildrenBuilder;
-import org.apache.curator.framework.api.transaction.CuratorTransaction;
-import org.apache.curator.framework.api.transaction.CuratorTransactionFinal;
-import org.apache.curator.framework.recipes.locks.InterProcessMutex;
 import org.apache.curator.framework.state.ConnectionState;
 import org.apache.curator.framework.state.ConnectionStateListener;
 import org.apache.curator.retry.RetryNTimes;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.hive.common.FileUtils;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.metastore.MetaStoreEventListener;
-import org.apache.hadoop.hive.metastore.api.FieldSchema;
 import org.apache.hadoop.hive.metastore.api.MetaException;
-import org.apache.hadoop.hive.metastore.api.Partition;
-import org.apache.hadoop.hive.metastore.api.Table;
 import org.apache.hadoop.hive.metastore.events.*;
 import org.apache.hadoop.hive.shims.Utils;
 import org.apache.hadoop.security.UserGroupInformation;
@@ -60,7 +53,6 @@ import java.net.InetAddress;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.TimeUnit;
 
 class zkListener implements ConnectionStateListener {
   public static final Log LOGGER = LogFactory.getLog(ChangeMetastoreEventListener.class);
@@ -491,7 +483,7 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
       LOGGER.info("Skip notify onCreateDatabase event, since the operation failed. \n");
       return;
     }
-    if (!MetaStoreEventListenerUtils.needSynchronize(dbEvent)) {
+    if (!MetaStoreEventListenerUtils.needSynchronizeImpala(dbEvent)) {
       LOGGER.info("Table lifecycle parameters is not empty, No synchronization event.");
       return;
     }
@@ -514,7 +506,7 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
       LOGGER.info("Skip notify onDropDatabase event, since the operation failed. \n");
       return;
     }
-    if (!MetaStoreEventListenerUtils.needSynchronize(dbEvent)) {
+    if (!MetaStoreEventListenerUtils.needSynchronizeImpala(dbEvent)) {
       LOGGER.info("Table lifecycle parameters is not empty, No synchronization event.");
       return;
     }
@@ -537,7 +529,7 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
       LOGGER.info("Skip notify onCreateTable event, since the operation failed. \n");
       return;
     }
-    if (!MetaStoreEventListenerUtils.needSynchronize(tableEvent)) {
+    if (!MetaStoreEventListenerUtils.needSynchronizeImpala(tableEvent)) {
       LOGGER.info("Table lifecycle parameters is not empty, No synchronization event.");
       return;
     }
@@ -561,7 +553,7 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
       LOGGER.debug("Skip notify onDropTable event, since the operation failed. \n");
       return;
     }
-    if (!MetaStoreEventListenerUtils.needSynchronize(tableEvent)) {
+    if (!MetaStoreEventListenerUtils.needSynchronizeImpala(tableEvent)) {
       LOGGER.info("Table lifecycle parameters is not empty, No synchronization event.");
       return;
     }
@@ -588,7 +580,7 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
       LOGGER.debug("Skip notify onAlterTable event, since the operation failed.");
       return;
     }
-    if (!MetaStoreEventListenerUtils.needSynchronize(tableEvent)) {
+    if (!MetaStoreEventListenerUtils.needSynchronizeImpala(tableEvent)) {
       LOGGER.info("Table lifecycle parameters is not empty, No synchronization event.");
       return;
     }
@@ -617,7 +609,7 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
       LOGGER.debug("Skip notify onAddPartition event, since the operation failed.");
       return;
     }
-    if (!MetaStoreEventListenerUtils.needSynchronize(partitionEvent)) {
+    if (!MetaStoreEventListenerUtils.needSynchronizeImpala(partitionEvent)) {
       LOGGER.info("Table lifecycle parameters is not empty, No synchronization event.");
       return;
     }
@@ -649,7 +641,7 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
       LOGGER.info("Skip notify onDropPartition event, since the operation failed.");
       return;
     }
-    if (!MetaStoreEventListenerUtils.needSynchronize(partitionEvent)) {
+    if (!MetaStoreEventListenerUtils.needSynchronizeImpala(partitionEvent)) {
       LOGGER.info("Table lifecycle parameters is not empty, No synchronization event.");
       return;
     }
@@ -681,7 +673,7 @@ public class ChangeMetastoreEventListener extends MetaStoreEventListener {
       LOGGER.info("Skip notify onDropPartition event, since the operation failed.");
       return;
     }
-    if (!MetaStoreEventListenerUtils.needSynchronize(partitionEvent)) {
+    if (!MetaStoreEventListenerUtils.needSynchronizeImpala(partitionEvent)) {
       LOGGER.info("Table lifecycle parameters is not empty, No synchronization event.");
       return;
     }

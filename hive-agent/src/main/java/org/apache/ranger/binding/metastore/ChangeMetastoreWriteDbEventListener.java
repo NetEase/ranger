@@ -385,7 +385,7 @@ public class ChangeMetastoreWriteDbEventListener extends MetaStoreEventListener 
       LOGGER.info("Skip notify onCreateDatabase event, since the operation failed. \n");
       return;
     }
-    if (!MetaStoreEventListenerUtils.needSynchronize(dbEvent)) {
+    if (!MetaStoreEventListenerUtils.needSynchronizeImpala(dbEvent)) {
       LOGGER.info("Table lifecycle parameters is not empty, No synchronization event.");
       return;
     }
@@ -408,7 +408,7 @@ public class ChangeMetastoreWriteDbEventListener extends MetaStoreEventListener 
       LOGGER.info("Skip notify onDropDatabase event, since the operation failed. \n");
       return;
     }
-    if (!MetaStoreEventListenerUtils.needSynchronize(dbEvent)) {
+    if (!MetaStoreEventListenerUtils.needSynchronizeImpala(dbEvent)) {
       LOGGER.info("Table lifecycle parameters is not empty, No synchronization event.");
       return;
     }
@@ -431,7 +431,7 @@ public class ChangeMetastoreWriteDbEventListener extends MetaStoreEventListener 
       LOGGER.info("Skip notify onCreateTable event, since the operation failed. \n");
       return;
     }
-    if (!MetaStoreEventListenerUtils.needSynchronize(tableEvent)) {
+    if (!MetaStoreEventListenerUtils.needSynchronizeImpala(tableEvent)) {
       LOGGER.info("Table lifecycle parameters is not empty, No synchronization event.");
       return;
     }
@@ -455,7 +455,7 @@ public class ChangeMetastoreWriteDbEventListener extends MetaStoreEventListener 
       LOGGER.debug("Skip notify onDropTable event, since the operation failed. \n");
       return;
     }
-    if (!MetaStoreEventListenerUtils.needSynchronize(tableEvent)) {
+    if (!MetaStoreEventListenerUtils.needSynchronizeImpala(tableEvent)) {
       LOGGER.info("Table lifecycle parameters is not empty, No synchronization event.");
       return;
     }
@@ -482,7 +482,7 @@ public class ChangeMetastoreWriteDbEventListener extends MetaStoreEventListener 
       LOGGER.debug("Skip notify onAlterTable event, since the operation failed.");
       return;
     }
-    if (!MetaStoreEventListenerUtils.needSynchronize(tableEvent)) {
+    if (!MetaStoreEventListenerUtils.needSynchronizeImpala(tableEvent)) {
       LOGGER.info("Table lifecycle parameters is not empty, No synchronization event.");
       return;
     }
@@ -511,7 +511,7 @@ public class ChangeMetastoreWriteDbEventListener extends MetaStoreEventListener 
       LOGGER.debug("Skip notify onAddPartition event, since the operation failed.");
       return;
     }
-    if (!MetaStoreEventListenerUtils.needSynchronize(partitionEvent)) {
+    if (!MetaStoreEventListenerUtils.needSynchronizeImpala(partitionEvent)) {
       LOGGER.info("Table lifecycle parameters is not empty, No synchronization event.");
       return;
     }
@@ -584,7 +584,7 @@ public class ChangeMetastoreWriteDbEventListener extends MetaStoreEventListener 
       LOGGER.info("Skip notify onDropPartition event, since the operation failed.");
       return;
     }
-    if (!MetaStoreEventListenerUtils.needSynchronize(partitionEvent)) {
+    if (!MetaStoreEventListenerUtils.needSynchronizeImpala(partitionEvent)) {
       LOGGER.info("Table lifecycle parameters is not empty, No synchronization event.");
       return;
     }
@@ -631,7 +631,7 @@ public class ChangeMetastoreWriteDbEventListener extends MetaStoreEventListener 
       LOGGER.info("Skip notify onDropPartition event, since the operation failed.");
       return;
     }
-    if (!MetaStoreEventListenerUtils.needSynchronize(partitionEvent)) {
+    if (!MetaStoreEventListenerUtils.needSynchronizeImpala(partitionEvent)) {
       LOGGER.info("Table lifecycle parameters is not empty, No synchronization event.");
       return;
     }
