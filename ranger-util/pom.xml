@@ -23,7 +23,7 @@
 	<parent>
 		<groupId>org.apache.ranger</groupId>
 		<artifactId>ranger</artifactId>
-		<version>0.5-mammut415</version>
+		<version>0.5-mammut416</version>
 	</parent>
 	<artifactId>ranger-util</artifactId>
 	<name>Ranger Util</name>
