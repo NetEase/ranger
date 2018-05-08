@@ -84,7 +84,6 @@
   <field name="objectName" type="key_lower_case" multiValued="false"/>
   <field name="objectDetail" type="key_lower_case" multiValued="false"/>
   <field name="objectType" type="key_lower_case" multiValued="false"/>
-  <field name="access" type="key_lower_case" multiValued="false"/>
   <field name="repo" type="key_lower_case" multiValued="false"/>
   <field name="repoType" type="tint" multiValued="false" docValues="true"/>
   <field name="req_caller_id" type="key_lower_case" multiValued="false"/>
