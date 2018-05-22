@@ -162,7 +162,7 @@ public class RangerRestUtil {
 			List<RangerPolicy> listPolicy = new ArrayList<>(servicePolicies.getPolicies());
 			synchronized(sync) {
 				for (RangerPolicy policy : listPolicy) {
-					logger.debug("policy id ="+policy.getId());
+					logger.debug("policy id =" + policy.getId());
 					if (policy.getIsEnabled()) {
 						Map<String, RangerPolicy.RangerPolicyResource> policyResourceMap = policy.getResources();
 						RangerPolicy.RangerPolicyResource dbResource = policyResourceMap.get("database");
@@ -188,12 +188,12 @@ public class RangerRestUtil {
 								for (String table : tableResource.getValues())
 									for (String column : columnResource.getValues()) {
 										for (RangerPolicy.RangerPolicyItem policyItem : policyItemList) {
-											logger.debug("table name ="+table+policy.toString());
+											logger.debug("table name =" + table + policy.toString());
 											ArrayList<String> providerList = generateProvider(serviceName, database, table, column, policyItem.getAccesses());
 											String roleName = "policy" + policy.getId() + "-" + policyItemIndex++;
-											List<String> groupList  = policyItem.getGroups();
+											List<String> groupList = policyItem.getGroups();
 											Map<String, List<String>> memberList = null;
-											if(null != policyItem.getGroupMember())
+											if (null != policyItem.getGroupMember())
 												memberList = new ConcurrentHashMap<>(policyItem.getGroupMember());
 
 											if (policyItem.getUsers() != null && !policyItem.getUsers().isEmpty()) {
@@ -208,24 +208,24 @@ public class RangerRestUtil {
 													groupList.add(groupName);
 												}
 												if (memberList != null) {
-													Map<String,List<String>> newMemberList = new ConcurrentHashMap(memberList);
-													newMemberList.put(groupName,policyItem.getUsers());
+													Map<String, List<String>> newMemberList = new ConcurrentHashMap(memberList);
+													newMemberList.put(groupName, policyItem.getUsers());
 													memberList = newMemberList;
 												} else {
 													memberList = new ConcurrentHashMap<>();
-													memberList.put(groupName,policyItem.getUsers());
+													memberList.put(groupName, policyItem.getUsers());
 												}
 											}
 
-											for (int groupIndex = 0; groupIndex < groupList.size(); groupIndex ++) {
+											for (int groupIndex = 0; groupIndex < groupList.size(); groupIndex++) {
 												groupRoles.put(groupList.get(groupIndex), roleName);
 												roleProvider.putAll(roleName, providerList);
 											}
 
 											Iterator iter = memberList.entrySet().iterator();
-											while(iter.hasNext()) {
-												Map.Entry<String, List<String>> entry = (Map.Entry<String, List<String>>)iter.next();
-												for(String user : entry.getValue()) {
+											while (iter.hasNext()) {
+												Map.Entry<String, List<String>> entry = (Map.Entry<String, List<String>>) iter.next();
+												for (String user : entry.getValue()) {
 													userGroups.put(user, entry.getKey());
 												}
 											}
@@ -235,52 +235,53 @@ public class RangerRestUtil {
 					}
 				}
 
-			}
-			Iterator iter = groupRoles.entries().iterator();
-			while(iter.hasNext()) {
-				Map.Entry<String, String> entry = (Map.Entry<String, String>)iter.next();
-				if (groupsSection.containsKey(entry.getKey())) {
-					groupsSection.put(entry.getKey(), groupsSection.get(entry.getKey()) + ", " + entry.getValue());
-				} else {
-					groupsSection.put(entry.getKey(), entry.getValue());
-				}
-			}
-			iter = roleProvider.entries().iterator();
-			while(iter.hasNext()) {
-				Map.Entry<String, String> entry = (Map.Entry<String, String>)iter.next();
-				if (rolesSection.containsKey(entry.getKey())) {
-					rolesSection.put(entry.getKey(), rolesSection.get(entry.getKey()) + ", " + entry.getValue());
-				} else {
-					rolesSection.put(entry.getKey(), entry.getValue());
-				}
-			}
-			iter = userGroups.entries().iterator();
-			while(iter.hasNext()) {
-				Map.Entry<String, String> entry = (Map.Entry<String, String>)iter.next();
-				if (usersSection.containsKey(entry.getKey())) {
-					usersSection.put(entry.getKey(), usersSection.get(entry.getKey()) + ", " + entry.getValue());
-				} else {
-					usersSection.put(entry.getKey(), entry.getValue());
-				}
-			}
 
-			iter = groupsSection.entrySet().iterator();
-			sbIni.append("[groups]\n");
-			while(iter.hasNext()) {
-				Map.Entry<String, String> entry = (Map.Entry<String, String>)iter.next();
-				sbIni.append(entry.getKey() + " = " + entry.getValue() + "\n");
-			}
-			iter = rolesSection.entrySet().iterator();
-			sbIni.append("\n[roles]\n");
-			while(iter.hasNext()) {
-				Map.Entry<String, String> entry = (Map.Entry<String, String>)iter.next();
-				sbIni.append(entry.getKey() + " = " + entry.getValue() + "\n");
-			}
-			iter = usersSection.entrySet().iterator();
-			sbIni.append("\n[users]\n");
-			while(iter.hasNext()) {
-				Map.Entry<String, String> entry = (Map.Entry<String, String>)iter.next();
-				sbIni.append(entry.getKey() + " = " + entry.getValue() + "\n");
+				Iterator iter = groupRoles.entries().iterator();
+				while (iter.hasNext()) {
+					Map.Entry<String, String> entry = (Map.Entry<String, String>) iter.next();
+					if (groupsSection.containsKey(entry.getKey())) {
+						groupsSection.put(entry.getKey(), groupsSection.get(entry.getKey()) + ", " + entry.getValue());
+					} else {
+						groupsSection.put(entry.getKey(), entry.getValue());
+					}
+				}
+				iter = roleProvider.entries().iterator();
+				while (iter.hasNext()) {
+					Map.Entry<String, String> entry = (Map.Entry<String, String>) iter.next();
+					if (rolesSection.containsKey(entry.getKey())) {
+						rolesSection.put(entry.getKey(), rolesSection.get(entry.getKey()) + ", " + entry.getValue());
+					} else {
+						rolesSection.put(entry.getKey(), entry.getValue());
+					}
+				}
+				iter = userGroups.entries().iterator();
+				while (iter.hasNext()) {
+					Map.Entry<String, String> entry = (Map.Entry<String, String>) iter.next();
+					if (usersSection.containsKey(entry.getKey())) {
+						usersSection.put(entry.getKey(), usersSection.get(entry.getKey()) + ", " + entry.getValue());
+					} else {
+						usersSection.put(entry.getKey(), entry.getValue());
+					}
+				}
+
+				iter = groupsSection.entrySet().iterator();
+				sbIni.append("[groups]\n");
+				while (iter.hasNext()) {
+					Map.Entry<String, String> entry = (Map.Entry<String, String>) iter.next();
+					sbIni.append(entry.getKey() + " = " + entry.getValue() + "\n");
+				}
+				iter = rolesSection.entrySet().iterator();
+				sbIni.append("\n[roles]\n");
+				while (iter.hasNext()) {
+					Map.Entry<String, String> entry = (Map.Entry<String, String>) iter.next();
+					sbIni.append(entry.getKey() + " = " + entry.getValue() + "\n");
+				}
+				iter = usersSection.entrySet().iterator();
+				sbIni.append("\n[users]\n");
+				while (iter.hasNext()) {
+					Map.Entry<String, String> entry = (Map.Entry<String, String>) iter.next();
+					sbIni.append(entry.getKey() + " = " + entry.getValue() + "\n");
+				}
 			}
 
 		} catch(Exception excp) {

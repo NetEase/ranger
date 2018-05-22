@@ -18,13 +18,8 @@
  */
 package org.apache.ranger.utils;
 
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.framework.recipes.locks.InterProcessMutex;
@@ -32,12 +27,15 @@ import org.apache.curator.framework.state.ConnectionState;
 import org.apache.curator.framework.state.ConnectionStateListener;
 import org.apache.curator.retry.ExponentialBackoffRetry;
 
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+
 
 public class DistributedLock {
   private static final Log LOGGER = LogFactory.getLog(DistributedLock.class);
 
   public static long value = 1;
-  public static String servers = "192.168.30.107:2181";
 
   private static CuratorFramework curator = null;
   private static zkListener listener = null;
