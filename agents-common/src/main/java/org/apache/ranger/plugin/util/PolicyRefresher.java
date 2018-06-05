@@ -151,6 +151,8 @@ public class PolicyRefresher extends Thread {
 			LOG.debug("==> PolicyRefresher(serviceName=" + serviceName + ").run()");
 		}
 
+		setDaemon(true);
+
 		while(true) {
 			loadPolicy();
 			try {

@@ -196,7 +196,7 @@ public class RangerServicePoliciesCache {
 			try {
 				ret = lock.tryLock(waitTimeInSeconds, TimeUnit.SECONDS);
 				if (ret) {
-					LOG.info(Thread.currentThread().getName() + " obtain lock here ...");
+					//LOG.info(Thread.currentThread().getName() + " obtain lock here ...");
 					getLatest(serviceName, serviceStore);
 				}
 			} catch (InterruptedException exception) {
