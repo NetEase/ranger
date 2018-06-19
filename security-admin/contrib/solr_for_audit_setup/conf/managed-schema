@@ -77,6 +77,7 @@
   <field name="policy" type="tlong" docValues="true"/>
   <field name="proxyUsers" type="key_lower_case" multiValued="true"/>
   <field name="reason" type="text_std_token_lower_case" multiValued="false" omitNorms="false"/>
+  <field name="product" type="key_lower_case" multiValued="false"/>
   <field name="email" type="key_lower_case" multiValued="false"/>
   <field name="clusterid" type="key_lower_case" multiValued="false"/>
   <field name="userAgent" type="key_lower_case" multiValued="false"/>
