@@ -19,19 +19,19 @@
 
 package org.apache.ranger.plugin.audit;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.ranger.audit.model.AuthzAuditEvent;
 import org.apache.ranger.audit.provider.AuditProviderFactory;
 import org.apache.ranger.audit.provider.MiscUtil;
 import org.apache.ranger.plugin.policyengine.RangerAccessRequest;
-import org.apache.ranger.plugin.policyengine.RangerAccessResult;
 import org.apache.ranger.plugin.policyengine.RangerAccessResource;
+import org.apache.ranger.plugin.policyengine.RangerAccessResult;
 import org.apache.ranger.plugin.policyengine.RangerAccessResultProcessor;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 
 
 public class RangerDefaultAuditHandler implements RangerAccessResultProcessor {
@@ -166,7 +166,7 @@ public class RangerDefaultAuditHandler implements RangerAccessResultProcessor {
 		}
 
 		if (auditEvent.getAgentHostname() == null || auditEvent.getAgentHostname().isEmpty()) {
-			auditEvent.setAgentHostname(MiscUtil.getHostname());
+			//auditEvent.setAgentHostname(MiscUtil.getHostname());
 		}
 
 		if (auditEvent.getLogType() == null || auditEvent.getLogType().isEmpty()) {

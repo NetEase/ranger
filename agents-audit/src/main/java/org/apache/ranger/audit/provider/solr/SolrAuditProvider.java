@@ -19,10 +19,6 @@
 
 package org.apache.ranger.audit.provider.solr;
 
-import java.util.Collection;
-import java.util.Date;
-import java.util.Properties;
-
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.ranger.audit.destination.AuditDestination;
@@ -33,6 +29,10 @@ import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.impl.HttpSolrClient;
 import org.apache.solr.client.solrj.response.UpdateResponse;
 import org.apache.solr.common.SolrInputDocument;
+
+import java.util.Collection;
+import java.util.Date;
+import java.util.Properties;
 
 public class SolrAuditProvider extends AuditDestination {
 	private static final Log LOG = LogFactory.getLog(SolrAuditProvider.class);
@@ -124,7 +124,7 @@ public class SolrAuditProvider extends AuditDestination {
 		// TODO: This should be done at a higher level
 
 		if (authzEvent.getAgentHostname() == null) {
-			authzEvent.setAgentHostname(MiscUtil.getHostname());
+			//authzEvent.setAgentHostname(MiscUtil.getHostname());
 		}
 
 		if (authzEvent.getLogType() == null) {
