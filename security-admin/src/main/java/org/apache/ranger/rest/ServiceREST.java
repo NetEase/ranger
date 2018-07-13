@@ -2374,6 +2374,9 @@ public class ServiceREST {
 					adjustDbHdfsPolicyByLocation(location,hiveService.getId(),policy,null,false);
 				}
 				ret = svcStore.createPolicy(policy);
+				//RangerPolicyEngineCache.getInstance().addPolicyEngine(svcStore.getServicePolicies(xxService.getName()));
+				Long policyVersion = svcStore.getServicePolicies(xxService.getName()).getPolicyVersion();
+				svcStore.getServicePolicies(xxService.getName()).setPolicyVersion(policyVersion+1);
 				return ret;
 			}
 		} catch (WebApplicationException excp) {

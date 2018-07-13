@@ -19,15 +19,14 @@
 
 package org.apache.ranger.plugin.policyengine;
 
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.apache.ranger.plugin.store.ServiceStore;
+import org.apache.ranger.plugin.util.ServicePolicies;
+
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-import org.apache.ranger.plugin.policyengine.RangerPolicyEngineOptions;
-import org.apache.ranger.plugin.store.ServiceStore;
-import org.apache.ranger.plugin.util.ServicePolicies;
 
 public class RangerPolicyEngineCache {
 	private static final Log LOG = LogFactory.getLog(RangerPolicyEngineCache.class);
