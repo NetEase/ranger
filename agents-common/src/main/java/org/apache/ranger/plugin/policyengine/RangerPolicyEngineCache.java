@@ -77,7 +77,7 @@ public class RangerPolicyEngineCache {
 		this.options = options;
 	}
 
-	private RangerPolicyEngine addPolicyEngine(ServicePolicies policies) {
+	public RangerPolicyEngine addPolicyEngine(ServicePolicies policies) {
 		RangerPolicyEngine ret = new RangerPolicyEngineImpl(policies, options);
 
 		policyEngineCache.put(policies.getServiceName(), ret);
