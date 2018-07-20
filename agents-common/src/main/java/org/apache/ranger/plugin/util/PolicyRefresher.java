@@ -131,7 +131,7 @@ public class PolicyRefresher extends Thread {
 	public void startRefresher() {
 
 		loadPolicy();
-
+		setDaemon(true);
 		super.start();
 	}
 
