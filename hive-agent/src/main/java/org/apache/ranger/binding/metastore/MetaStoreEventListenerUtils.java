@@ -29,85 +29,85 @@ public class MetaStoreEventListenerUtils {
 
   static String NOT_SYNC_POLICY = "NOT_SYNC_POLICY";
 
-  static String NOT_SYNC_METASTORE = "NOT_SYNC_METASTORE";
+  static String SYNC_METASTORE = "SYNC_METASTORE";
 
   static public boolean needSynchronizeImpala(ListenerEvent listenerEvent) {
 
-    String notSyncMetastore = "";
+    String syncMetastore = "";
     try {
       if (listenerEvent instanceof CreateDatabaseEvent) {
         CreateDatabaseEvent event = (CreateDatabaseEvent) listenerEvent;
         Map<String, String> mapParameters = event.getDatabase().getParameters();
 
-        if (null != mapParameters && mapParameters.containsKey(NOT_SYNC_METASTORE)) {
-          notSyncMetastore = mapParameters.get(NOT_SYNC_METASTORE);
+        if (null != mapParameters && mapParameters.containsKey(SYNC_METASTORE)) {
+          syncMetastore = mapParameters.get(SYNC_METASTORE);
         }
       } else if (listenerEvent instanceof DropDatabaseEvent) {
         DropDatabaseEvent event = (DropDatabaseEvent) listenerEvent;
         Map<String, String> mapParameters = event.getDatabase().getParameters();
 
-        if (null != mapParameters && mapParameters.containsKey(NOT_SYNC_METASTORE)) {
-          notSyncMetastore = mapParameters.get(NOT_SYNC_METASTORE);
+        if (null != mapParameters && mapParameters.containsKey(SYNC_METASTORE)) {
+          syncMetastore = mapParameters.get(SYNC_METASTORE);
         }
       } else if (listenerEvent instanceof CreateTableEvent) {
         CreateTableEvent event = (CreateTableEvent) listenerEvent;
         Map<String, String> mapParameters = event.getTable().getParameters();
 
-        if (null != mapParameters && mapParameters.containsKey(NOT_SYNC_METASTORE)) {
-          notSyncMetastore = mapParameters.get(NOT_SYNC_METASTORE);
+        if (null != mapParameters && mapParameters.containsKey(SYNC_METASTORE)) {
+          syncMetastore = mapParameters.get(SYNC_METASTORE);
         }
       } else if (listenerEvent instanceof DropTableEvent) {
         DropTableEvent event = (DropTableEvent) listenerEvent;
         Map<String, String> mapParameters = event.getTable().getParameters();
 
-        if (null != mapParameters && mapParameters.containsKey(NOT_SYNC_METASTORE)) {
-          notSyncMetastore = mapParameters.get(NOT_SYNC_METASTORE);
+        if (null != mapParameters && mapParameters.containsKey(SYNC_METASTORE)) {
+          syncMetastore = mapParameters.get(SYNC_METASTORE);
         }
       } else if (listenerEvent instanceof AlterTableEvent) {
         AlterTableEvent event = (AlterTableEvent) listenerEvent;
         Map<String, String> oldParameters = event.getOldTable().getParameters();
 
-        if (null != oldParameters && oldParameters.containsKey(NOT_SYNC_METASTORE)) {
-          notSyncMetastore = oldParameters.get(NOT_SYNC_METASTORE);
+        if (null != oldParameters && oldParameters.containsKey(SYNC_METASTORE)) {
+          syncMetastore = oldParameters.get(SYNC_METASTORE);
         }
         Map<String, String> newParameters = event.getNewTable().getParameters();
 
-        if (null != oldParameters && oldParameters.containsKey(NOT_SYNC_METASTORE)) {
-          notSyncMetastore = newParameters.get(NOT_SYNC_METASTORE);
+        if (null != oldParameters && oldParameters.containsKey(SYNC_METASTORE)) {
+          syncMetastore = newParameters.get(SYNC_METASTORE);
         }
       } else if (listenerEvent instanceof AddPartitionEvent) {
         AddPartitionEvent event = (AddPartitionEvent) listenerEvent;
         Map<String, String> mapParameters = event.getTable().getParameters();
 
-        if (null != mapParameters && mapParameters.containsKey(NOT_SYNC_METASTORE)) {
-          notSyncMetastore = mapParameters.get(NOT_SYNC_METASTORE);
+        if (null != mapParameters && mapParameters.containsKey(SYNC_METASTORE)) {
+          syncMetastore = mapParameters.get(SYNC_METASTORE);
         }
       } else if (listenerEvent instanceof AlterPartitionEvent) {
         AlterPartitionEvent event = (AlterPartitionEvent) listenerEvent;
         Map<String, String> mapParameters = event.getTable().getParameters();
 
-        if (null != mapParameters && mapParameters.containsKey(NOT_SYNC_METASTORE)) {
-          notSyncMetastore = mapParameters.get(NOT_SYNC_METASTORE);
+        if (null != mapParameters && mapParameters.containsKey(SYNC_METASTORE)) {
+          syncMetastore = mapParameters.get(SYNC_METASTORE);
         }
       } else if (listenerEvent instanceof DropPartitionEvent) {
         DropPartitionEvent event = (DropPartitionEvent) listenerEvent;
         Map<String, String> mapParameters = event.getTable().getParameters();
 
-        if (null != mapParameters && mapParameters.containsKey(NOT_SYNC_METASTORE)) {
-          notSyncMetastore = mapParameters.get(NOT_SYNC_METASTORE);
+        if (null != mapParameters && mapParameters.containsKey(SYNC_METASTORE)) {
+          syncMetastore = mapParameters.get(SYNC_METASTORE);
         }
       }
 
-      if (null != notSyncMetastore && notSyncMetastore.trim().equalsIgnoreCase("on")) {
-        LOGGER.info("notSyncMetastore = " + notSyncMetastore);
-        return false;
+      if (null != syncMetastore && syncMetastore.trim().equalsIgnoreCase("on")) {
+        LOGGER.info("SyncMetastore = " + syncMetastore);
+        return true;
       }
     } catch (Throwable e) {
       LOGGER.info("catch a Exception " + e);
-      LOGGER.info("return needSync true by default");
-      return true;
+      LOGGER.info("return needSyncMeta false by default");
+      return false;
     }
-    return true;
+    return false;
   }
 
   static public boolean needSynchronizePolicy(ListenerEvent listenerEvent) {
@@ -189,3 +189,4 @@ public class MetaStoreEventListenerUtils {
   }
 
 }
+
