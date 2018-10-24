@@ -55,6 +55,9 @@ public class RangerBasePlugin {
 	private String                    serviceName  = null;
 	private PolicyRefresher           refresher    = null;
 	private RangerPolicyEngine        policyEngine = null;
+
+
+
 	private RangerPolicyEngineOptions policyEngineOptions = new RangerPolicyEngineOptions();
 	private RangerAccessResultProcessor resultProcessor = null;
 	private RangerAdminClient         rangerAdminClient = null;
@@ -92,6 +95,10 @@ public class RangerBasePlugin {
 	}
 	public String getServiceName() {
 		return serviceName;
+	}
+
+	public RangerPolicyEngineOptions getPolicyEngineOptions() {
+		return policyEngineOptions;
 	}
 
 	public void init(String serviceType, String appId) {

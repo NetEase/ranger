@@ -129,8 +129,14 @@ public class PolicyRefresher extends Thread {
 
 
 	public void startRefresher() {
+		if ("hive".equals(serviceType)) {
+			plugIn.getPolicyEngineOptions().disableTrieLookupPrefilter = true;
+			loadPolicy();
+			plugIn.getPolicyEngineOptions().disableTrieLookupPrefilter = false;
+		} else {
+			loadPolicy();
+		}
 
-		loadPolicy();
 		setDaemon(true);
 		super.start();
 	}
