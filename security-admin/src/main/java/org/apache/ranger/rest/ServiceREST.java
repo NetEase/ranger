@@ -1149,12 +1149,13 @@ public class ServiceREST {
 		try {
 			String userName = syncRequest.getGrantor();
 			Set<String> userGroups = userMgr.getGroupsForUser(userName);
-			RangerAccessResource resource = new RangerAccessResourceImpl(syncRequest.getResource());
+			//RangerAccessResource resource = new RangerAccessResourceImpl(syncRequest.getResource());
 			syncRequest.setGroups(null); // Generate user rights only
-			boolean isAdmin = hasAdminAccess(serviceName, userName, userGroups, resource);
-			if (!isAdmin) {
-				LOG.warn("hasAdminAccess(" + serviceName + ", " + userName + ", " + userGroups + ", "
-						+ syncRequest + ") unauthorized or not delegateadmin!");
+			//boolean isAdmin = hasAdminAccess(serviceName, userName, userGroups, resource);
+			boolean isNotSync = isNotSync(syncRequest);
+
+			if (isNotSync) {
+				LOG.warn(syncRequest + "isNotSync!");
 			} else {
 				mockSession(request, userName);
 				syncCatlog(serviceName, hiveOperationType, syncRequest);
@@ -1175,6 +1176,22 @@ public class ServiceREST {
 		}
 
 		return ret;
+	}
+
+
+	private boolean isNotSync(SynchronizeRequest synchronizeRequest) {
+		if (synchronizeRequest != null && synchronizeRequest.getResource() != null ) {
+			String  dbName = synchronizeRequest.getResource().get("database");
+			if (dbName == null) {
+				LOG.warn("the synchronizeRequest is" + synchronizeRequest + "," + "and the dbName is" + dbName);
+				return false;
+			}
+			if ("mammutrepo".equals(dbName) || dbName.startsWith("hive__lifecycle__trash")) {
+				return true;
+			}
+			return false;
+		}
+		return true;
 	}
 
 	// colName = "", search match databaseName & tableName hive-policy
