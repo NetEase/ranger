@@ -156,7 +156,7 @@
 		<javax.persistence.version>2.1.0</javax.persistence.version>
 		<javax.servlet.version>3.1.0</javax.servlet.version>
 		<jericho.html.version>3.3</jericho.html.version>
-		<jersey-bundle.version>1.17.1</jersey-bundle.version>
+		<jersey-bundle.version>1.4</jersey-bundle.version>
 		<jersey-client.version>2.6</jersey-client.version>
 		<junit.version>4.11</junit.version>
 		<kafka.version>0.9.0.0</kafka.version>
