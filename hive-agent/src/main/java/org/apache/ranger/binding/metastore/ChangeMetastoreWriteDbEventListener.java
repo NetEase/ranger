@@ -78,6 +78,7 @@ public class ChangeMetastoreWriteDbEventListener extends MetaStoreEventListener 
   private int part2tableMergeNum = 100;
   private String MonitorShell = "";
   private String ChangelogTabelName = "";
+  private String syncImpala = "";
 
   private SqlSessionFactory sqlSessionFactory = null;
 
@@ -104,10 +105,13 @@ public class ChangeMetastoreWriteDbEventListener extends MetaStoreEventListener 
     part2tableMergeNum = RangerConfiguration.getInstance().getInt(RangerHadoopConstants.RANGER_MS_CHANGELOG_PART2TABLE_MERGE_NUM, 100);
     MonitorShell = RangerConfiguration.getInstance().get(RangerHadoopConstants.RANGER_MS_CHANGELOG_MONITOR_SHELL, "");
     ChangelogTabelName = RangerConfiguration.getInstance().get(RangerHadoopConstants.RANGER_MS_CHANGELOG_TABLE_NAME, "");
+    syncImpala = RangerConfiguration.getInstance().get(RangerHadoopConstants.RANGER_MS_SYNC_METASTROE_DEFAULT,"false");
+
     if (ChangelogTabelName.isEmpty()) {
       ChangelogTabelName = "impala_metastore_update_log_" + RangerConfiguration.getInstance().get("ranger.plugin.hive.service.name", "");
       LOGGER.info("auto generate ChangelogTabelName = " + ChangelogTabelName);
     }
+
 
     try {
       initSqlSessionFactory();
@@ -431,7 +435,7 @@ public class ChangeMetastoreWriteDbEventListener extends MetaStoreEventListener 
       LOGGER.info("Skip notify onCreateTable event, since the operation failed. \n");
       return;
     }
-    if (!MetaStoreEventListenerUtils.needSynchronizeImpala(tableEvent)) {
+    if (!MetaStoreEventListenerUtils.needSynchronizeImpala(tableEvent, syncImpala)) {
       LOGGER.debug("Table lifecycle parameters is not empty, No synchronization event.");
       return;
     }
@@ -455,7 +459,7 @@ public class ChangeMetastoreWriteDbEventListener extends MetaStoreEventListener 
       LOGGER.debug("Skip notify onDropTable event, since the operation failed. \n");
       return;
     }
-    if (!MetaStoreEventListenerUtils.needSynchronizeImpala(tableEvent)) {
+    if (!MetaStoreEventListenerUtils.needSynchronizeImpala(tableEvent,syncImpala)) {
       LOGGER.debug("Table lifecycle parameters is not empty, No synchronization event.");
       return;
     }
@@ -482,7 +486,7 @@ public class ChangeMetastoreWriteDbEventListener extends MetaStoreEventListener 
       LOGGER.debug("Skip notify onAlterTable event, since the operation failed.");
       return;
     }
-    if (!MetaStoreEventListenerUtils.needSynchronizeImpala(tableEvent)) {
+    if (!MetaStoreEventListenerUtils.needSynchronizeImpala(tableEvent,syncImpala)) {
       LOGGER.debug("Table lifecycle parameters is not empty, No synchronization event.");
       return;
     }
@@ -511,7 +515,7 @@ public class ChangeMetastoreWriteDbEventListener extends MetaStoreEventListener 
       LOGGER.debug("Skip notify onAddPartition event, since the operation failed.");
       return;
     }
-    if (!MetaStoreEventListenerUtils.needSynchronizeImpala(partitionEvent)) {
+    if (!MetaStoreEventListenerUtils.needSynchronizeImpala(partitionEvent, syncImpala)) {
       LOGGER.debug("Table lifecycle parameters is not empty, No synchronization event.");
       return;
     }
@@ -584,7 +588,7 @@ public class ChangeMetastoreWriteDbEventListener extends MetaStoreEventListener 
       LOGGER.info("Skip notify onDropPartition event, since the operation failed.");
       return;
     }
-    if (!MetaStoreEventListenerUtils.needSynchronizeImpala(partitionEvent)) {
+    if (!MetaStoreEventListenerUtils.needSynchronizeImpala(partitionEvent, syncImpala)) {
       LOGGER.debug("Table lifecycle parameters is not empty, No synchronization event.");
       return;
     }
@@ -631,7 +635,7 @@ public class ChangeMetastoreWriteDbEventListener extends MetaStoreEventListener 
       LOGGER.info("Skip notify onDropPartition event, since the operation failed.");
       return;
     }
-    if (!MetaStoreEventListenerUtils.needSynchronizeImpala(partitionEvent)) {
+    if (!MetaStoreEventListenerUtils.needSynchronizeImpala(partitionEvent, syncImpala)) {
       LOGGER.debug("Table lifecycle parameters is not empty, No synchronization event.");
       return;
     }

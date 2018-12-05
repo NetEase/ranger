@@ -31,9 +31,10 @@ public class MetaStoreEventListenerUtils {
 
   static String SYNC_METASTORE = "SYNC_METASTORE";
 
-  static public boolean needSynchronizeImpala(ListenerEvent listenerEvent) {
+  static public boolean needSynchronizeImpala(ListenerEvent listenerEvent, String syncImpala) {
 
     String syncMetastore = "";
+
     try {
       if (listenerEvent instanceof CreateDatabaseEvent) {
         CreateDatabaseEvent event = (CreateDatabaseEvent) listenerEvent;
@@ -96,6 +97,11 @@ public class MetaStoreEventListenerUtils {
         if (null != mapParameters && mapParameters.containsKey(SYNC_METASTORE)) {
           syncMetastore = mapParameters.get(SYNC_METASTORE);
         }
+      }
+
+      if ("true".equals(syncImpala) && null != syncMetastore && !syncMetastore.trim().equalsIgnoreCase("off")) {
+        LOGGER.info("SyncMetastore = " + syncMetastore);
+        return true;
       }
 
       if (null != syncMetastore && syncMetastore.trim().equalsIgnoreCase("on")) {
