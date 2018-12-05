@@ -409,7 +409,7 @@ public class RangerBasePlugin {
 		public void run() {
 			RangerPolicyEngine policyEngine = plugin.policyEngine;
 			if (policyEngine != null) {
-				policyEngine.reorderPolicyEvaluators();
+				//policyEngine.reorderPolicyEvaluators();
 			}
 		}
 	}

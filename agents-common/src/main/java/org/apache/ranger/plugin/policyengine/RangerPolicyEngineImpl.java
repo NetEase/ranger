@@ -413,9 +413,9 @@ public class RangerPolicyEngineImpl implements RangerPolicyEngine {
 			}
 		}
 
-		if (policyRepository != null) {
-			policyRepository.reorderPolicyEvaluators();
-		}
+//		if (policyRepository != null) {
+//			policyRepository.reorderPolicyEvaluators();
+//		}
 
 		if (MapUtils.isNotEmpty(policyEvaluatorsMap)) {
 			for (Map.Entry<Long, RangerPolicyEvaluator> entry : policyEvaluatorsMap.entrySet()) {
