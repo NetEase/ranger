@@ -512,11 +512,25 @@ class MysqlConf(BaseDB):
 								log("[E] applying java patch "+ className +" failed", "error")
 								sys.exit(1)
 
+class MyhasConf(MysqlConf):
+	# Constructor
+	def __init__(self, host,SQL_CONNECTOR_JAR,JAVA_BIN):
+		self.host = host
+		self.SQL_CONNECTOR_JAR = SQL_CONNECTOR_JAR
+		self.JAVA_BIN = JAVA_BIN
+	def get_jisql_cmd(self, user, password ,db_name):
+		path = RANGER_ADMIN_HOME
+		self.JAVA_BIN = self.JAVA_BIN.strip("'")
+		if os_name == "LINUX":
+			jisql_cmd = "%s -cp %s:%s/jisql/lib/* org.apache.util.sql.Jisql -driver com.netease.backend.rds.myhas.Driver -cstring jdbc:myhas://%s:6789/default/%s -u '%s' -p '%s' -noheader -trim -c \;" %(self.JAVA_BIN,self.SQL_CONNECTOR_JAR,path,self.host,db_name,user,password)
+		elif os_name == "WINDOWS":
+			jisql_cmd = "%s -cp %s;%s\jisql\\lib\\* org.apache.util.sql.Jisql -driver com.netease.backend.rds.myhas.Driver -cstring jdbc:myhas://%s:6789/default/%s -u \"%s\" -p \"%s\" -noheader -trim" %(self.JAVA_BIN, self.SQL_CONNECTOR_JAR, path, self.host, db_name, user, password)
+		return jisql_cmd
 
 class OracleConf(BaseDB):
 	# Constructor
 	def __init__(self, host, SQL_CONNECTOR_JAR, JAVA_BIN):
-		self.host = host 
+		self.host = host
 		self.SQL_CONNECTOR_JAR = SQL_CONNECTOR_JAR
 		self.JAVA_BIN = JAVA_BIN
 
@@ -2116,8 +2130,8 @@ def main(argv):
 	mysql_auditdb_patches = os.path.join('db','mysql','patches','audit')
 
 	oracle_dbversion_catalog = os.path.join('db','oracle','create_dbversion_catalog.sql')
-	oracle_core_file = globalDict['oracle_core_file'] 
-	oracle_audit_file = globalDict['oracle_audit_file'] 
+	oracle_core_file = globalDict['oracle_core_file']
+	oracle_audit_file = globalDict['oracle_audit_file']
 	oracle_patches = os.path.join('db','oracle','patches')
 	oracle_auditdb_patches = os.path.join('db','oracle','patches','audit')
 
@@ -2153,12 +2167,18 @@ def main(argv):
 
 	if XA_DB_FLAVOR == "MYSQL":
 		MYSQL_CONNECTOR_JAR=globalDict['SQL_CONNECTOR_JAR']
-		xa_sqlObj = MysqlConf(xa_db_host, MYSQL_CONNECTOR_JAR, JAVA_BIN)
+		xa_sqlObj = MyhasConf(xa_db_host, MYSQL_CONNECTOR_JAR, JAVA_BIN)
 		xa_db_version_file = os.path.join(RANGER_ADMIN_HOME , mysql_dbversion_catalog)
 		xa_db_core_file = os.path.join(RANGER_ADMIN_HOME , mysql_core_file)
 		xa_patch_file = os.path.join(RANGER_ADMIN_HOME ,mysql_patches)
 		audit_patch_file = os.path.join(RANGER_ADMIN_HOME ,mysql_auditdb_patches)
-		
+	elif XA_DB_FLAVOR == "MYHAS":
+		MYHAS_CONNECTOR_JAR=globalDict['SQL_CONNECTOR_JAR']
+		xa_sqlObj = MyhasConf(xa_db_host, MYHAS_CONNECTOR_JAR, JAVA_BIN)
+		xa_db_version_file = os.path.join(RANGER_ADMIN_HOME , mysql_dbversion_catalog)
+		xa_db_core_file = os.path.join(RANGER_ADMIN_HOME , mysql_core_file)
+		xa_patch_file = os.path.join(RANGER_ADMIN_HOME ,mysql_patches)
+		audit_patch_file = os.path.join(RANGER_ADMIN_HOME ,mysql_auditdb_patches)
 	elif XA_DB_FLAVOR == "ORACLE":
 		ORACLE_CONNECTOR_JAR=globalDict['SQL_CONNECTOR_JAR']
 		xa_sqlObj = OracleConf(xa_db_host, ORACLE_CONNECTOR_JAR, JAVA_BIN)
@@ -2169,7 +2189,7 @@ def main(argv):
 
 	elif XA_DB_FLAVOR == "POSTGRES":
 		db_user=db_user.lower()
-        	db_name=db_name.lower()
+		db_name=db_name.lower()
 		POSTGRES_CONNECTOR_JAR = globalDict['SQL_CONNECTOR_JAR']
 		xa_sqlObj = PostgresConf(xa_db_host, POSTGRES_CONNECTOR_JAR, JAVA_BIN)
 		xa_db_version_file = os.path.join(RANGER_ADMIN_HOME , postgres_dbversion_catalog)
@@ -2205,6 +2225,10 @@ def main(argv):
 		MYSQL_CONNECTOR_JAR=globalDict['SQL_CONNECTOR_JAR']
 		audit_sqlObj = MysqlConf(audit_db_host,MYSQL_CONNECTOR_JAR,JAVA_BIN)
 		audit_db_file = os.path.join(RANGER_ADMIN_HOME ,mysql_audit_file)
+	elif AUDIT_DB_FLAVOR == "MYHAS":
+		MYHAS_CONNECTOR_JAR=globalDict['SQL_CONNECTOR_JAR']
+		audit_sqlObj = MysqlConf(audit_db_host,MYHAS_CONNECTOR_JAR,JAVA_BIN)
+		audit_db_file = os.path.join(RANGER_ADMIN_HOME ,mysql_audit_file)
 
 	elif AUDIT_DB_FLAVOR == "ORACLE":
 		ORACLE_CONNECTOR_JAR=globalDict['SQL_CONNECTOR_JAR']
@@ -2213,7 +2237,7 @@ def main(argv):
 
 	elif AUDIT_DB_FLAVOR == "POSTGRES":
 		audit_db_user=audit_db_user.lower()
-	        audit_db_name=audit_db_name.lower()
+		audit_db_name=audit_db_name.lower()
 		POSTGRES_CONNECTOR_JAR = globalDict['SQL_CONNECTOR_JAR']
 		audit_sqlObj = PostgresConf(audit_db_host, POSTGRES_CONNECTOR_JAR, JAVA_BIN)
 		audit_db_file = os.path.join(RANGER_ADMIN_HOME , postgres_audit_file)

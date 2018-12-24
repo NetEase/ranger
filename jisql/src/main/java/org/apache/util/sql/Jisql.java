@@ -14,8 +14,11 @@
  */
 package org.apache.util.sql;
 
+import joptsimple.OptionParser;
+import joptsimple.OptionSet;
+import org.apache.util.outputformatter.JisqlFormatter;
+
 import java.io.BufferedReader;
-import java.io.Console;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
@@ -31,11 +34,6 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Properties;
-
-import joptsimple.OptionParser;
-import joptsimple.OptionSet;
-
-import org.apache.util.outputformatter.JisqlFormatter;
 
 /**
  * A simple utility to provide an interactive session with a SQL server. This
@@ -294,7 +292,7 @@ public class Jisql {
                 printDriverInfo();
             }
             else {
-            	if(connectString.toLowerCase().startsWith("jdbc:mysql") && inputFileName!=null){
+            	if((connectString.toLowerCase().startsWith("jdbc:mysql") || connectString.toLowerCase().startsWith("jdbc:myhas"))&& inputFileName!=null){
             		MySQLPLRunner scriptRunner = new MySQLPLRunner(connection, false, true,printDebug);
             		scriptRunner.setDelimiter(commandTerminator,false);
             		FileReader reader = new FileReader(inputFileName) ;
