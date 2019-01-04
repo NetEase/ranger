@@ -2167,7 +2167,7 @@ def main(argv):
 
 	if XA_DB_FLAVOR == "MYSQL":
 		MYSQL_CONNECTOR_JAR=globalDict['SQL_CONNECTOR_JAR']
-		xa_sqlObj = MyhasConf(xa_db_host, MYSQL_CONNECTOR_JAR, JAVA_BIN)
+		xa_sqlObj = MysqlConf(xa_db_host, MYSQL_CONNECTOR_JAR, JAVA_BIN)
 		xa_db_version_file = os.path.join(RANGER_ADMIN_HOME , mysql_dbversion_catalog)
 		xa_db_core_file = os.path.join(RANGER_ADMIN_HOME , mysql_core_file)
 		xa_patch_file = os.path.join(RANGER_ADMIN_HOME ,mysql_patches)
@@ -2227,7 +2227,7 @@ def main(argv):
 		audit_db_file = os.path.join(RANGER_ADMIN_HOME ,mysql_audit_file)
 	elif AUDIT_DB_FLAVOR == "MYHAS":
 		MYHAS_CONNECTOR_JAR=globalDict['SQL_CONNECTOR_JAR']
-		audit_sqlObj = MysqlConf(audit_db_host,MYHAS_CONNECTOR_JAR,JAVA_BIN)
+		audit_sqlObj = MyhasConf(audit_db_host,MYHAS_CONNECTOR_JAR,JAVA_BIN)
 		audit_db_file = os.path.join(RANGER_ADMIN_HOME ,mysql_audit_file)
 
 	elif AUDIT_DB_FLAVOR == "ORACLE":
