@@ -520,6 +520,7 @@ class RangerHdfsAuditHandler extends RangerDefaultAuditHandler {
 		auditEvent.setAccessType(request.getAction());
 		auditEvent.setAccessResult((short)(result.getIsAllowed() ? 1 : 0));
 		auditEvent.setClientIP(request.getClientIPAddress());
+		auditEvent.setClientType("hdfs");
 		auditEvent.setEventTime(request.getAccessTime());
 		auditEvent.setAclEnforcer(RangerModuleName);
 		auditEvent.setPolicyId(result.getPolicyId());
