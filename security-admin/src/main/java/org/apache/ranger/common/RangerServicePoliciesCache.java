@@ -343,6 +343,8 @@ public class RangerServicePoliciesCache {
 
 	public void updatePolicyInCache (String action, RangerPolicy policy, ServiceStore serviceStore) {
 
+		if (null == policy) return;
+
 		String serviceName = policy.getService();
 
 		ServicePoliciesWrapper servicePoliciesWrapper = null;
