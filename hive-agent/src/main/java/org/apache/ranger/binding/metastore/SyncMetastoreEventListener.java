@@ -24,25 +24,38 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.conf.HiveConf;
 import org.apache.hadoop.hive.metastore.MetaStoreEventListener;
-import org.apache.hadoop.hive.metastore.api.*;
-import org.apache.hadoop.hive.metastore.events.*;
-import org.apache.hadoop.hive.ql.security.authorization.plugin.*;
+import org.apache.hadoop.hive.metastore.api.Database;
+import org.apache.hadoop.hive.metastore.api.FieldSchema;
+import org.apache.hadoop.hive.metastore.api.MetaException;
+import org.apache.hadoop.hive.metastore.api.Table;
+import org.apache.hadoop.hive.metastore.events.AlterTableEvent;
+import org.apache.hadoop.hive.metastore.events.CreateDatabaseEvent;
+import org.apache.hadoop.hive.metastore.events.CreateTableEvent;
+import org.apache.hadoop.hive.metastore.events.DropDatabaseEvent;
+import org.apache.hadoop.hive.metastore.events.DropTableEvent;
+import org.apache.hadoop.hive.metastore.events.ListenerEvent;
+import org.apache.hadoop.hive.ql.security.authorization.plugin.HivePrincipal;
+import org.apache.hadoop.hive.ql.security.authorization.plugin.HivePrivilege;
+import org.apache.hadoop.hive.ql.security.authorization.plugin.HivePrivilegeObject;
 import org.apache.hadoop.hive.shims.Utils;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.ranger.authorization.hadoop.config.RangerConfiguration;
 import org.apache.ranger.authorization.hadoop.constants.RangerHadoopConstants;
-import org.apache.ranger.authorization.hive.authorizer.*;
+import org.apache.ranger.authorization.hive.authorizer.HiveAccessType;
 import org.apache.ranger.authorization.hive.authorizer.HiveObjectType;
+import org.apache.ranger.authorization.hive.authorizer.RangerHiveResource;
 import org.apache.ranger.authorization.utils.StringUtil;
-import org.apache.ranger.plugin.policyengine.*;
 import org.apache.ranger.plugin.service.RangerBasePlugin;
-import org.apache.ranger.plugin.util.*;
 import org.apache.ranger.plugin.util.HiveOperationType;
+import org.apache.ranger.plugin.util.SynchronizeRequest;
 
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class SyncMetastoreEventListener extends MetaStoreEventListener {
@@ -170,6 +183,8 @@ public class SyncMetastoreEventListener extends MetaStoreEventListener {
     String tableType = "";
     String location = "";
     String newLocation = "";
+    String owner = "";
+    String newOwner = "";
     HiveAccessType hiveAccessType = HiveAccessType.NONE;
     switch (hiveOperationType) {
       case CREATEDATABASE:
@@ -217,6 +232,11 @@ public class SyncMetastoreEventListener extends MetaStoreEventListener {
         AlterTableEvent alterTable = ((AlterTableEvent)listenerEvent);
         dbName = alterTable.getOldTable().getDbName().toLowerCase();
         objName = alterTable.getOldTable().getTableName().toLowerCase();
+
+        if (alterTable.getOldTable().getOwner() != null) {
+          owner = alterTable.getOldTable().getOwner();
+        }
+
         if (alterTable.getOldTable().getSd().getLocation() != null) {
           location = alterTable.getOldTable().getSd().getLocation();
         }
@@ -224,6 +244,9 @@ public class SyncMetastoreEventListener extends MetaStoreEventListener {
         newObjName = alterTable.getNewTable().getTableName().toLowerCase();
         if (alterTable.getNewTable().getSd().getLocation() != null) {
           newLocation = alterTable.getNewTable().getSd().getLocation();
+        }
+        if (alterTable.getNewTable().getOwner() != null) {
+          newOwner = alterTable.getNewTable().getOwner();
         }
         // check column is modify
         List<String> arrCols = new ArrayList<>();
@@ -259,9 +282,8 @@ public class SyncMetastoreEventListener extends MetaStoreEventListener {
       HivePrivilege hivePrivilege = new HivePrivilege(hiveAccessType.name(), (List)null);
       List<HivePrivilege> hivePrivileges = new ArrayList<HivePrivilege>();
       hivePrivileges.add(hivePrivilege);
-      SynchronizeRequest request  = createSyncPolicyRequest(resource, newResource, hivePrincipals,
-          hivePrivileges, grantorPrincipal, tableType, location, newLocation);
-
+      SynchronizeRequest request = createSyncPolicyRequest(resource, newResource, hivePrincipals,
+                hivePrivileges, grantorPrincipal, tableType, location, newLocation, owner, newOwner);
       LOGGER.info("add queue > " + request.toString() + ", " + hiveOperationType);
       syncRequestQueue.add(new SyncRequestStruct(request, hiveOperationType));
     } catch(Exception excp) {
@@ -306,13 +328,15 @@ public class SyncMetastoreEventListener extends MetaStoreEventListener {
   }
 
   private SynchronizeRequest createSyncPolicyRequest(RangerHiveResource  resource,
-                                                    RangerHiveResource  newResource,
-                                                    List<HivePrincipal> hivePrincipals,
-                                                    List<HivePrivilege> hivePrivileges,
-                                                    HivePrincipal       grantorPrincipal,
-                                                    String              tableType,
-                                                    String              location,
-                                                    String              newLocation)
+                                                     RangerHiveResource  newResource,
+                                                     List<HivePrincipal> hivePrincipals,
+                                                     List<HivePrivilege> hivePrivileges,
+                                                     HivePrincipal       grantorPrincipal,
+                                                     String              tableType,
+                                                     String              location,
+                                                     String              newLocation,
+                                                     String              owner,
+                                                     String              newOwner)
       throws MetaException {
     if(resource == null ||
         ! ( resource.getObjectType() == HiveObjectType.DATABASE
@@ -333,6 +357,8 @@ public class SyncMetastoreEventListener extends MetaStoreEventListener {
     ret.setTableType(tableType);
     ret.setLocation(location);
     ret.setNewLocation(newLocation);
+    ret.setOwner(owner);
+    ret.setNewOwner(newOwner);
 
     String database = StringUtils.isEmpty(resource.getDatabase()) ? "*" : resource.getDatabase();
     String table    = StringUtils.isEmpty(resource.getTable()) ? "*" : resource.getTable();
@@ -412,32 +438,7 @@ public class SyncMetastoreEventListener extends MetaStoreEventListener {
     return grantor;
   }
 
-  private void auditConsistentRules(GrantRevokeRequest request, String action, boolean isSuccess,
-                                    RangerAccessResultProcessor resultProcessor) {
-    if(request != null && resultProcessor != null) {
-      RangerHiveAccessRequest accessRequest = new RangerHiveAccessRequest();
-      RangerAccessResourceImpl rangerAccessResource = new RangerAccessResourceImpl(request.getResource());
-      rangerAccessResource.setServiceDef(rangerPlugin.getServiceDef());
-      accessRequest.setResource(rangerAccessResource);
-      accessRequest.setUser(request.getGrantor());
-      accessRequest.setAccessType(action);
-      accessRequest.setAction(action);
-      accessRequest.setClientIPAddress(request.getClientIPAddress());
-      accessRequest.setClientType(request.getClientType());
-      accessRequest.setRequestData(request.getRequestData());
-      accessRequest.setSessionId(request.getSessionId());
-      accessRequest.getResource().getServiceDef();
 
-      RangerAccessResult accessResult = new RangerAccessResult(serviceName, rangerPlugin.getServiceDef(), accessRequest);
-      accessResult.setIsAllowed(isSuccess);
-      accessResult.setIsAudited(true);
-      accessResult.setReason("consistent rule");
-      if(! isSuccess) {
-        accessResult.setPolicyId(-1);
-      }
-      resultProcessor.processResult(accessResult);
-    }
-  }
 
   private RangerHiveResource getHiveResource(HiveOperationType hiveOpType, HivePrivilegeObject hiveObj) {
     RangerHiveResource ret = null;

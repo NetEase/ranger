@@ -37,12 +37,31 @@ public class SynchronizeRequest extends GrantRevokeRequest{
   private String              location                   = null;
   private String              newLocation                = null;
   private Map<String, String> newResource                = null;
+  private String              owner                      = null;
+  private String              newOwner                   = null;
+
+  public String getOwner() {
+    return owner;
+  }
+
+  public void setOwner(String owner) {
+    this.owner = owner;
+  }
+
+  public String getNewOwner() {
+    return newOwner;
+  }
+
+  public void setNewOwner(String newOwner) {
+    this.newOwner = newOwner;
+  }
+
 
   public SynchronizeRequest() {
     this(null, null, null, null, null,
         null, null, null, null, null,
         null, null, null, null, null,
-        null, null);
+        null, null,null,null);
   }
 
   public SynchronizeRequest(String grantor, Map<String, String> resource, Set<String> users,
@@ -50,7 +69,7 @@ public class SynchronizeRequest extends GrantRevokeRequest{
                             Boolean enableAudit, Boolean replaceExistingPermissions, Boolean isRecursive,
                             String clientIPAddress, String clientType, String requestData,
                             String sessionId, String tableType, String location,
-                            String newLocation, Map<String, String> newResource) {
+                            String newLocation, Map<String, String> newResource,String owner,String newOwner) {
     setGrantor(grantor);
     setResource(resource);
     setUsers(users);
@@ -68,6 +87,8 @@ public class SynchronizeRequest extends GrantRevokeRequest{
     setLocation(location);
     setNewLocation(newLocation);
     setNewResource(newResource);
+    setOwner(owner);
+    setNewOwner(newOwner);
   }
 
   /**

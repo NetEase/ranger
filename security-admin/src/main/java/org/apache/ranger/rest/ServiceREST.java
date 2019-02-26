@@ -1358,25 +1358,115 @@ public class ServiceREST {
 		return macthHivePolicies;
 	}
 
-	private boolean userIsDelegateAdmin(RangerPolicy policy, String userName, Set<String> groups) {
-		boolean ret = false;
-		List<RangerPolicy.RangerPolicyItem> items = policy.getPolicyItems();
-		if (CollectionUtils.isNotEmpty(items)) {
-			for (RangerPolicy.RangerPolicyItem item : items) {
-				if((CollectionUtils.isEmpty(item.getUsers()) && CollectionUtils.isEmpty(item.getGroups()))
-						|| CollectionUtils.isEmpty(item.getAccesses()) || !item.getDelegateAdmin()) {
-					continue;
-				}
-
-				if(item.getUsers().contains(userName) || CollectionUtils.containsAny(item.getGroups(), groups)) {
-					ret = true;
+	private void changeOldOwnerPolicyItems(RangerPolicy hivePolicy, boolean isExternal, String location, String owner, String newOwner,
+										   Long hdfsServiceId) {
+		Iterator<RangerPolicyItem> iterhive = hivePolicy.getPolicyItems().iterator();
+		boolean ishiveItemExist = false;
+		boolean ishdfsItemExist = false;
+		boolean inProject = false;
+		try {
+			 inProject  = inProjectPath(hivePolicy,location);
+		} catch (Exception e) {
+			LOG.error("Error while determine if table's location is in project in changeOldOwnerPolicyItems ,the hivePolicy is" + hivePolicy + "the old owner is " + owner + "the new owner is" + newOwner + "the location is " + location);
+		}
+		while (iterhive.hasNext()) {
+			RangerPolicyItem hiveItem = iterhive.next();
+            if (hiveItem.getUsers().contains(owner) && (true == hiveItem.getDelegateAdmin()) && false == isExternal &&  true == inProject && hiveItem.getAccesses().contains(new RangerPolicyItemAccess("all",Boolean.TRUE))) {
+          	  hiveItem.getUsers().add(newOwner);
+          	  hiveItem.getUsers().remove(owner);
+          	  ishiveItemExist = true;
+          	  break;
+		    } else if (hiveItem.getUsers().contains(owner) && (true == hiveItem.getDelegateAdmin()) && (true == isExternal || false == inProject)) {
+            	if (hiveItem.getAccesses().size() == 3 && hiveItem.getAccesses().contains(new RangerPolicyItemAccess("select",Boolean.TRUE)) && hiveItem.getAccesses().contains(new RangerPolicyItemAccess("alter",Boolean.TRUE) ) && hiveItem.getAccesses().contains(new RangerPolicyItemAccess("drop",Boolean.TRUE))) {
+					hiveItem.getUsers().add(newOwner);
+					hiveItem.getUsers().remove(owner);
+					ishiveItemExist = true;
 					break;
 				}
 			}
 		}
 
-		return ret;
+		if (false == ishiveItemExist) {
+
+			RangerPolicyItem policyItem = new RangerPolicyItem();
+			List <String> users = new ArrayList<>();
+			users.add(newOwner);
+			policyItem.setUsers(users);
+
+			if (isExternal == true || !inProject) {
+
+				policyItem.getAccesses().add(new RangerPolicyItemAccess("select", Boolean.TRUE));
+				policyItem.getAccesses().add(new RangerPolicyItemAccess("drop", Boolean.TRUE));
+				policyItem.getAccesses().add(new RangerPolicyItemAccess("alter", Boolean.TRUE));
+				policyItem.setDelegateAdmin(true);
+
+			} else {
+				policyItem.getAccesses().add(new RangerPolicyItemAccess("select", Boolean.TRUE));
+				policyItem.getAccesses().add(new RangerPolicyItemAccess("update", Boolean.TRUE));
+				policyItem.getAccesses().add(new RangerPolicyItemAccess("create", Boolean.TRUE));
+				policyItem.getAccesses().add(new RangerPolicyItemAccess("drop", Boolean.TRUE));
+				policyItem.getAccesses().add(new RangerPolicyItemAccess("alter", Boolean.TRUE));
+				policyItem.getAccesses().add(new RangerPolicyItemAccess("index", Boolean.TRUE));
+				policyItem.getAccesses().add(new RangerPolicyItemAccess("lock", Boolean.TRUE));
+				policyItem.getAccesses().add(new RangerPolicyItemAccess("all", Boolean.TRUE));
+				policyItem.setDelegateAdmin(true);
+			}
+
+			hivePolicy.getPolicyItems().add(policyItem);
+		}
+		RangerPolicy  hdfsPolicy = null;
+		try {
+			hdfsPolicy = searchHdfsPolicyByLocation(hdfsServiceId,location);
+		} catch (Exception e) {
+			LOG.error("Error  while changeOldOwnerPolicyItems , the hive policy is" + hivePolicy.toString() + "old owner is " + owner + " table's location is" + location);
+		}
+		Iterator<RangerPolicyItem> iterhdfs = hdfsPolicy.getPolicyItems().iterator();
+		while (iterhdfs.hasNext()) {
+			RangerPolicyItem hdfsItem = iterhdfs.next();
+			if (hdfsItem.getUsers().contains(owner) &&  (true == hdfsItem.getDelegateAdmin()) && false == isExternal &&  true == inProject  && hdfsItem.getAccesses().contains(new RangerPolicyItemAccess("read",Boolean.TRUE)) && hdfsItem.getAccesses().contains(new RangerPolicyItemAccess("execute",Boolean.TRUE)) && hdfsItem.getAccesses().contains(new RangerPolicyItemAccess("write",Boolean.TRUE))) {
+				hdfsItem.getUsers().add(newOwner);
+				hdfsItem.getUsers().remove(owner);
+				ishdfsItemExist = true;
+				break;
+			} else if (hdfsItem.getAccesses().size() == 2 && hdfsItem.getUsers().contains(owner) &&  (true == hdfsItem.getDelegateAdmin()) && (true == isExternal ||  false == inProject ) && hdfsItem.getAccesses().contains(new RangerPolicyItemAccess("read",Boolean.TRUE)) && hdfsItem.getAccesses().contains(new RangerPolicyItemAccess("execute",Boolean.TRUE))) {
+				hdfsItem.getUsers().add(newOwner);
+				hdfsItem.getUsers().remove(owner);
+				ishdfsItemExist = true;
+				break;
+			}
+		}
+
+		if (false == ishdfsItemExist) {
+
+			RangerPolicyItem policyItem = new RangerPolicyItem();
+			List <String> users = new ArrayList<>();
+			users.add(newOwner);
+			policyItem.setUsers(users);
+
+			if (isExternal == true || !inProject) {
+
+				policyItem.getAccesses().add(new RangerPolicyItemAccess("read", Boolean.TRUE));
+				policyItem.getAccesses().add(new RangerPolicyItemAccess("execute", Boolean.TRUE));
+				policyItem.setDelegateAdmin(true);
+
+			} else {
+				policyItem.getAccesses().add(new RangerPolicyItemAccess("read", Boolean.TRUE));
+				policyItem.getAccesses().add(new RangerPolicyItemAccess("execute", Boolean.TRUE));
+				policyItem.getAccesses().add(new RangerPolicyItemAccess("write", Boolean.TRUE));
+				policyItem.setDelegateAdmin(true);
+			}
+			hdfsPolicy.getPolicyItems().add(policyItem);
+		}
+
+		try {
+			svcStore.updatePolicy(hdfsPolicy);
+		} catch (Exception e) {
+			LOG.error("Error change owner when update hdfsPolicy, hdfsPolicy is " + hdfsPolicy );
+		}
+
 	}
+
+
 
 	private RangerPolicy policiesContains(List<RangerPolicy> policies, Long policyId) {
 		for (RangerPolicy policy : policies) {
@@ -1397,12 +1487,10 @@ public class ServiceREST {
 		}
 
 		final Long hiveServiceId = hiveService.getId();
-		final String hiveServiceName = hiveService.getName();
-
 		RangerService hdfsService = getRelatedHdfsService(hiveServiceId);
 		final Long hdfsServiceId = hdfsService.getId();
-		final String hdfsServiceName = hdfsService.getName();
 		final String location = syncRequest.getLocation();
+		final String owner = syncRequest.getOwner();
 
 		// hive schema db & table name to lower case
 		final String dbName = syncRequest.getResource().get("database");
@@ -1486,8 +1574,9 @@ public class ServiceREST {
 			break;
 			case ALTERTABLE: {
 				// temporary deletion
-				boolean alterLocationOrTableName = false;
+				boolean alterLocationOrTableNameOrOwner = false;
 				String newLocation = syncRequest.getNewLocation();
+				String newOwner = syncRequest.getNewOwner();
 				List<RangerPolicy> searchPolicies = searchHivePolicy(hiveServiceId, dbName, tabName, "");
 				if (searchPolicies.size() == 0) {
 					LOG.info("don't search hive policy " + hiveServiceId + ", " + dbName + ", " + tabName);
@@ -1517,17 +1606,27 @@ public class ServiceREST {
 					for (RangerPolicy policy : searchPolicies) {
 						setPolicyDesc(policy, POLICY_DESC_LOCATION, hdfsPath);
 					}
-					alterLocationOrTableName = true;
+					alterLocationOrTableNameOrOwner = true;
 				}
 				if (false == dbName.equalsIgnoreCase(newDbName) ||
 						false == tabName.equalsIgnoreCase(newTabName)){
 					// update hive-policy db and table name
 					for (RangerPolicy policy : searchPolicies) {
 						alterHivePolicyDbTableResource(policy, syncRequest);
-						alterLocationOrTableName = true;
+						alterLocationOrTableNameOrOwner = true;
 					}
 				}
-				if (true == alterLocationOrTableName) {
+
+				if (false == owner.equals(newOwner)
+						&& (!(owner == null || owner.trim().isEmpty()))
+						&& (!(newOwner == null || newOwner.trim().isEmpty()))) {
+					for (RangerPolicy policy : searchPolicies) {
+						boolean isExternal = ServiceREST.EXTERNAL_TABLE_TYPE.equalsIgnoreCase(getPolicyDesc(policy, POLICY_DESC_TABLE_TYPE));
+						changeOldOwnerPolicyItems(policy, isExternal,location, owner,newOwner,hdfsServiceId);
+					}
+					alterLocationOrTableNameOrOwner = true;
+				}
+				if (true == alterLocationOrTableNameOrOwner) {
 					for (RangerPolicy policy : searchPolicies) {
 						svcStore.updatePolicy(policy);
 					}
@@ -1572,7 +1671,11 @@ public class ServiceREST {
 									svcStore.deletePolicy(policy.getId());
 								}
 
-								if (true == hdfsPolicyChanged) {
+								if (!owner.equals(newOwner)) {
+									hdfsPolicyChanged = true;
+								}
+
+								if (true == hdfsPolicyChanged ) {
 									if (relatedHdfsPolicy.getPolicyItems().size() == 0) {
 										svcStore.deletePolicy(relatedHdfsPolicy.getId());
 									} else {
