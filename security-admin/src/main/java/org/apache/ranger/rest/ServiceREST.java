@@ -1515,13 +1515,17 @@ public class ServiceREST {
 
 				// find exist hive policy
 				List<RangerPolicy> searchPolicies = searchHivePolicy(hiveServiceId, dbName, tabName, "*");
-				if (searchPolicies.size() == 0) {
+				if (searchPolicies.size() == 0 && syncRequest.getGrantor().startsWith("bdms_")) {
 					// not exist
 					matchHivePolicy = generateHivePolicy(matchHiveServiceName, syncRequest);
 				} else if (searchPolicies.size() == 1) {
 					matchHivePolicy = searchPolicies.get(0);
+				} else if (!syncRequest.getGrantor().startsWith("bdms_")) {
+					LOG.info("do not generate policy since the grantor is a product account");
+					break;
 				} else {
 					LOG.error("searchPolicies.size() = " + searchPolicies.size());
+					break;
 				}
 
 				if (!(location == null || location.trim().isEmpty())) {
@@ -1579,12 +1583,38 @@ public class ServiceREST {
 				String newOwner = syncRequest.getNewOwner();
 				List<RangerPolicy> searchPolicies = searchHivePolicy(hiveServiceId, dbName, tabName, "");
 				if (searchPolicies.size() == 0) {
-					LOG.info("don't search hive policy " + hiveServiceId + ", " + dbName + ", " + tabName);
-					break;
+					if (false == owner.equals(newOwner)
+							&& (!(owner == null || owner.trim().isEmpty()))
+							&& (!(newOwner == null || newOwner.trim().isEmpty()))) {
+						LOG.info("old owner" + syncRequest.getOwner() + "change owner to" + syncRequest.getNewOwner() + "the syncRequest is " + syncRequest);
+						RangerPolicy newPolicy = generateHivePolicy(matchHiveServiceName,syncRequest);
+						searchPolicies.add(newPolicy);
+						if (!(location == null || location.trim().isEmpty())) {
+							RangerPolicy relatedHdfsPolicy = searchHdfsPolicyByLocation(hdfsServiceId, location);
+							if (null == relatedHdfsPolicy) {
+								List<RangerPolicy> relatedHivePolicies = new ArrayList<>();
+								relatedHivePolicies.add(newPolicy);
+
+								relatedHdfsPolicy = generateHdfsPolicy(relatedHivePolicies, location);
+								if (null != relatedHdfsPolicy) {
+									svcStore.createPolicy(relatedHdfsPolicy);
+								}
+							} else {
+								hdfsPolicyAddHivePolicyItem(relatedHdfsPolicy, newPolicy);
+								svcStore.updatePolicy(relatedHdfsPolicy);
+							}
+						}
+
+						svcStore.createPolicy(newPolicy);
+						break;
+					} else {
+						LOG.info("can not find hive policy " + hiveServiceId + ", " + dbName + ", " + tabName + "," + syncRequest.getGrantor());
+					}
 				}
 				if (false == location.equalsIgnoreCase(newLocation)
 						&& (!(location == null || location.trim().isEmpty()))
 						&& (!(newLocation == null || newLocation.trim().isEmpty()))) {
+
 					// 1.change old hdfs location
 					adjustHdfsPolicyByLocation(hdfsServiceId, hiveServiceId, location, null, searchPolicies);
 

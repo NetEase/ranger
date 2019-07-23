@@ -232,6 +232,7 @@ public class SyncMetastoreEventListener extends MetaStoreEventListener {
         AlterTableEvent alterTable = ((AlterTableEvent)listenerEvent);
         dbName = alterTable.getOldTable().getDbName().toLowerCase();
         objName = alterTable.getOldTable().getTableName().toLowerCase();
+        tableType = alterTable.getNewTable().getTableType();
 
         if (alterTable.getOldTable().getOwner() != null) {
           owner = alterTable.getOldTable().getOwner();
