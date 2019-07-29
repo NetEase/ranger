@@ -110,14 +110,7 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Context;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 @Path("plugins")
 @Component
@@ -1582,11 +1575,15 @@ public class ServiceREST {
 				String newLocation = syncRequest.getNewLocation();
 				String newOwner = syncRequest.getNewOwner();
 				List<RangerPolicy> searchPolicies = searchHivePolicy(hiveServiceId, dbName, tabName, "");
-				if (searchPolicies.size() == 0) {
-					if (false == owner.equals(newOwner)
+				if (false == owner.equals(newOwner)
 							&& (!(owner == null || owner.trim().isEmpty()))
 							&& (!(newOwner == null || newOwner.trim().isEmpty()))) {
-						LOG.info("old owner" + syncRequest.getOwner() + "change owner to" + syncRequest.getNewOwner() + "the syncRequest is " + syncRequest);
+					List<RangerPolicy> searchTBlPolicies = searchHivePolicy(hiveServiceId, dbName, tabName, "*");
+					if (searchTBlPolicies.size() == 0) {
+						LOG.info("table policy is not exist when try to alter owner," + "old owner" + syncRequest.getOwner() + "change owner to" + syncRequest.getNewOwner() + "the syncRequest is " + syncRequest);
+						syncRequest.getUsers().clear();
+						syncRequest.getUsers().add(newOwner);
+						syncRequest.setGrantor(newOwner);
 						RangerPolicy newPolicy = generateHivePolicy(matchHiveServiceName,syncRequest);
 						searchPolicies.add(newPolicy);
 						if (!(location == null || location.trim().isEmpty())) {
@@ -1594,7 +1591,6 @@ public class ServiceREST {
 							if (null == relatedHdfsPolicy) {
 								List<RangerPolicy> relatedHivePolicies = new ArrayList<>();
 								relatedHivePolicies.add(newPolicy);
-
 								relatedHdfsPolicy = generateHdfsPolicy(relatedHivePolicies, location);
 								if (null != relatedHdfsPolicy) {
 									svcStore.createPolicy(relatedHdfsPolicy);
@@ -1604,13 +1600,17 @@ public class ServiceREST {
 								svcStore.updatePolicy(relatedHdfsPolicy);
 							}
 						}
-
 						svcStore.createPolicy(newPolicy);
 						break;
 					} else {
-						LOG.info("can not find hive policy " + hiveServiceId + ", " + dbName + ", " + tabName + "," + syncRequest.getGrantor());
+						for (RangerPolicy policy : searchPolicies) {
+							boolean isExternal = ServiceREST.EXTERNAL_TABLE_TYPE.equalsIgnoreCase(getPolicyDesc(policy, POLICY_DESC_TABLE_TYPE));
+							changeOldOwnerPolicyItems(policy, isExternal,location, owner,newOwner,hdfsServiceId);
+						}
+						alterLocationOrTableNameOrOwner = true;
 					}
 				}
+
 				if (false == location.equalsIgnoreCase(newLocation)
 						&& (!(location == null || location.trim().isEmpty()))
 						&& (!(newLocation == null || newLocation.trim().isEmpty()))) {
@@ -1647,15 +1647,6 @@ public class ServiceREST {
 					}
 				}
 
-				if (false == owner.equals(newOwner)
-						&& (!(owner == null || owner.trim().isEmpty()))
-						&& (!(newOwner == null || newOwner.trim().isEmpty()))) {
-					for (RangerPolicy policy : searchPolicies) {
-						boolean isExternal = ServiceREST.EXTERNAL_TABLE_TYPE.equalsIgnoreCase(getPolicyDesc(policy, POLICY_DESC_TABLE_TYPE));
-						changeOldOwnerPolicyItems(policy, isExternal,location, owner,newOwner,hdfsServiceId);
-					}
-					alterLocationOrTableNameOrOwner = true;
-				}
 				if (true == alterLocationOrTableNameOrOwner) {
 					for (RangerPolicy policy : searchPolicies) {
 						svcStore.updatePolicy(policy);
